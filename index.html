@@ -773,6 +773,10 @@ body.modal-open{overflow:hidden}
 .farm-badge{background:#d8ead5!important;color:#28552b!important;border-color:#69906a!important}
 .box-badge{display:inline-block;margin-left:6px;padding:1px 5px;background:#d8d8dc;color:#595660;border:1px solid #8c8892;font-size:9px;vertical-align:middle}
 @media(max-width:640px){.farm-production-note{font-size:11px}.farm-stats{grid-template-columns:repeat(2,1fr)}}
+
+.repeat-mode-box{margin:8px 12px;padding:7px 8px;background:#d0cfd4;border:2px solid #817d87}
+.repeat-mode-box>b{display:block;margin-bottom:4px;font-size:10px}
+.repeat-mode-box .toggle{margin:5px 0}
 </style></head>
 <body><div class="shell"><header><a href="#" class="brand"><span>✦</span><div>Qinster 牧场<small>QINSTER RANCH</small></div></a><div class="wallet"><span>灵能</span><strong id="energy">200</strong><b>◆</b></div><div class="wallet ranch-wallet"><span>牧场</span><strong id="ranch-level">Lv1</strong><small id="ranch-xp">0 / 100 XP</small></div><button class="subtle" id="shop-btn">商店</button><button class="subtle" id="bag-btn">背包</button><button class="subtle" id="dex-btn">图鉴</button><button class="subtle" id="skill-btn">技能图鉴</button><button class="subtle" id="export-save">导出存档</button><button class="subtle" id="import-save">导入存档</button><input id="import-save-file" type="file" accept=".json,application/json" hidden><button class="subtle" id="help">玩法说明 ?</button></header>
 <main><div class="topline"><div><span class="eyebrow">怪物蛋 · 配种 · 陪伴</span><h1>小怪物们，今天也在等你。</h1></div><button id="motion" class="motion" aria-pressed="false">暂停走动</button></div>
@@ -802,8 +806,16 @@ body.modal-open{overflow:hidden}
     <article class="shop-card">
       <h3>🏡 小型扩建</h3>
       <p>怪物容量 +2。每次扩建都会比上一次更贵。</p>
-      <p class="shop-price" id="capacity-price">5,000 灵能</p>
+      <p class="shop-price" id="capacity-price">500 灵能</p>
       <button class="shop-buy primary" id="buy-capacity">购买</button>
+    </article>
+
+    <article class="shop-card">
+      <h3>🌱 生产牧场扩建</h3>
+      <p>生产位 +2。只有放进生产牧场的怪物才会产生每分钟灵能。</p>
+      <p>当前生产位：<b id="farm-slot-count">4</b></p>
+      <p class="shop-price" id="farm-expand-price">1,000 灵能</p>
+      <button class="shop-buy primary" id="buy-farm-expand">购买</button>
     </article>
 
     <article class="shop-card shop-card-wide">
@@ -910,7 +922,7 @@ body.modal-open{overflow:hidden}
 <select id="parent-b" hidden></select>
 <button type="button" class="parent-select-btn" id="parent-b-btn" aria-expanded="false"></button>
 <div class="parent-picker" id="parent-b-picker" hidden></div>
-</div></div><div class="odds" id="odds"></div><p class="inheritance">品种各有机会继承，也有 10% 概率变异为其他品种。普通颜色以继承双亲为主：父方 47.5%、母方 47.5%，只有 5% 概率出现双亲以外的新颜色。</p><button id="breed" class="primary full">开始生蛋</button><div id="breed-action-status" class="breed-action-status">选择好一公一母后，点击开始生蛋。</div><label class="toggle"><input id="auto-breed" type="checkbox"> 智能自动生蛋（只在游戏打开时运行）</label><div id="auto-breed-status" class="auto-breed-status">自动生蛋未开启。</div><div class="incubator"><div class="incubator-head"><h3>孵化巢</h3><span id="egg-status">等待怪物蛋</span></div><div id="nest" class="nest"></div><progress id="progress" max="1" value="0"></progress><p id="nest-info">选好两位伙伴，开始第一次配种。</p><button id="hatch" class="secondary full" hidden>轻轻敲开蛋壳</button><label class="toggle"><input id="auto-hatch" type="checkbox" checked> 完成后自动孵化</label></div></aside></div>
+</div></div><div class="odds" id="odds"></div><p class="inheritance">品种各有机会继承，也有 10% 概率变异为其他品种。普通颜色以继承双亲为主：父方 47.5%、母方 47.5%，只有 5% 概率出现双亲以外的新颜色。</p><button id="breed" class="primary full">开始生蛋</button><div id="breed-action-status" class="breed-action-status">选择好一公一母后，点击开始生蛋。</div><div class="repeat-mode-box"><b>连续生蛋模式</b><label class="toggle"><input id="auto-breed" type="checkbox"> 智能连发：系统每轮重新选最合适双亲</label><label class="toggle"><input id="manual-breed-repeat" type="checkbox"> 固定双亲连发：一直使用当前亲代 A + B</label></div><div id="auto-breed-status" class="auto-breed-status">连续生蛋未开启。</div><div class="incubator"><div class="incubator-head"><h3>孵化巢</h3><span id="egg-status">等待怪物蛋</span></div><div id="nest" class="nest"></div><progress id="progress" max="1" value="0"></progress><p id="nest-info">选好两位伙伴，开始第一次配种。</p><button id="hatch" class="secondary full" hidden>轻轻敲开蛋壳</button><label class="toggle"><input id="auto-hatch" type="checkbox" checked> 完成后自动孵化</label></div></aside></div>
 <section class="collection"><div class="section-title"><h2>怪物盒 <span id="capacity">2 / 12</span></h2><span class="roster-note">可按稀有度 / 加入时间 / 生命 / 我的最爱排序</span></div>
 <div class="bulk-sell-bar">
   <button id="bulk-select-toggle" class="secondary">批量出售</button>
@@ -969,13 +981,14 @@ body.modal-open{overflow:hidden}
 </div>
 <div class="auto-ops-panel">
   <div><b>自动派遣</b><small>只在游戏页面打开时运行；关闭页面后不会自动重新出发。已经派出的队伍仍会正常计时。</small></div>
-  <label class="toggle"><input id="auto-dispatch" type="checkbox"> 自动领取并重新派遣</label>
+  <div class="repeat-mode-box"><b>连续派遣模式</b><label class="toggle"><input id="auto-dispatch" type="checkbox"> 智能连发：自动领取并重新挑选队伍</label><label class="toggle"><input id="manual-dispatch-repeat" type="checkbox"> 固定队伍连发：一直使用我手动选的队伍</label></div>
+  <label class="toggle"><input id="auto-dispatch-reserve-breed" type="checkbox" checked> 智能连发时保留 1 公 + 1 母用于生蛋</label>
   <select id="auto-dispatch-mission">
     <option value="highest">最高已解锁任务</option><option value="meadow">牧场巡查（任务等级 1）</option>
     <option value="forage">林地采集</option><option value="river">河谷巡游</option><option value="ruins">遗迹探索</option>
     <option value="cavern">晶洞勘探</option><option value="astral">星门远征</option><option value="summit">天穹峰远征</option><option value="rift">裂隙核心</option>
   </select>
-</div><div class="dispatch-mobile-note">提示：1★ 可参加「牧场巡查」，2★ 可参加「林地采集」，3★ 起可挑战「河谷巡游」等更高任务。设置为亲代 A/B 不会锁住派遣；只有正在孵化中的怪物蛋亲代才暂时不能出队。</div><div id="dispatch-missions" class="dispatch-missions"></div><div id="dispatch-active" class="dispatch-active"></div></div></section><section class="activity-log-panel">
+</div><div class="dispatch-mobile-note">提示：1★ 可参加「牧场巡查」，2★ 可参加「林地采集」。自动选队默认会保留 1 公 + 1 母用于生蛋；你也可以关闭这个选项，让自动派遣使用全部怪物。</div><div id="dispatch-missions" class="dispatch-missions"></div><div id="dispatch-active" class="dispatch-active"></div></div></section><section class="activity-log-panel">
   <div class="section-title">
     <h2>牧场 Log</h2>
     <span id="activity-count">最近记录</span>
@@ -991,7 +1004,7 @@ body.modal-open{overflow:hidden}
     <p class="hint">你可以替换技能② / 技能③；闪光怪物也可以替换技能④。也可以直接放弃。</p>
   </div>
 </dialog>
-<dialog id="guide"><div class="guide-shell"><div class="guide-head"><div><span class="eyebrow">QINSTER GUIDE</span><h2>玩法说明</h2></div><button id="close-guide-top" class="secondary">关闭</button></div><nav class="guide-tabs"><button class="secondary active" data-guide-tab="basic">基础</button><button class="secondary" data-guide-tab="breed">配种</button><button class="secondary" data-guide-tab="skills">技能</button><button class="secondary" data-guide-tab="dispatch">派遣</button><button class="secondary" data-guide-tab="shop">商店 / 存档</button></nav><div class="guide-scroll"><section data-guide-panel="basic"><h3>基础牧场</h3><p>开局固定获得 <b>1 公 + 1 母</b> 两只 1★ 伙伴，确保可以立即开始配种。怪物会自然散步、停留和小睡；正在派遣的队员会在草地底部持续行进。</p><ul><li>开局与普通救助伙伴的天生生命为 5。后代天生生命会在 5 到「双亲天生生命平均值向下取整 +1」之间随机：5+5 → 5–6，6+6 → 5–7，10+10 → 5–11，自然上限 20。任务直接获得的怪物天生生命为 5–10。生命萌芽与生命药水可以让总最大生命超过 20。生蛋与派遣会扣生命。</li><li>怪物详情会显示双亲图片；家谱可查看更完整血缘。</li><li>怪物盒、背包、派遣和亲代选择都有搜索 / 排序。</li></ul></section><section data-guide-panel="breed" hidden><h3>配种与孵化</h3><ul><li>5★ 为星级上限，不会继续升星。</li><li>普通品种可正常继承 / 变异。</li><li><b>任务限定品种不能凭空变异。</b>必须先从对应任务获得，之后至少有一位该限定种亲代，后代才有较低概率继承该品种。</li><li>智能自动生蛋会优先使用标记为「自动优先」的公 / 母怪物；没有标记时会自动挑选培育评分最高的组合。</li><li>智能自动生蛋只在游戏页面打开时运行，离线期间不会自己继续创建新蛋。</li><li><b>生产牧场：</b>只有放入生产牧场的怪物会产生灵能；怪物盒中的怪物产能为 0。派遣中的怪物也暂停产能。开局有 4 个生产位，初始两只怪物自动放入。</li><li><b>配种稀有度调整：</b>新普通颜色自然变异降至 5%。同星配种基础升星率：1→2 为 10%，2→3 为 6%，3→4 为 4%，4→5 为 1%；技能与升星药水仍可提高。</li><li>手动「开始生蛋」会在按钮下方直接显示成功、冷却、灵能不足、牧场已满等状态，不再无反应。</li><li>新生 Debuff 可直接出现 Lv1–Lv10。</li></ul></section><section data-guide-panel="skills" hidden><h3>技能系统</h3><p>技能①为种族技能。任务限定怪物拥有专属派遣类种族技能，例如成功率、掉落、报酬、归途保护与限定怪追迹。</p></section><section data-guide-panel="dispatch" hidden><h3>派遣</h3><ul><li>任务等级 1「牧场巡查」给 1★；任务等级 2「林地采集」给 2★；任务等级 3「河谷巡游」开始要求 3★。之后遗迹、晶洞、星门、天穹、裂隙会继续提高星级与牧场等级要求。</li><li>每个任务有 5 种任务限定怪物，首次从该任务带回后才会解锁图鉴。限定怪遇见基础概率现在约为 10%–17%，高阶任务略高；追迹类技能还能继续提高。</li><li><b>任务等级 1「牧场巡查」只会带回 1★ 怪物</b>，不会从这个入门任务直接拿到 2★ 或更高星怪。</li><li>自动派遣会优先使用标记为「自动优先」的怪物；没有标记时按任务技能、属性、星级、生命等自动选队。</li><li>自动派遣只在游戏页面打开时自动领取与重新出发；关闭页面后不会启动新任务，但已经派出的队伍仍会正常计时。</li><li>任务卡会显示限定怪物以及基础遇见概率；Log 会记录实际带回的奖励。</li></ul></section><section data-guide-panel="shop" hidden><h3>商店与存档</h3><ul><li>扩建每次容量 +2，第一次 5,000 灵能，之后约按 1.7 倍递增。</li><li>生命药水每只怪只可使用一次，生命 +5。</li><li>牧场 Lv3 解锁时间药水：行程压缩药水 300,000 灵能，当前派遣剩余时间 -50%，每次任务限用 1 瓶。</li><li>时跃药水 2,000,000 灵能，可立即完成当前派遣计时，但不会改变任务结果。</li><li>派遣也有极低概率带回：行程压缩约 0.4%–1.2%，时跃约 0.08%–0.3%。</li><li>建议定期导出存档。</li></ul></section></div></div></dialog>
+<dialog id="guide"><div class="guide-shell"><div class="guide-head"><div><span class="eyebrow">QINSTER GUIDE</span><h2>玩法说明</h2></div><button id="close-guide-top" class="secondary">关闭</button></div><nav class="guide-tabs"><button class="secondary active" data-guide-tab="basic">基础</button><button class="secondary" data-guide-tab="breed">配种</button><button class="secondary" data-guide-tab="skills">技能</button><button class="secondary" data-guide-tab="dispatch">派遣</button><button class="secondary" data-guide-tab="shop">商店 / 存档</button></nav><div class="guide-scroll"><section data-guide-panel="basic"><h3>基础牧场</h3><p>开局固定获得 <b>1 公 + 1 母</b> 两只 1★ 伙伴，确保可以立即开始配种。怪物会自然散步、停留和小睡；正在派遣的队员会在草地底部持续行进。</p><ul><li>开局与普通救助伙伴的天生生命为 5。后代天生生命会在 5 到「双亲天生生命平均值向下取整 +1」之间随机：5+5 → 5–6，6+6 → 5–7，10+10 → 5–11，自然上限 20。任务直接获得的怪物天生生命为 5–10。生命萌芽与生命药水可以让总最大生命超过 20。生蛋与派遣会扣生命。</li><li>怪物详情会显示双亲图片；家谱可查看更完整血缘。</li><li>怪物盒、背包、派遣和亲代选择都有搜索 / 排序。</li></ul></section><section data-guide-panel="breed" hidden><h3>配种与孵化</h3><ul><li>5★ 为星级上限，不会继续升星。</li><li>普通品种可正常继承 / 变异。</li><li><b>任务限定品种不能凭空变异。</b>必须先从对应任务获得，之后至少有一位该限定种亲代，后代才有较低概率继承该品种。</li><li>智能自动生蛋会优先使用标记为「自动优先」的公 / 母怪物；没有标记时会自动挑选培育评分最高的组合。</li><li>智能自动生蛋只在游戏页面打开时运行，离线期间不会自己继续创建新蛋。</li><li><b>生产牧场：</b>只有放入生产牧场的怪物会产生灵能；怪物盒中的怪物产能为 0。派遣中的怪物也暂停产能。开局有 4 个生产位，初始两只怪物自动放入。</li><li><b>生产牧场扩建：</b>商店中可购买，每次生产位 +2。第一次只要 1,000 灵能，之后价格约按 1.8 倍递增，前期容易扩建、后期会越来越贵。</li><li><b>配种稀有度调整：</b>新普通颜色自然变异降至 5%。同星配种基础升星率：1→2 为 10%，2→3 为 6%，3→4 为 4%，4→5 为 1%；技能与升星药水仍可提高。</li><li>手动「开始生蛋」会在按钮下方直接显示成功、冷却、灵能不足、牧场已满等状态，不再无反应。</li><li>新生 Debuff 可直接出现 Lv1–Lv10。</li></ul></section><section data-guide-panel="skills" hidden><h3>技能系统</h3><p>技能①为种族技能。任务限定怪物拥有专属派遣类种族技能，例如成功率、掉落、报酬、归途保护与限定怪追迹。</p></section><section data-guide-panel="dispatch" hidden><h3>派遣</h3><ul><li>任务等级 1「牧场巡查」给 1★；任务等级 2「林地采集」给 2★；任务等级 3「河谷巡游」开始要求 3★。之后遗迹、晶洞、星门、天穹、裂隙会继续提高星级与牧场等级要求。</li><li>每个任务有 5 种任务限定怪物，首次从该任务带回后才会解锁图鉴。限定怪遇见基础概率现在约为 10%–17%，高阶任务略高；追迹类技能还能继续提高。</li><li><b>任务等级 1「牧场巡查」只会带回 1★ 怪物</b>，不会从这个入门任务直接拿到 2★ 或更高星怪。</li><li><b>自动派遣保留配种：</b>默认开启，会留下一公一母不加入自动队伍，避免派遣完后没有怪物可以生蛋；可在派遣中心自行关闭。</li><li><b>连发模式：</b>派遣和生蛋都可以选择「智能连发」或「固定手动连发」。固定派遣队不会自动换人；队员死亡后只使用幸存者，人数不足任务最低要求时停止。固定双亲会一直使用当前 A/B，直到其中一位无法继续。</li><li>自动派遣会优先使用标记为「自动优先」的怪物；没有标记时按任务技能、属性、星级、生命等自动选队。</li><li>自动派遣只在游戏页面打开时自动领取与重新出发；关闭页面后不会启动新任务，但已经派出的队伍仍会正常计时。</li><li>任务卡会显示限定怪物以及基础遇见概率；Log 会记录实际带回的奖励。</li></ul></section><section data-guide-panel="shop" hidden><h3>商店与存档</h3><ul><li>怪物盒扩建每次容量 +2，第一次只要 500 灵能，之后约按 1.7 倍递增，前期容易扩容，后期会越来越贵。</li><li>生产牧场扩建每次生产位 +2，第一次 25,000 灵能，之后约按 1.8 倍递增。</li><li>生命药水每只怪只可使用一次，生命 +5。</li><li>牧场 Lv3 解锁时间药水：行程压缩药水 300,000 灵能，当前派遣剩余时间 -50%，每次任务限用 1 瓶。</li><li>时跃药水 2,000,000 灵能，可立即完成当前派遣计时，但不会改变任务结果。</li><li>派遣也有极低概率带回：行程压缩约 0.4%–1.2%，时跃约 0.08%–0.3%。</li><li>建议定期导出存档。</li></ul></section></div></div></dialog>
 <dialog id="birth"><span class="eyebrow">一位新伙伴，来到你身边</span><div id="birth-content"></div><button id="close-birth" class="primary full">欢迎回家 ♡</button></dialog>
 <dialog id="sale-dialog"><h2>确认出售这位怪物？</h2><p id="sale-info"></p><button id="cancel-sale" class="secondary">留下它</button> <button id="confirm-sale" class="primary">确认出售</button></dialog>
 <dialog id="family-dialog">
@@ -1098,7 +1111,7 @@ function producingMonstersState(state){
   const dispatched=state.dispatch?(Array.isArray(state.dispatch.monsterIds)?state.dispatch.monsterIds:[state.dispatch.monsterId]):[];
   return (state.monsters||[]).filter(m=>state.farmIds.includes(m.id)&&!dispatched.includes(m.id));
 }
-function fresh(now=Date.now()){const starterA=createMonster(1,0),starterB=createMonster(2,1);starterA.gender='公';starterB.gender='母';return {version:8,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS,farmIds:[starterA.id,starterB.id],nextId:3,parentA:1,parentB:2,autoBreed:false,autoHatch:true,autoDispatch:false,autoDispatchMission:'highest',egg:null,dispatch:null,items:{colors:[0,0,0,0,0,0],star:0,skill:0},capacity:12,hatched:0,last:now,paused:false};}
+function fresh(now=Date.now()){const starterA=createMonster(1,0),starterB=createMonster(2,1);starterA.gender='公';starterB.gender='母';return {version:8,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS,farmIds:[starterA.id,starterB.id],nextId:3,parentA:1,parentB:2,autoBreed:false,manualBreedRepeat:false,manualBreedPairIds:[],autoHatch:true,autoDispatch:false,manualDispatchRepeat:false,manualDispatchTeamIds:[],manualDispatchMission:null,autoDispatchMission:'highest',autoDispatchReserveBreed:true,egg:null,dispatch:null,items:{colors:[0,0,0,0,0,0],star:0,skill:0},capacity:12,hatched:0,last:now,paused:false};}
 const COLORS=['原色','薄荷','绯红','月蓝','紫晶','金辉'];
 function deathChance(age){return age<5?0:age>=20?1:Math.min(.95,.05+(age-5)*.06);}
 function migrate(s){
@@ -1267,7 +1280,7 @@ function normalizeMonsterFields(state){
   state.items.timeCut=Math.max(0,Math.floor(Number(state.items.timeCut)||0));
   state.items.timeInstant=Math.max(0,Math.floor(Number(state.items.timeInstant)||0));
   if(typeof state.autoDispatch!=='boolean')state.autoDispatch=false;
-  if(typeof state.autoDispatchMission!=='string')state.autoDispatchMission='highest';
+  if(typeof state.autoDispatchMission!=='string')state.autoDispatchMission='highest';if(typeof state.autoDispatchReserveBreed!=='boolean')state.autoDispatchReserveBreed=true;if(typeof state.manualDispatchRepeat!=='boolean')state.manualDispatchRepeat=false;if(!Array.isArray(state.manualDispatchTeamIds))state.manualDispatchTeamIds=[];state.manualDispatchTeamIds=state.manualDispatchTeamIds.filter(id=>(state.monsters||[]).some(m=>m.id===id));if(typeof state.manualDispatchMission!=='string')state.manualDispatchMission=null;if(typeof state.manualBreedRepeat!=='boolean')state.manualBreedRepeat=false;if(!Array.isArray(state.manualBreedPairIds))state.manualBreedPairIds=[];state.manualBreedPairIds=state.manualBreedPairIds.filter(id=>(state.monsters||[]).some(m=>m.id===id));
   if(!Number.isFinite(state.ranchXp))state.ranchXp=0;
   state.ranchXp=Math.max(0,Math.floor(state.ranchXp));
   if(!Array.isArray(state.activityLog))state.activityLog=[];
@@ -1707,7 +1720,12 @@ function genderBadge(m){return '<span class="gender-badge '+(m.gender==='公'?'m
 function favoriteBadge(m){return m.favorite?'<span class="fav-badge">最爱</span>':'';}
 function shinyBadge(m){return m&&m.shiny?'<span class="shiny-badge">闪光</span>':'';}
 function shinyText(m){return m&&m.shiny?' · 闪光':'';}
-function dispatchReadyBadge(m){return canDispatchMonster(m)?'<span class="dispatch-badge">可派遣</span>':'';}
+function dispatchReadyBadge(m){
+  if(isDispatched(m.id))return '<span class="dispatch-badge">派遣中</span>';
+  if(isEggParent(m.id))return '<span class="dispatch-badge">孵化亲代</span>';
+  if(m.locked)return '<span class="dispatch-badge">已锁定</span>';
+  return isInFarm(m.id)?'<span class="dispatch-badge farm-badge">生产牧场</span>':'<span class="box-badge">怪物盒</span>';
+}
 function isEggParent(id){return !!(s.egg&&Array.isArray(s.egg.child?.parents)&&s.egg.child.parents.includes(id));}
 function skillTooltipData(id,kind='extra',m=null,slotIdx=null){
   if(kind==='innate'){
@@ -1931,7 +1949,7 @@ function renderDispatchTargetPicker(){
     +(selectedSet.has(m.id)?'<span class="team-check">✓</span>':'')
     +sprite(m.species,m.tint,m.shiny,m.specialColor)
     +'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+traitBadge(m)+'</strong>'
-    +'<small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>综合属性 '+dispatchOverallState(m)+' · '+(canDispatchMonster(m)?'可加入队伍':isEggParent(m.id)?'当前怪物蛋的亲代':m.locked?'已锁定':m.life<=0?'生命耗尽':'当前不可派遣')+'<br>'+monsterSkillSummary(m)+'</small></span></button>'
+    +'<small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>位置：'+(isDispatched(m.id)?'派遣中':isEggParent(m.id)?'孵化亲代':isInFarm(m.id)?'生产牧场':'怪物盒')+' · '+(canDispatchMonster(m)?'可加入队伍':m.locked?'已锁定':m.life<=0?'生命耗尽':'当前不可派遣')+'<br>'+monsterSkillSummary(m)+'</small></span></button>'
   ).join('')+'</div><div class="team-limit">最多选择 3 位。林地采集 / 遗迹探索至少 2 位，星门远征必须 3 位。</div>';
 }
 function closeDispatchPicker(){const p=$('dispatch-target-picker'),b=$('dispatch-target-btn');if(p)p.hidden=true;if(b)b.setAttribute('aria-expanded','false');}
@@ -1965,15 +1983,39 @@ function autoDispatchScore(m,mission){
   if(m.life<=5)score-=180;
   return score;
 }
+function dispatchBreedingReserve(){
+  if(!s.autoDispatchReserveBreed)return [];
+  const eligible=s.monsters.filter(m=>!isDispatched(m.id)&&!isEggParent(m.id)&&m.life>2);
+  const byId=id=>eligible.find(m=>m.id===id);
+  const pa=byId(s.parentA),pb=byId(s.parentB);
+  if(pa&&pb&&pa.id!==pb.id&&pa.gender!==pb.gender)return [pa.id,pb.id];
+
+  const males=eligible.filter(m=>m.gender==='公');
+  const females=eligible.filter(m=>m.gender==='母');
+  if(!males.length||!females.length)return [];
+
+  let best=null,bestScore=-Infinity;
+  for(const a of males)for(const b of females){
+    const score=breedingSkillScore(a).score+breedingMatchScore(b,a)+a.star*40+b.star*40+(a.autoUse?5000:0)+(b.autoUse?5000:0);
+    if(score>bestScore){bestScore=score;best=[a.id,b.id];}
+  }
+  return best||[];
+}
+function autoDispatchCandidates(ms){
+  const reserve=new Set(dispatchBreedingReserve());
+  return automationCandidatePool(
+    s.monsters.filter(m=>canDispatchMonster(m)&&m.star>=ms.minStar&&!reserve.has(m.id))
+  );
+}
 function autoSelectDispatchTeam(missionIndex){
   const ms=DISPATCH_MISSIONS[missionIndex];
   if(!ms)return;if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}
-  const candidates=s.monsters.filter(m=>canDispatchMonster(m)&&m.star>=ms.minStar).sort((a,b)=>autoDispatchScore(b,ms)-autoDispatchScore(a,ms));
+  const candidates=autoDispatchCandidates(ms).sort((a,b)=>autoDispatchScore(b,ms)-autoDispatchScore(a,ms));
   const wanted=ms.id==='astral'?3:Math.min(3,Math.max(ms.minTeam,candidates.length>=3?3:ms.minTeam));
   dispatchTeamSelected=candidates.slice(0,wanted).map(m=>m.id);
   dispatchSelected=dispatchTeamSelected[0]||null;
   renderDispatch();
-  tell(dispatchTeamSelected.length>=ms.minTeam?'系统已按派遣技能、属性、生命、个性和星级优先选择队伍。':'没有足够符合条件的怪物。');
+  tell(dispatchTeamSelected.length>=ms.minTeam?'系统已按派遣技能、属性、生命、个性和星级优先选择队伍。'+(s.autoDispatchReserveBreed?' 已保留一公一母用于生蛋。':''):'没有足够符合条件的怪物。'+(s.autoDispatchReserveBreed?' 当前已保留一公一母用于生蛋；如需全部派遣，可关闭「保留 1 公 + 1 母」。':''));
 }
 function farmBadge(m){return isInFarm(m.id)?'<span class="dispatch-badge farm-badge">生产中</span>':'<span class="box-badge">盒中</span>';}
 function autoUseBadge(m){return m?.autoUse?'<span class="auto-use-badge">自动优先</span>':'';}
@@ -1987,7 +2029,7 @@ function chooseSmartBreedPair(){
 }
 function highestUnlockedMission(){return [...DISPATCH_MISSIONS].filter(ms=>ranchLevel()>=(ms.minLevel||1)).sort((a,b)=>(b.minLevel||1)-(a.minLevel||1))[0]||DISPATCH_MISSIONS[0];}
 function autoDispatchMission(){if(s.autoDispatchMission==='highest')return highestUnlockedMission();const ms=DISPATCH_MISSIONS.find(x=>x.id===s.autoDispatchMission);return ms&&ranchLevel()>=(ms.minLevel||1)?ms:highestUnlockedMission();}
-function chooseSmartDispatchTeam(ms){const candidates=automationCandidatePool(s.monsters.filter(m=>canDispatchMonster(m)&&m.star>=ms.minStar));return [...candidates].sort((a,b)=>autoDispatchScore(b,ms)-autoDispatchScore(a,ms)).slice(0,3);}
+function chooseSmartDispatchTeam(ms){const candidates=autoDispatchCandidates(ms);return [...candidates].sort((a,b)=>autoDispatchScore(b,ms)-autoDispatchScore(a,ms)).slice(0,3);}
 function setBreedActionStatus(text,kind=''){
   const el=$('breed-action-status');
   if(!el)return;
@@ -2040,22 +2082,56 @@ function manualBreedAttempt(){
     return false;
   }
 }
+
+function fixedBreedPair(){
+  const ids=s.manualBreedPairIds||[];
+  if(ids.length!==2)return null;
+  const a=s.monsters.find(m=>m.id===ids[0]),b=s.monsters.find(m=>m.id===ids[1]);
+  if(!a||!b||a.id===b.id||a.gender===b.gender)return null;
+  return [a,b];
+}
+function captureManualBreedPair(){
+  const [a,b]=G.pair(s);
+  if(!a||!b||a.id===b.id||a.gender===b.gender)return false;
+  s.manualBreedPairIds=[a.id,b.id];return true;
+}
+function fixedDispatchMission(){return DISPATCH_MISSIONS.find(ms=>ms.id===s.manualDispatchMission)||null;}
+function fixedDispatchTeam(ms){
+  return (s.manualDispatchTeamIds||[]).map(id=>s.monsters.find(m=>m.id===id)).filter(Boolean)
+    .filter(m=>!isDispatched(m.id)&&m.life>0&&m.star>=ms.minStar&&!m.locked&&!isEggParent(m.id));
+}
+function captureManualDispatch(ms){
+  const team=dispatchTeam();
+  if(!ms||team.length<ms.minTeam||team.length>3)return false;
+  s.manualDispatchTeamIds=team.map(m=>m.id);s.manualDispatchMission=ms.id;return true;
+}
+function stopManualBreedRepeat(reason=''){
+  s.manualBreedRepeat=false;s.manualBreedPairIds=[];
+  if(reason)tell('固定双亲连发已停止：'+reason);
+}
+function stopManualDispatchRepeat(reason=''){
+  s.manualDispatchRepeat=false;s.manualDispatchTeamIds=[];s.manualDispatchMission=null;
+  if(reason)tell('固定队伍连发已停止：'+reason);
+}
 function autoBreedStatus(){
-  if(!s.autoBreed)return {text:'自动生蛋未开启。',cls:''};
-  if(document.visibilityState==='hidden')return {text:'页面目前不在前台；自动生蛋已暂停。',cls:'wait'};
+  if(!s.autoBreed&&!s.manualBreedRepeat)return {text:'连续生蛋未开启。',cls:''};
+  if(document.visibilityState==='hidden')return {text:'页面不在前台；连续生蛋已暂停。',cls:'wait'};
   if(s.egg){
     const remain=Math.max(0,Math.ceil((s.egg.ready-Date.now())/1000));
     return {text:remain>0?'正在等待当前怪物蛋孵化 · 约 '+remain+' 秒':'怪物蛋已完成，等待自动孵化。',cls:'wait'};
   }
-  if(s.monsters.length>=s.capacity)return {text:'牧场已满，无法继续自动生蛋。',cls:'blocked'};
+  if(s.monsters.length>=s.capacity)return {text:'怪物盒已满，无法继续生蛋。',cls:'blocked'};
+  if(s.manualBreedRepeat){
+    const pair=fixedBreedPair();
+    if(!pair)return {text:'固定双亲已不存在，连发会停止。',cls:'blocked'};
+    if(pair.some(m=>isDispatched(m.id)))return {text:'固定双亲正在派遣，回来后继续。',cls:'wait'};
+    const oa=s.parentA,ob=s.parentB;s.parentA=pair[0].id;s.parentB=pair[1].id;
+    const why=G.blocked(s,Date.now());s.parentA=oa;s.parentB=ob;
+    return why?{text:'固定双亲等待：'+why,cls:'wait'}:{text:'固定双亲连发：'+name(pair[0])+' × '+name(pair[1]),cls:'ready'};
+  }
   const pair=chooseSmartBreedPair();
-  if(!pair)return {text:'找不到可用的一公一母。请检查性别、生命或派遣状态。',cls:'blocked'};
-  const oldA=s.parentA,oldB=s.parentB;
-  s.parentA=pair[0].id;s.parentB=pair[1].id;
-  const why=G.blocked(s,Date.now());
-  s.parentA=oldA;s.parentB=oldB;
-  if(why)return {text:'等待条件满足：'+why,cls:'wait'};
-  return {text:'准备自动使用 '+name(pair[0])+' × '+name(pair[1])+' 生蛋。',cls:'ready'};
+  if(!pair)return {text:'找不到可用的一公一母。',cls:'blocked'};
+  return {text:'智能连发准备重新选择最佳双亲。',cls:'ready'};
 }
 let automationBusy=false;
 function runOnlineAutomation(force=false){
@@ -2064,49 +2140,51 @@ function runOnlineAutomation(force=false){
   try{
     const now=Date.now();
 
-    if(s.autoBreed){
+    if(s.autoBreed||s.manualBreedRepeat){
       if(s.egg&&s.egg.ready<=now&&s.autoHatch&&s.monsters.length<s.capacity){
-        const child=G.hatch(s,now);
-        if(child){births([child]);dirty=true;}
+        const child=G.hatch(s,now);if(child){births([child]);dirty=true;}
       }
-
       if(!s.egg&&s.monsters.length<s.capacity){
-        const pair=chooseSmartBreedPair();
+        let pair=null;
+        if(s.manualBreedRepeat){
+          pair=fixedBreedPair();
+          if(!pair){stopManualBreedRepeat('其中一位亲代已经离开');}
+          else if(pair.some(m=>isDispatched(m.id)))pair=null;
+        }else if(s.autoBreed)pair=chooseSmartBreedPair();
         if(pair){
           s.parentA=pair[0].id;s.parentB=pair[1].id;
           const why=G.blocked(s,now);
-          if(!why){
-            try{
-              if(G.startBreed(s,now)&&s.egg){
-                dirty=true;
-                setBreedActionStatus('智能自动生蛋成功：'+name(pair[0])+' × '+name(pair[1])+'。','ok');
-                tell('智能自动生蛋：'+name(pair[0])+' × '+name(pair[1])+' 已产下一颗蛋。');
-              }
-            }catch(err){
-              console.error('Auto breed error:',err);
-              setBreedActionStatus('智能自动生蛋遇到错误，已暂停本次尝试。','err');
-            }
-          }else setBreedActionStatus('智能自动生蛋等待：'+why,'wait');
-        }else setBreedActionStatus('智能自动生蛋找不到可用的一公一母。','err');
-      }
-    }
-
-    if(s.autoDispatch){
-      if(s.dispatch&&s.dispatch.end<=now)claimDispatch();
-      if(!s.dispatch){
-        const ms=autoDispatchMission(),team=chooseSmartDispatchTeam(ms);
-        if(team.length>=ms.minTeam){
-          dispatchTeamSelected=team.map(m=>m.id);
-          dispatchSelected=team[0]?.id||null;
-          startDispatch(DISPATCH_MISSIONS.findIndex(x=>x.id===ms.id));
+          if(!why&&G.startBreed(s,now)&&s.egg){
+            dirty=true;
+            setBreedActionStatus((s.manualBreedRepeat?'固定双亲':'智能')+'连发生蛋：'+name(pair[0])+' × '+name(pair[1])+'。','ok');
+          }
         }
       }
     }
-  }catch(err){
-    console.error('Online automation error:',err);
-  }finally{
-    automationBusy=false;
-  }
+
+    if((s.autoDispatch||s.manualDispatchRepeat)&&s.dispatch&&s.dispatch.end<=now)claimDispatch();
+
+    if(s.manualDispatchRepeat&&!s.dispatch){
+      const ms=fixedDispatchMission();
+      if(!ms){stopManualDispatchRepeat('没有保存任务');}
+      else{
+        const team=fixedDispatchTeam(ms);
+        if(team.length<ms.minTeam){
+          stopManualDispatchRepeat('固定队伍剩余人数不足');
+        }else{
+          dispatchTeamSelected=team.map(m=>m.id);dispatchSelected=team[0]?.id||null;
+          startDispatch(DISPATCH_MISSIONS.findIndex(x=>x.id===ms.id),true);
+        }
+      }
+    }else if(s.autoDispatch&&!s.dispatch){
+      const ms=autoDispatchMission(),team=chooseSmartDispatchTeam(ms);
+      if(team.length>=ms.minTeam){
+        dispatchTeamSelected=team.map(m=>m.id);dispatchSelected=team[0]?.id||null;
+        startDispatch(DISPATCH_MISSIONS.findIndex(x=>x.id===ms.id),true);
+      }
+    }
+  }catch(err){console.error('Online automation error:',err);}
+  finally{automationBusy=false;}
 }
 function renderDispatch(){
   const sel=$('dispatch-target');if(!sel)return;
@@ -2149,7 +2227,7 @@ function renderDispatch(){
     const remain=Math.max(0,Math.ceil((s.dispatch.end-Date.now())/1000)),ready=remain<=0;
     $('dispatch-active').innerHTML='<div class="dispatch-active-inner"><h3>当前派遣队</h3>'
       +'<div class="dispatch-team-strip">'+activeTeam.map(m=>'<div class="dispatch-team-mini active-card">'+sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span><b>'+name(m)+'</b><small>'+traitInfo(m).name+' · ❤ '+m.life+'/'+m.maxLife+' · 属性 '+dispatchOverallState(m)+'</small>'+dispatchSkillSummaryHTML(m)+'</span></div>').join('')+'</div>'
-      +'<p>'+mission.name+' · 出发时成功率 <b>'+Math.round((s.dispatch.successChance||0)*100)+'%</b></p>'
+      +'<p>'+mission.name+' · 出发时成功率 <b>'+Math.round((s.dispatch.successChance||0)*100)+'%</b>'+(s.manualDispatchRepeat?' · <b>固定队伍连发中</b>':'')+'</p>'
       +dispatchPossibleReturnsHTML(mission,activeTeam)+'<div class="dispatch-logic-note"><b>任务限定怪物：</b>当前队伍遇到概率约 '+(missionExclusiveChance(mission,activeTeam)*100).toFixed(1)+'%。</div>'
       +'<p>'+(ready?'<span class="dispatch-ready">已完成，可以领取结果</span>':'<span class="dispatch-going">剩余 '+remain+' 秒</span>')+'</p>'
       +'<button class="primary" data-dispatch-claim '+(ready?'':'disabled')+'>领取结果</button></div>';
@@ -2157,7 +2235,7 @@ function renderDispatch(){
     $('dispatch-active').innerHTML='<div class="dispatch-active-inner"><h3>当前派遣</h3><p>暂无任务。现在可以组成 2–3 人队伍，不同技能与个性会产生组合效果。</p></div>';
   }
 }
-function startDispatch(i){const team=dispatchTeam(),ms=DISPATCH_MISSIONS[i];if(!ms)return;if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}if(team.length<ms.minTeam){tell('这项任务需要至少 '+ms.minTeam+' 位队员。');return;}if(s.dispatch){tell('已经有一支队伍在派遣中了。');return;}if(team.length>3){tell('派遣队最多 3 位。');return;}if(team.some(m=>!canDispatchMonster(m))){tell('队伍里有当前不能派遣的怪物。');return;}if(team.some(m=>m.star<ms.minStar)){const low=team.filter(m=>m.star<ms.minStar).map(name).join('、');tell('「'+ms.name+'」要求每位成员至少 '+ms.minStar+'★；'+low+' 星级不足。1★ 去「牧场巡查」，2★ 去「林地采集」。');return;}const tm=teamDispatchMods(team),now=Date.now();s.dispatch={monsterIds:team.map(m=>m.id),mission:ms.id,start:now,end:now+Math.round(ms.duration*tm.duration)*1000,successChance:teamDispatchSuccessChance(team,ms),outcome:prepareTeamDispatchOutcome(team,ms),timeCutUsed:false};s.revision++;dirty=true;render();save();tell(team.map(name).join('、')+' 组成小队前往「'+ms.name+'」，成功率 '+Math.round(s.dispatch.successChance*100)+'%。');}
+function startDispatch(i,fromRepeat=false){const team=dispatchTeam(),ms=DISPATCH_MISSIONS[i];if(!ms)return;if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}if(team.length<ms.minTeam){tell('这项任务需要至少 '+ms.minTeam+' 位队员。');return;}if(s.dispatch){tell('已经有一支队伍在派遣中了。');return;}if(team.length>3){tell('派遣队最多 3 位。');return;}if(team.some(m=>!canDispatchMonster(m))){tell('队伍里有当前不能派遣的怪物。');return;}if(team.some(m=>m.star<ms.minStar)){const low=team.filter(m=>m.star<ms.minStar).map(name).join('、');tell('「'+ms.name+'」要求每位成员至少 '+ms.minStar+'★；'+low+' 星级不足。1★ 去「牧场巡查」，2★ 去「林地采集」。');return;}if(s.manualDispatchRepeat&&!fromRepeat)captureManualDispatch(ms);const tm=teamDispatchMods(team),now=Date.now();s.dispatch={monsterIds:team.map(m=>m.id),mission:ms.id,start:now,end:now+Math.round(ms.duration*tm.duration)*1000,successChance:teamDispatchSuccessChance(team,ms),outcome:prepareTeamDispatchOutcome(team,ms),timeCutUsed:false};s.revision++;dirty=true;render();save();tell(team.map(name).join('、')+' 组成小队前往「'+ms.name+'」，成功率 '+Math.round(s.dispatch.successChance*100)+'%。');}
 function showPendingSkillDrop(){const drop=s.pendingSkillDrop;if(!drop)return;const m=s.monsters.find(x=>x.id===drop.monsterId);const sk=extraSkill(drop.skillId);if(!m||!sk){s.pendingSkillDrop=null;save();return;}ensureMonsterSystemsMonster(m);$('skill-drop-info').innerHTML='<div class="skill-drop-card"><b>'+name(m)+' 在探索中发现「'+sk.name+' Lv'+drop.lv+'」</b><span>'+sk.desc+'</span></div><p>要不要替换现有技能？</p>';$('skill-drop-actions').innerHTML=getMutableSkillSlots(m).map(slot=>'<button class="secondary" data-accept-skill="'+slot.idx+'">替换 '+slot.label+(m.extraSkills[slot.idx]?'（'+extraSkill(m.extraSkills[slot.idx]).name+' Lv'+extraLv(m,slot.idx)+'）':'（空位）')+'</button>').join('')+'<button class="secondary" data-discard-skill>不要这个技能</button>';$('skill-drop-dialog').showModal();}
 function createMissionExclusive(speciesId,mission){
   const taskLv=Math.max(1,Number(mission?.taskLevel)||1);
@@ -2237,7 +2315,7 @@ function claimDispatch(){
     shiny:(typeof shinyFound!=='undefined'&&shinyFound)?name(shinyFound):'',exclusive:(typeof exclusiveFound!=='undefined'&&exclusiveFound)?name(exclusiveFound):'',
     life:lifeNotes.join('、')
   });
-  s.dispatch=null;dispatchTeamSelected=[];dispatchSelected=null;s.revision++;dirty=true;render();save();tell(msg);if(s.pendingSkillDrop)setTimeout(showPendingSkillDrop,80);
+  s.dispatch=null;if(s.manualDispatchRepeat){dispatchTeamSelected=(s.manualDispatchTeamIds||[]).filter(id=>s.monsters.some(m=>m.id===id));dispatchSelected=dispatchTeamSelected[0]||null;}else{dispatchTeamSelected=[];dispatchSelected=null;}s.revision++;dirty=true;render();save();tell(msg);if(s.pendingSkillDrop)setTimeout(showPendingSkillDrop,80);
 }
 function renderTraitDex(){
   const box=$('trait-dex');if(!box)return;
@@ -2648,7 +2726,7 @@ function renderRoster(){
       ([s.parentA,s.parentB].includes(m.id)?'<span class="tag">亲代</span>':'')+
       (m.favorite?'<span class="tag favorite">最爱</span>':'')+
       (m.locked?'<span class="tag locked">已锁定</span>':'')+
-      (isDispatched(m.id)?'<span class="tag dispatch">派遣中</span>':canDispatchMonster(m)?'<span class="tag ready">可派遣</span>':'')+
+      (isDispatched(m.id)?'<span class="tag dispatch">派遣中</span>':isEggParent(m.id)?'<span class="tag dispatch">孵化亲代</span>':isInFarm(m.id)?'<span class="tag ready">生产</span>':'<span class="tag">盒中</span>')+
     '</button>';
   }).join('');
   const f=$('filter-result');
@@ -2663,7 +2741,7 @@ function ranchLevel(){return ranchLevelFromXp(s.ranchXp||0).level;}
 function gainRanchXp(amount,reason=''){amount=Math.max(0,Math.floor(Number(amount)||0));if(!amount)return;const before=ranchLevel();s.ranchXp=(s.ranchXp||0)+amount;const after=ranchLevel();if(after>before)tell('牧场升级！Lv'+before+' → Lv'+after+'。'+(reason||'新的派遣任务可能已解锁。'));}
 function ranchXpForBirth(m){return 10+(m?.star||1)*8+(m?.shiny?35:0);}
 function ranchXpForDispatch(ms,success){const base={meadow:12,forage:20,river:28,ruins:38,cavern:50,astral:65,summit:85,rift:110}[ms?.id]||25;return success?base:Math.max(8,Math.round(base*.4));}
-function render(){if(dirty){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();renderDex();renderShopTarget();renderDispatch();syncActors();dirty=false;}$('energy').textContent=fmt(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';for(const id of ['buy-time-cut','buy-time-instant']){const b=$(id);if(b)b.disabled=rl.level<3;}document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';normalizeFarmState(s);$('scene-count').textContent=producingMonsters(s).length+' 位生产伙伴';$('farm-active').textContent=s.farmIds.length+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=fmt(expandCost())+' 灵能';renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg;$('auto-breed').checked=s.autoBreed;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
+function render(){if(dirty){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();renderDex();renderShopTarget();renderDispatch();syncActors();dirty=false;}$('energy').textContent=fmt(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';for(const id of ['buy-time-cut','buy-time-instant']){const b=$(id);if(b)b.disabled=rl.level<3;}document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';normalizeFarmState(s);$('scene-count').textContent=producingMonsters(s).length+' 位生产伙伴';$('farm-active').textContent=s.farmIds.length+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=fmt(expandCost())+' 灵能';if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg;$('auto-breed').checked=s.autoBreed;if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
 const egg=s.egg,ready=egg&&egg.ready<=Date.now();if(egg){$('nest').innerHTML=eggArt(egg.child);$('nest').className='nest'+(ready?' ready':'');const remain=Math.max(0,Math.ceil((egg.ready-Date.now())/1000));$('egg-status').textContent=ready?'可以破壳了':remain+' 秒后孵化';$('nest-info').innerHTML='双亲 #'+egg.child.parents.join(' 与 #')+'<br>当前蛋种：'+G.stars(egg.child.star)+' '+G.COLORS[egg.child.tint]+' · '+G.SPECIES[egg.child.species].name+(egg.child.shiny?' · <b>闪光蛋</b>':'')+'<br>星级越高，孵化越久。当前预计总时长 '+Math.ceil((egg.ready-egg.start)/1000)+' 秒。';$('progress').value=Math.min(1,Math.max(0,(Date.now()-egg.start)/(egg.ready-egg.start)));}else{$('nest').className='nest empty';$('nest').textContent='✧ 温暖的巢穴，等待新生命';$('egg-status').textContent='等待怪物蛋';$('progress').value=0;$('nest-info').textContent=s.autoBreed?'自动配种已开启：'+(why||'准备迎接下一颗蛋。'):'选好两位伙伴，开始配种。';}$('hatch').hidden=!ready;$('hatch').disabled=s.monsters.length>=s.capacity;}
 function renderMemorial(){renderActivityLog();}
 
@@ -2684,7 +2762,21 @@ function renderSkillLibrary(filter=skillLibraryFilter||'all'){skillLibraryFilter
 function renderDex(){ensureDex(s);const speciesTotal=G.SPECIES.length,colorTotal=DEX_COLORS.length,comboTotal=speciesTotal*colorTotal,seenSpecies=s.dex.species.filter(Boolean).length,seenColors=s.dex.colors.filter(Boolean).length,seenCombos=Object.keys(s.dex.combos).filter(k=>Number(k.split('-')[1])<colorTotal).length;const colorBoard=DEX_COLORS.map((c,ci)=>{const unlocked=!!s.dex.colors[ci],current=s.monsters.filter(m=>dexColorIndex(m)===ci).length,speciesSeen=G.SPECIES.filter((_,sp)=>!!s.dex.combos[sp+'-'+ci]).length;return '<div class="dex-color-chip '+(unlocked?'':'unseen')+' '+(c.kind==='special'?'special':'')+'"><div class="top"><span><i class="dot" style="background:hsl('+c.hue+',70%,65%)"></i>'+c.name+'</span><b>'+(unlocked?'已解锁':'未收集')+'</b></div><small>当前拥有 '+current+' 只</small><small>已解锁 '+speciesSeen+' / '+speciesTotal+' 种</small></div>';}).join('');const speciesCards=G.SPECIES.map((sp,i)=>{const unlocked=!!s.dex.species[i],currentList=s.monsters.filter(m=>m.species===i),current=currentList.length,colorSeen=DEX_COLORS.filter((_,ci)=>!!s.dex.combos[i+'-'+ci]).length,best=currentList.length?Math.max(...currentList.map(m=>m.star)):0,swatches=DEX_COLORS.map((c,ci)=>{const has=!!s.dex.combos[i+'-'+ci],count=currentList.filter(m=>dexColorIndex(m)===ci).length;return has?'<div class="dex-swatch '+(c.kind==='special'?'special':'')+'">'+dexSprite(i,ci)+'<small>'+c.name+'</small><b>当前 '+count+' 只</b></div>':'<div class="dex-swatch unseen '+(c.kind==='special'?'special':'')+'"><span class="unknown">?</span><small>'+c.name+'</small><b>未收集</b></div>';}).join('');return '<article class="dex-card '+(unlocked?'':'locked')+'"><div class="dex-card-head">'+(unlocked?sprite(i,0):'<span class="unknown" style="display:grid;place-items:center;width:60px;height:60px;background:#6c6871;color:#fff;font-size:28px;border:2px solid #47434b">?</span>')+'<div><div class="dex-no">NO.'+String(i+1).padStart(2,'0')+'</div><div class="dex-title">'+(unlocked?sp.name:'？？？')+'</div><div class="dex-text">'+(unlocked?sp.element+'系 · '+sp.skill:'尚未遇见这个品种')+'</div></div></div><div class="dex-meta"><div><span>当前拥有</span><b>'+current+'</b></div><div><span>颜色解锁</span><b>'+colorSeen+' / '+colorTotal+'</b></div><div><span>当前最高星</span><b>'+(best?G.stars(best):'—')+'</b></div></div><div class="dex-text">'+(unlocked?sp.effect:'继续配种与孵化，解锁新的怪物。')+'</div><div class="dex-swatches">'+swatches+'</div></article>';}).join('');$('dex-content').innerHTML='<div class="dex-overview"><div class="dex-stat"><small>品种收集</small><strong>'+seenSpecies+' / '+speciesTotal+'</strong><em>尚未收集 '+(speciesTotal-seenSpecies)+' 种</em></div><div class="dex-stat"><small>颜色收集</small><strong>'+seenColors+' / '+colorTotal+'</strong><em>尚未收集 '+(colorTotal-seenColors)+' 种</em></div><div class="dex-stat"><small>图鉴组合</small><strong>'+seenCombos+' / '+comboTotal+'</strong><em>尚未收集 '+(comboTotal-seenCombos)+' 个组合</em></div><div class="dex-stat"><small>当前持有怪物</small><strong>'+s.monsters.length+'</strong><em>Log记录 '+s.deaths+' 位</em></div></div><div class="dex-note">颜色图鉴现包含 6 种普通颜色 + 极光 / 琉璃 / 夜曜 3 种探索限定颜色，共 9 种。</div><div class="dex-board">'+colorBoard+'</div><div class="dex-species-grid">'+speciesCards+'</div>';}
 $('close-family').onclick=()=>$('family-dialog').close();$('cancel-sale').onclick=()=>$('sale-dialog').close();$('confirm-sale').onclick=()=>{settle();const result=G.sell(s,sellTarget);$('sale-dialog').close();if(result){dirty=true;tell(name(result.monster)+' 已出售，获得 '+fmt(result.price)+' 灵能。');render();save();}else tell('这位伙伴已无法出售。');};
 $('adopt').onclick=()=>{settle();const m=G.adopt(s);if(m){markDex(s,m,false);dirty=true;tell('一位新的 1 星伙伴搬进来了，天生生命为 5。');render();save();}};
-function expandCost(){const bought=Math.max(0,Math.floor((s.capacity-12)/2));return Math.round((5000*Math.pow(1.7,bought))/100)*100;}
+function farmExpandBought(){normalizeFarmState(s);return Math.max(0,Math.floor((s.farmSlots-4)/2));}
+function farmExpandCost(){return Math.round((1000*Math.pow(1.8,farmExpandBought()))/100)*100;}
+function buyFarmExpansion(){
+  normalizeFarmState(s);
+  const cost=farmExpandCost();
+  if(s.energy<cost){tell('灵能不足，需要 '+fmt(cost)+' 灵能。');return;}
+  s.energy-=cost;
+  s.farmSlots+=2;
+  s.revision++;
+  dirty=true;
+  save();
+  render();
+  tell('生产牧场扩建成功！生产位 +2，现在共有 '+s.farmSlots+' 个生产位。下一次需要 '+fmt(farmExpandCost())+' 灵能。');
+}
+function expandCost(){const bought=Math.max(0,Math.floor((s.capacity-12)/2));return Math.round((500*Math.pow(1.7,bought))/50)*50;}
 function talk(id,msg){const a=actors.get(id);if(!a)return;a.el.querySelector('.bubble').textContent=msg;a.el.classList.add('talk');a.talkUntil=performance.now()+2700;}
 function pet(id){selected=id;const m=s.monsters.find(m=>m.id===id);if(!m)return;if(isDispatched(id)){tell(name(m)+' 正在派遣中。');dirty=true;render();return;}const now=Date.now();if(now-petTime>=5000){petTime=now;m.bond=Math.min(100,m.bond+2);s.energy+=2;talk(id,['喜欢你 ♡','再摸摸嘛～','今天也陪着你！','咕噜咕噜…'][Math.floor(Math.random()*4)]);$('scene-note').textContent=name(m)+' 开心地靠近你 · 亲密度 +2 · 灵能 +2';}else talk(id,'蹭蹭你 ♡');const a=actors.get(id);if(a){a.state='pet';a.tx=a.x;a.ty=a.y;a.until=performance.now()+1800;}dirty=true;render();save();}
 function renderDispatchWalkway(){const box=$('dispatch-walkway');if(!box)return;const team=dispatchedMonsters();box.innerHTML=team.map((m,i)=>'<div class="dispatch-walker" style="--walk-time:'+(8+i*1.4)+'s;--walk-delay:'+(-i*1.7)+'s">'+sprite(m.species,m.tint,m.shiny,m.specialColor)+'<small>派遣中 · '+name(m)+'</small></div>').join('');box.hidden=!team.length;}
@@ -2697,7 +2789,9 @@ $('parent-b-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('b');};
 $('parent-a-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b||b.disabled)return;chooseParent('a',Number(b.dataset.parentChoice));};
 $('parent-b-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b||b.disabled)return;chooseParent('b',Number(b.dataset.parentChoice));};
 document.addEventListener('input',e=>{const q=e.target.closest?.('[data-parent-search]');if(!q)return;const which=q.dataset.parentSearch;parentSearch[which]=q.value;renderParentPicker(which);const next=$('parent-'+which+'-picker').querySelector('[data-parent-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-parent-sort]');if(!sel)return;const which=sel.dataset.parentSort;parentSort[which]=sel.value;renderParentPicker(which);});document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
-$('breed').onclick=()=>{manualBreedAttempt();};$('auto-breed').onchange=e=>{settle();s.autoBreed=e.target.checked;if(s.autoBreed)runOnlineAutomation(true);tell(s.autoBreed?'智能自动生蛋已开启：会优先使用「自动优先」怪物；数量不足时再补最合适的其他怪物。只在游戏打开时运行。':'已关闭智能自动生蛋，已有怪物蛋继续孵化。');dirty=true;render();save();};$('auto-hatch').onchange=e=>{settle();s.autoHatch=e.target.checked;settle();render();save();};$('hatch').onclick=()=>{settle();if(!s.egg){tell('孵化巢里目前没有怪物蛋。');render();return;}if(s.egg.ready>Date.now()){tell('怪物蛋还没有孵化完成。');render();return;}if(s.monsters.length>=s.capacity){tell('牧场已满，先扩建或腾出位置再破壳。');render();return;}const m=G.hatch(s,Date.now());if(m){births([m]);tell(name(m)+' 已经成功破壳！');}else tell('这颗蛋没有成功孵化。');dirty=true;render();save();};$('motion').onclick=()=>{s.paused=!s.paused;render();save();};$('activity-list').onclick=e=>{const link=e.target.closest('[data-log-monster]');if(link)goToLogMonster(Number(link.dataset.logMonster));};$('roster').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;const id=Number(b.dataset.id);if(bulkSellMode){const m=s.monsters.find(x=>x.id===id);if(!canBulkSell(m)){tell('这只怪物当前不能批量出售。');return;}if(bulkSellSelected.has(id))bulkSellSelected.delete(id);else bulkSellSelected.add(id);dirty=true;render();return;}selected=id;talk(selected,'我在这里！');dirty=true;render();};$('roster-quick').onclick=e=>{const b=e.target.closest('[data-quick]');if(!b)return;const m=s.monsters.find(x=>x.id===selected);if(!m)return;const act=b.dataset.quick;if(act==='farm'){setFarmAssignment(m.id,!isInFarm(m.id));return;}if(act==='favorite'){m.favorite=!m.favorite;tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已取消最爱。'));}else if(act==='lock'){m.locked=!m.locked;tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));}else if(act==='autoUse'){m.autoUse=!m.autoUse;tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));}else if(act==='rename'){const next=prompt('给这只怪物起个名字吧（留空恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);}else if(act==='family'){renderFamily(m);return;}else if(act==='parentA'){if(s.parentB===m.id){tell('它已经是亲代 B。');return;}s.parentA=m.id;tell(name(m)+' 已设为亲代 A。');}else if(act==='parentB'){if(s.parentA===m.id){tell('它已经是亲代 A。');return;}s.parentB=m.id;tell(name(m)+' 已设为亲代 B。');}else if(act==='dispatch'){dispatchSelected=m.id;document.querySelector('.dispatch-board').scrollIntoView({behavior:'smooth',block:'start'});}else if(act==='sell'){if(!canBulkSell(m)){tell('这只怪物当前不能出售。');return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、❤ '+m.life+'/'+m.maxLife+'），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。';$('sale-dialog').showModal();return;}s.revision++;dirty=true;render();save();};$('bulk-select-toggle').onclick=()=>{bulkSellMode=true;bulkSellSelected.clear();dirty=true;render();};
+$('breed').onclick=()=>{manualBreedAttempt();};
+$('auto-breed').onchange=e=>{settle();s.autoBreed=e.target.checked;if(s.autoBreed){s.manualBreedRepeat=false;s.manualBreedPairIds=[];runOnlineAutomation(true);}tell(s.autoBreed?'智能生蛋连发已开启：每轮都会重新选择双亲。':'智能生蛋连发已关闭。');dirty=true;render();save();};
+$('manual-breed-repeat').onchange=e=>{settle();if(e.target.checked){if(!captureManualBreedPair()){e.target.checked=false;tell('请先选好一公一母作为亲代 A / B。');return;}s.manualBreedRepeat=true;s.autoBreed=false;runOnlineAutomation(true);tell('固定双亲连发已开启：会一直使用当前 A / B，直到其中一位不能继续。');}else{stopManualBreedRepeat('你手动关闭了连发');}dirty=true;render();save();};$('auto-hatch').onchange=e=>{settle();s.autoHatch=e.target.checked;settle();render();save();};$('hatch').onclick=()=>{settle();if(!s.egg){tell('孵化巢里目前没有怪物蛋。');render();return;}if(s.egg.ready>Date.now()){tell('怪物蛋还没有孵化完成。');render();return;}if(s.monsters.length>=s.capacity){tell('牧场已满，先扩建或腾出位置再破壳。');render();return;}const m=G.hatch(s,Date.now());if(m){births([m]);tell(name(m)+' 已经成功破壳！');}else tell('这颗蛋没有成功孵化。');dirty=true;render();save();};$('motion').onclick=()=>{s.paused=!s.paused;render();save();};$('activity-list').onclick=e=>{const link=e.target.closest('[data-log-monster]');if(link)goToLogMonster(Number(link.dataset.logMonster));};$('roster').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;const id=Number(b.dataset.id);if(bulkSellMode){const m=s.monsters.find(x=>x.id===id);if(!canBulkSell(m)){tell('这只怪物当前不能批量出售。');return;}if(bulkSellSelected.has(id))bulkSellSelected.delete(id);else bulkSellSelected.add(id);dirty=true;render();return;}selected=id;talk(selected,'我在这里！');dirty=true;render();};$('roster-quick').onclick=e=>{const b=e.target.closest('[data-quick]');if(!b)return;const m=s.monsters.find(x=>x.id===selected);if(!m)return;const act=b.dataset.quick;if(act==='farm'){setFarmAssignment(m.id,!isInFarm(m.id));return;}if(act==='favorite'){m.favorite=!m.favorite;tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已取消最爱。'));}else if(act==='lock'){m.locked=!m.locked;tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));}else if(act==='autoUse'){m.autoUse=!m.autoUse;tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));}else if(act==='rename'){const next=prompt('给这只怪物起个名字吧（留空恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);}else if(act==='family'){renderFamily(m);return;}else if(act==='parentA'){if(s.parentB===m.id){tell('它已经是亲代 B。');return;}s.parentA=m.id;tell(name(m)+' 已设为亲代 A。');}else if(act==='parentB'){if(s.parentA===m.id){tell('它已经是亲代 A。');return;}s.parentB=m.id;tell(name(m)+' 已设为亲代 B。');}else if(act==='dispatch'){dispatchSelected=m.id;document.querySelector('.dispatch-board').scrollIntoView({behavior:'smooth',block:'start'});}else if(act==='sell'){if(!canBulkSell(m)){tell('这只怪物当前不能出售。');return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、❤ '+m.life+'/'+m.maxLife+'），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。';$('sale-dialog').showModal();return;}s.revision++;dirty=true;render();save();};$('bulk-select-toggle').onclick=()=>{bulkSellMode=true;bulkSellSelected.clear();dirty=true;render();};
 $('bulk-select-all').onclick=()=>{bulkSellSelected.clear();for(const m of s.monsters)if(canBulkSell(m))bulkSellSelected.add(m.id);dirty=true;render();};
 $('bulk-select-filtered').onclick=()=>{const list=getFilteredSellableMonsters();bulkSellSelected.clear();for(const m of list)bulkSellSelected.add(m.id);dirty=true;render();tell(list.length?'已勾选当前技能筛选下的 '+list.length+' 只怪物。':'当前技能筛选下没有可出售怪物。');};
 $('cancel-bulk-sale').onclick=()=>{$('bulk-sale-dialog').close();pendingBulkSaleIds=[];};
@@ -2712,12 +2806,13 @@ $('back-farm').onclick=()=>{setPage('farm');};$('back-from-bag').onclick=()=>{se
 $('back-from-dex').onclick=()=>{setPage('farm');};
 $('back-from-skills').onclick=()=>{setPage('farm');};
 document.querySelector('.brand').onclick=e=>{e.preventDefault();setPage('farm');};
-$('buy-capacity').onclick=()=>{const cost=expandCost();if(s.energy<cost){tell('灵能不足，需要 '+fmt(cost)+' 灵能。');return;}s.energy-=cost;s.capacity+=2;s.revision++;save();dirty=true;render();tell('扩建成功！怪物容量 +2。下一次扩建需要 '+fmt(expandCost())+' 灵能。');};
+$('buy-farm-expand').onclick=()=>buyFarmExpansion();$('buy-capacity').onclick=()=>{const cost=expandCost();if(s.energy<cost){tell('灵能不足，需要 '+fmt(cost)+' 灵能。');return;}s.energy-=cost;s.capacity+=2;s.revision++;save();dirty=true;render();tell('扩建成功！怪物容量 +2。下一次扩建需要 '+fmt(expandCost())+' 灵能。');};
 $('color-potions').onclick=e=>{const b=e.target.closest('[data-buy-color]');if(!b)return;const tint=Number(b.dataset.buyColor);if(!spend(100000))return;s.items.colors[tint]++;recordActivity('item',{item:G.COLORS[tint]+'颜色药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶'+G.COLORS[tint]+'颜色药水。');};
 $('bag-items').onclick=e=>{const c=e.target.closest('[data-use-color]');if(c){useColorPotion(Number(c.dataset.useColor));return;}const sc=e.target.closest('[data-use-special-color]');if(sc){useSpecialColorPotion(Number(sc.dataset.useSpecialColor));return;}const i=e.target.closest('[data-use-item]');if(i){useStoredItem(i.dataset.useItem);return;}const lvl=e.target.closest('[data-level-skill]');if(lvl){levelSkill(lvl.dataset.levelSkill);return;}const r=e.target.closest('[data-use-reroll]');if(r){useRerollPotion(Number(r.dataset.useReroll));return;}if(e.target.closest('[data-use-life]')){useLifePotion();return;}if(e.target.closest('[data-use-time-cut]')){useTimeCutPotion();return;}if(e.target.closest('[data-use-time-instant]')){useTimeInstantPotion();return;}};
 $('buy-star-potion').onclick=()=>{if(!spend(100000))return;s.items.star++;recordActivity('item',{item:'升星药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶升星药水。');};
 $('buy-skill-potion').onclick=()=>{if(!spend(1000000))return;s.items.skill++;recordActivity('item',{item:'技能药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶技能药水。');};
-$('buy-reroll-potion').onclick=()=>{if(!spend(480000))return;s.items.reroll++;recordActivity('item',{item:'刷技能药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶刷技能药水。');};$('buy-life-potion').onclick=()=>{if(!spend(100000))return;s.items.life=(s.items.life||0)+1;recordActivity('item',{item:'生命药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶生命药水。');};$('buy-time-cut').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(300000))return;s.items.timeCut=(s.items.timeCut||0)+1;recordActivity('item',{item:'行程压缩药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶行程压缩药水。');};$('buy-time-instant').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(2000000))return;s.items.timeInstant=(s.items.timeInstant||0)+1;recordActivity('item',{item:'时跃药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶时跃药水。');};document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};$('dispatch-target').onchange=e=>{const id=Number(e.target.value)||null;if(id)chooseDispatchTarget(id);};$('dispatch-target-btn').onclick=e=>{e.stopPropagation();toggleDispatchPicker();};$('dispatch-sort').onchange=()=>renderDispatch();$('dispatch-search').oninput=()=>renderDispatch();$('dispatch-target-picker').onclick=e=>{const b=e.target.closest('[data-dispatch-target]');if(!b)return;e.stopPropagation();chooseDispatchTarget(Number(b.dataset.dispatchTarget));renderDispatchTargetPicker();const btn=$('dispatch-target-btn');if(btn)btn.innerHTML=dispatchTeamButtonHTML(dispatchTeam());};document.addEventListener('click',e=>{if(!e.target.closest('.dispatch-target-tools'))closeDispatchPicker();});$('dispatch-missions').onclick=e=>{const auto=e.target.closest('[data-dispatch-auto]');if(auto){autoSelectDispatchTeam(Number(auto.dataset.dispatchAuto));return;}const b=e.target.closest('[data-dispatch-start]');if(!b)return;startDispatch(Number(b.dataset.dispatchStart));};$('dispatch-active').onclick=e=>{if(e.target.closest('[data-dispatch-claim]'))claimDispatch();};$('auto-dispatch').onchange=e=>{s.autoDispatch=e.target.checked;s.revision++;dirty=true;render();save();tell(s.autoDispatch?'自动派遣已开启；只在游戏页面打开时运行。':'自动派遣已关闭。');};$('auto-dispatch-mission').onchange=e=>{s.autoDispatchMission=e.target.value;s.revision++;dirty=true;render();save();};
+$('buy-reroll-potion').onclick=()=>{if(!spend(480000))return;s.items.reroll++;recordActivity('item',{item:'刷技能药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶刷技能药水。');};$('buy-life-potion').onclick=()=>{if(!spend(100000))return;s.items.life=(s.items.life||0)+1;recordActivity('item',{item:'生命药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶生命药水。');};$('buy-time-cut').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(300000))return;s.items.timeCut=(s.items.timeCut||0)+1;recordActivity('item',{item:'行程压缩药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶行程压缩药水。');};$('buy-time-instant').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(2000000))return;s.items.timeInstant=(s.items.timeInstant||0)+1;recordActivity('item',{item:'时跃药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶时跃药水。');};document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};$('dispatch-target').onchange=e=>{const id=Number(e.target.value)||null;if(id)chooseDispatchTarget(id);};$('dispatch-target-btn').onclick=e=>{e.stopPropagation();toggleDispatchPicker();};$('dispatch-sort').onchange=()=>renderDispatch();$('dispatch-search').oninput=()=>renderDispatch();$('dispatch-target-picker').onclick=e=>{const b=e.target.closest('[data-dispatch-target]');if(!b)return;e.stopPropagation();chooseDispatchTarget(Number(b.dataset.dispatchTarget));renderDispatchTargetPicker();const btn=$('dispatch-target-btn');if(btn)btn.innerHTML=dispatchTeamButtonHTML(dispatchTeam());};document.addEventListener('click',e=>{if(!e.target.closest('.dispatch-target-tools'))closeDispatchPicker();});$('dispatch-missions').onclick=e=>{const auto=e.target.closest('[data-dispatch-auto]');if(auto){autoSelectDispatchTeam(Number(auto.dataset.dispatchAuto));return;}const b=e.target.closest('[data-dispatch-start]');if(!b)return;startDispatch(Number(b.dataset.dispatchStart));};$('dispatch-active').onclick=e=>{if(e.target.closest('[data-dispatch-claim]'))claimDispatch();};$('auto-dispatch').onchange=e=>{s.autoDispatch=e.target.checked;if(s.autoDispatch){s.manualDispatchRepeat=false;s.manualDispatchTeamIds=[];s.manualDispatchMission=null;runOnlineAutomation(true);}s.revision++;dirty=true;render();save();tell(s.autoDispatch?'智能派遣连发已开启：每轮重新选择队伍。':'智能派遣连发已关闭。');};
+$('manual-dispatch-repeat').onchange=e=>{if(e.target.checked){if(!dispatchTeamSelected.length){e.target.checked=false;tell('请先手动选好队伍。');return;}s.manualDispatchRepeat=true;s.autoDispatch=false;tell('固定队伍连发已准备。现在点一次你想重复的任务，之后会一直用这支队伍。');}else{stopManualDispatchRepeat('你手动关闭了连发');}s.revision++;dirty=true;render();save();};$('auto-dispatch-reserve-breed').onchange=e=>{s.autoDispatchReserveBreed=e.target.checked;s.revision++;dirty=true;render();save();tell(s.autoDispatchReserveBreed?'自动派遣会保留一公一母用于生蛋。':'已允许自动派遣使用所有符合条件的怪物。');};$('auto-dispatch-mission').onchange=e=>{s.autoDispatchMission=e.target.value;s.revision++;dirty=true;render();save();};
 $('export-save').onclick=exportSave;
 $('import-save').onclick=()=>{$('import-save-file').value='';$('import-save-file').click();};
 $('import-save-file').onchange=e=>{
