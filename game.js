@@ -495,7 +495,7 @@ function smartFillFarm(){
   tell('已按当前产能评分重新优化一次生产牧场。');
 }
 
-// v169: one canonical view of every monster currently inside an egg, including twin eggs, slot 2, and the waiting queue.
+// v170: one canonical view of every monster currently inside an egg, including twin eggs, slot 2, and the waiting queue.
 function eggMonsters(state=s){
   const eggs=[state?.egg,state?.egg2,...(Array.isArray(state?.eggQueue)?state.eggQueue:[])].filter(Boolean);
   return eggs.flatMap(e=>[e?.child,e?.twinChild]).filter(Boolean);
@@ -761,7 +761,7 @@ function setDexFlags(state,m){
   if(!m)return false;
   let changed=false,ci=dexColorIndex(m);
   if(!state.dex.species[m.species]){state.dex.species[m.species]=true;changed=true;}
-  // v169: ordinary color potions are cosmetic only and must not unlock color/combo dex entries.
+  // v170: ordinary color potions are cosmetic only and must not unlock color/combo dex entries.
   // Natural hatch, dispatch returns, legacy monsters, and limited-color potions remain dex-eligible.
   if(m.dexColorEligible===false)return changed;
   if(!state.dex.colors[ci]){state.dex.colors[ci]=true;changed=true;}
@@ -1302,7 +1302,7 @@ function ensureSkillSlots(m){
   }
 
   m.extraSkills=[0,1,2,3].map(i=>i===2?null:(extraSkill(m.extraSkills[i])?m.extraSkills[i]:null));
-  // v169: ordinary skill2/3 use Lv1–Lv10. Only the shiny-exclusive skill5 has a Lv5 floor.
+  // v170: ordinary skill2/3 use Lv1–Lv10. Only the shiny-exclusive skill5 has a Lv5 floor.
   m.extraSkillLv=[0,1,2,3].map(i=>{
     if(!m.extraSkills[i])return 1;
     const lv=Math.max(1,Math.min(10,Number.isInteger(m.extraSkillLv[i])?m.extraSkillLv[i]:1));
@@ -1388,27 +1388,27 @@ function naturalLifeAbilityMods(a,b){
   }
   return o;
 }
-function naturalLifeRange(a,b){
-  if(!a||!b)return {min:BASE_LIFE,max:BASE_LIFE,lineage:false};
+function naturalLifeRange(a,b,isShinyOffspring=false){
+  if(!a||!b)return {min:BASE_LIFE,max:BASE_LIFE,shiny:false};
   const pa=Math.max(BASE_LIFE,Number(a.maxLife)||Number(a.baseLife)||BASE_LIFE);
   const pb=Math.max(BASE_LIFE,Number(b.maxLife)||Number(b.baseLife)||BASE_LIFE);
-  const lineage=shinyLineageCount([a,b])>0;
+  const shiny=!!isShinyOffspring;
   const ability=naturalLifeAbilityMods(a,b);
   const speciesBonus=offspringHpSpeciesBonus(a,b);
-  const rawMin=lineage?SHINY_LINEAGE_BASE_LIFE:BASE_LIFE;
-  const rawMax=lineage?Math.ceil((pa+pb)/1.5+5):Math.ceil((pa+pb)/2)+1;
-  // Existing life skills/species passives were previously calculated but never applied.
-  // Apply them before the natural-birth cap. Family debuffs may push the floor as low as 0.
+  const rawMin=shiny?SHINY_LINEAGE_BASE_LIFE:BASE_LIFE;
+  const rawMax=shiny?Math.ceil((pa+pb)/1.5+5):Math.ceil((pa+pb)/2)+1;
+  // v170: the 10+ / 1.5 formula belongs to the ACTUAL shiny newborn,
+  // not merely to a pairing that contains a shiny parent.
   let max=Math.min(NATURAL_BIRTH_CAP,Math.max(BASE_LIFE,rawMax+speciesBonus+ability.maxUp-ability.maxDown));
   let min=Math.max(0,rawMin+ability.minUp-ability.minDown);
   min=Math.min(min,max);
-  return {min,max,lineage,rawMin,rawMax,speciesBonus,ability};
+  return {min,max,shiny,rawMin,rawMax,speciesBonus,ability};
 }
-function naturalLifeOdds(a,b){
-  return naturalLifeRange(a,b);
+function naturalLifeOdds(a,b,isShinyOffspring=false){
+  return naturalLifeRange(a,b,isShinyOffspring);
 }
-function rollNaturalLife(a,b,rng=Math.random){
-  const range=naturalLifeRange(a,b);
+function rollNaturalLife(a,b,rng=Math.random,isShinyOffspring=false){
+  const range=naturalLifeRange(a,b,isShinyOffspring);
   let roll=range.min+Math.floor(rng()*(range.max-range.min+1));
   const reroll=longLifeRerollChance(a,b);
   if(roll===range.min&&reroll>0&&rng()<reroll){
@@ -2229,6 +2229,10 @@ function makeTwinChild(child,state,a,b,shinyChance,rng=Math.random){
   twin.shiny=!!shinyChance&&rng()<shinyChance;
   twin.locked=!!twin.shiny;
   twin.shinyAutoLockDone=!!twin.shiny;
+  // v170: twins independently use ordinary/shiny birth-life rules.
+  twin.baseLife=rollNaturalLife(a,b,rng,twin.shiny);
+  twin.life=twin.baseLife;
+  twin.maxLife=twin.baseLife;
 
   // Twin gets an independent ordinary color roll.
   const mutation=Math.min(.25,.05+colorMutationSpeciesBonus(a,b));
@@ -2272,12 +2276,9 @@ G.startBreed=function(state,now,rng=Math.random){
   child.gender=rng()<.5?'公':'母';
   child.createdAt=now;
   child.specialColor=null;
-  child.baseLife=rollNaturalLife(a,b,rng);
   child.heritageLifeBonus=0;
   child.lifePotionUsed=false;
   child.lifeSkillApplied=0;
-  child.life=child.baseLife;
-  child.maxLife=child.baseLife;
   child.generation=Math.max(a.generation||1,b.generation||1)+1;
   assignFamilyName(child,a,b,rng);
   child.trait=rng()<.70?(rng()<.5?a.trait:b.trait):TRAITS[Math.floor(rng()*TRAITS.length)].id;
@@ -2297,6 +2298,10 @@ G.startBreed=function(state,now,rng=Math.random){
   const shinyBonus=shinyBreedBonus(a,b),lineageBonus=shinyLineageBreedBonus(a,b),potionShiny=shinyPotionBreedBonus(a,b);
   const shinyChance=Math.min(.25,shinyBaseChanceByStar(star)+shinyBonus+shinyBuildingBonus(state)+lineageBonus+potionShiny);
   if(shinyChance&&rng()<shinyChance)child.shiny=true;
+  // v170: decide shiny first, then roll the correct natural-life formula.
+  child.baseLife=rollNaturalLife(a,b,rng,child.shiny);
+  child.life=child.baseLife;
+  child.maxLife=child.baseLife;
 
   const buffBonus=buffInheritanceSpeciesBonus(a,b);
   const inherited2=rollInheritedAbility(a,b,rng,[]);
@@ -2382,7 +2387,7 @@ G.startBreed=function(state,now,rng=Math.random){
   archiveMonster(a,state);archiveMonster(b,state);archiveMonster(child,state);
   // v164: 升星药水只在较高亲代未达 5★、确实参与升星计算时才消耗。5★封顶配种会保留药水。
   if(o.high<5){a.starBoost=0;b.starBoost=0;}
-  // v169: each prepared shiny potion gives +3pp to this breeding attempt, then is consumed.
+  // v170: each prepared shiny potion gives +3pp to this breeding attempt, then is consumed.
   a.shinyBoost=0;b.shinyBoost=0;
   const parentLoss=breedingParentLifeLoss(a,b);
   for(const m of [a,b]){
@@ -3932,7 +3937,7 @@ function useRerollPotion(slotIdx){
   s.items.reroll--;
   const used=(m.extraSkills||[]).filter((x,i)=>i!==slotIdx&&x);
   m.extraSkills[slotIdx]=uniqueSkillRoll(Math.random,used);
-  // v169: normal slots reroll Lv1–Lv10; shiny-exclusive slot5 rerolls Lv5–Lv10.
+  // v170: normal slots reroll Lv1–Lv10; shiny-exclusive slot5 rerolls Lv5–Lv10.
   m.extraSkillLv[slotIdx]=slotIdx===3?shinyBonusSkillLevel(Math.random):ordinarySkillLevel(Math.random);
   discoverSkill(m.extraSkills[slotIdx],s);
   refreshLifeCapacity(m,true);
@@ -4251,20 +4256,18 @@ function renderParents(){
   const [a,b]=G.pair(s);
   for(const [label,m] of [['a',a],['b',b]]){$('portrait-'+label).innerHTML=m?sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span class="stars">'+m.gender+' · '+G.stars(m.star)+' · ❤ '+m.life+'/'+m.maxLife+(isDispatched(m.id)?' · 派遣中':'')+'</span>':'<small>等待伙伴</small>';$('parent-'+label+'-btn').innerHTML=parentButtonHTML(m);const picker=$('parent-'+label+'-picker');if(picker&&!picker.hidden)renderParentPicker(label);}
   const o=G.odds(a,b);if(!o){$('odds').innerHTML='<div class="breed-summary-head"><b>本次后代</b><span class="breed-help-hint">详细规则见玩法说明</span></div><p class="odds-note">请选择一公一母两位可用伙伴。</p>';return;}
-  const lo=naturalLifeOdds(a,b),sb=shinyBreedBonus(a,b),slb=shinyLineageBreedBonus(a,b),spb=shinyPotionBreedBonus(a,b),buildingShiny=shinyBuildingBonus(s),shinyAdd=sb+buildingShiny+slb+spb;
+  const lo=naturalLifeOdds(a,b,false),shinyLife=naturalLifeOdds(a,b,true),sb=shinyBreedBonus(a,b),slb=shinyLineageBreedBonus(a,b),spb=shinyPotionBreedBonus(a,b),buildingShiny=shinyBuildingBonus(s),shinyAdd=sb+buildingShiny+slb+spb;
   const shinyByStar={};for(const st of [1,2,3,4,5])shinyByStar[st]=Math.min(.25,shinyBaseChanceByStar(st)+shinyAdd);
   const totalShiny=[1,2,3,4,5].reduce((sum,st)=>sum+(o.starProbs?.[st]||0)*shinyByStar[st],0);
   const starRows=[1,2,3,4,5].filter(st=>(o.starProbs?.[st]||0)>.00001).map(st=>[st,(o.starProbs[st]||0)*(1-o.fail)]);
   const starCalc='双亲 '+a.star+'★ × '+b.star+'★ → 基础星级分布；升星加成 '+(o.starDelta*100).toFixed(1)+'pp（升星药水 '+(o.potion*100).toFixed(0)+'pp）'+(o.starFallback>0?'；5★封顶时正向升星技能 50% 转保底 +'+(o.starFallback*100).toFixed(1)+'pp':'')+'；掉星修正 '+(o.effectiveDropDelta*100).toFixed(1)+'pp'+(o.atavism>0?'；返祖 '+(o.atavism*100).toFixed(1)+'% 已直接计入最终各星概率':'')+'；最后再计入 '+(o.fail*100).toFixed(1)+'% 孵化失败率。'+(o.high>=5&&o.potion>0?' 当前较高亲代已为 5★，升星药水本次不生效且不会消耗。':'');
-  const lifeCalc=lo.lineage
-    ? '闪光血统：ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 1.5 + 5) = '+Math.ceil((a.maxLife+b.maxLife)/1.5+5)+'；最低 10，出生上限封顶 20，所以本次范围为 '+lo.min+'–'+lo.max+'。'
-    : '普通血统：ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 2) + 1 = '+(Math.ceil((a.maxLife+b.maxLife)/2)+1)+'；最低 5，出生上限封顶 20，所以本次范围为 '+lo.min+'–'+lo.max+'。';
+  const lifeCalc='生命先按后代是否真正闪光决定：普通后代 ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 2) + 1 = '+(Math.ceil((a.maxLife+b.maxLife)/2)+1)+'，范围 '+lo.min+'–'+lo.max+'；若本颗后代实际判定为闪光，则改用 ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 1.5 + 5) = '+Math.ceil((a.maxLife+b.maxLife)/1.5+5)+'，范围 '+shinyLife.min+'–'+shinyLife.max+'。出生上限均封顶 20。';
   const shinyCalc='1★–5★ 都可闪光。基础率按星级为 0.1% / 0.2% / 0.3% / 0.4% / 0.5%；再统一叠加：星辉血脉 '+(sb*100).toFixed(1)+'% + 闪光祭坛 '+(buildingShiny*100).toFixed(1)+'% + 闪光血统 '+(slb*100).toFixed(1)+'% + 闪光药水 '+(spb*100).toFixed(1)+'%。当前各星结果：'+[1,2,3,4,5].filter(st=>(o.starProbs?.[st]||0)>0).map(st=>st+'★ '+(shinyByStar[st]*100).toFixed(1)+'%').join('、')+'；按当前星级分布加权，本次每颗蛋综合闪光率约 '+(totalShiny*100).toFixed(2)+'%。';
   const parentCost=[a,b].map(m=>{const loss=m.shiny?1:breedingParentLifeLoss(a,b);return '<span>'+escapeActivity(name(m))+' <b>-'+loss+'❤</b>'+(m.life<=loss?' <em class="life-status">将离世</em>':'')+'</span>';}).join('<span class="breed-cost-sep">·</span>');
   $('odds').innerHTML='<div class="breed-summary-head"><b>本次后代</b><span class="breed-help-hint">数字可悬停 / 点击查看计算</span></div>'+
   '<div class="breed-result-grid">'+
     '<div class="breed-result-card stars-result"><small>星级</small><div>'+starRows.map(([star,p])=>'<span class="breed-star-row"><span>'+G.stars(star)+'</span><b'+calcHoverAttrs(star+'★ 概率',starCalc)+'>'+((p*100)<1?(p*100).toFixed(1):Math.round(p*100))+'%</b></span>').join('')+(o.fail>0?'<span class="breed-star-row fail"><span>失败</span><b'+calcHoverAttrs('孵化失败',slb?'闪光血统存在，本次失败率应为 0%。':'基础孵化失败率与当前效果共同计算后为 '+(o.fail*100).toFixed(1)+'%。')+'>'+((o.fail*100)<1?(o.fail*100).toFixed(1):Math.round(o.fail*100))+'%</b></span>':'')+'</div></div>'+
-    '<div class="breed-result-card"><small>天生生命</small><strong'+calcHoverAttrs('天生生命',lifeCalc)+'>❤ '+lo.min+'–'+lo.max+'</strong></div>'+
+    '<div class="breed-result-card"><small>天生生命</small><strong'+calcHoverAttrs('天生生命',lifeCalc)+'>❤ '+lo.min+'–'+lo.max+'</strong><small class="breed-life-shiny-note">闪光后代：❤ '+shinyLife.min+'–'+shinyLife.max+'</small></div>'+
     '<div class="breed-result-card shiny"><small>本次后代闪光率</small><strong'+calcHoverAttrs('闪光率',shinyCalc)+'>✦ '+(totalShiny*100).toFixed(2)+'%</strong></div>'+
   '</div>'+
   '<div class="breed-parent-cost"><small>本次亲代消耗</small>'+parentCost+'</div>'+
@@ -4284,7 +4287,7 @@ function ensureSkillDex(state=s){
       if(extraSkill(id))state.skillDex.extra[id]=true;
     }
   }
-  // v169: skills already present in either incubator slot, twin eggs, or the waiting queue count as discovered.
+  // v170: skills already present in either incubator slot, twin eggs, or the waiting queue count as discovered.
   for(const m of eggMonsters(state)){
     ensureMonsterSystemsMonster(m);
     for(const id of (m.extraSkills||[]).filter(Boolean)){
@@ -4865,8 +4868,8 @@ setInterval(()=>{
 setInterval(()=>{if(!document.hidden)save(false);},15000);
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v169';
+window.__qinsterVersion='v170';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v169 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v170 · engine '+__n;},1000);
