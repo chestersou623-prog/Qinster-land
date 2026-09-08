@@ -92,7 +92,7 @@ function producingMonstersState(state){
   const dispatched=state.dispatch?(Array.isArray(state.dispatch.monsterIds)?state.dispatch.monsterIds:[state.dispatch.monsterId]):[];
   return (state.monsters||[]).filter(m=>state.farmIds.includes(m.id)&&!dispatched.includes(m.id));
 }
-function fresh(now=Date.now()){const starterA=createMonster(1,0),starterB=createMonster(2,1);starterA.gender='公';starterB.gender='母';return {version:9,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS,farmIds:[starterA.id,starterB.id],autoFillFarm:true,farmItemLast:now,buildings:{energy:0,hatch:0,shiny:0,item:0,breedRest:0},nextId:3,parentA:1,parentB:2,autoBreed:false,autoBreedPriority:'star',manualBreedRepeat:false,manualBreedPairIds:[],autoHatch:true,autoDispatch:false,manualDispatchRepeat:false,manualDispatchTeamIds:[],manualDispatchMission:null,autoDispatchMission:'highest',autoDispatchPowerMode:'efficient',autoDispatchReserveBreed:true,egg:null,eggQueue:[],dispatch:null,items:{colors:[0,0,0,0,0,0],star:0,skill:0},capacity:30,hatched:0,last:now,paused:false};}
+function fresh(now=Date.now()){const starterA=createMonster(1,0),starterB=createMonster(2,1);starterA.gender='公';starterB.gender='母';return {version:9,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS,farmIds:[starterA.id,starterB.id],autoFillFarm:true,farmItemLast:now,buildings:{energy:0,hatch:0,shiny:0,item:0,breedRest:0},nextId:3,parentA:1,parentB:2,autoBreed:false,autoBreedPriority:'star',manualBreedRepeat:false,manualBreedPairIds:[],autoHatch:true,autoDispatch:false,manualDispatchRepeat:false,manualDispatchTeamIds:[],manualDispatchMission:null,autoDispatchMission:'highest',autoDispatchPowerMode:'efficient',autoDispatchReserveBreed:true,egg:null,egg2:null,hatchSlots:1,eggQueue:[],dispatch:null,items:{colors:[0,0,0,0,0,0],specialColors:[0,0,0],star:0,skill:0,reroll:0,life:0,timeCut:0,timeInstant:0,shiny:0},capacity:30,hatched:0,last:now,paused:false};}
 const COLORS=['原色','薄荷','绯红','月蓝','紫晶','金辉'];
 function deathChance(age){return 0;}
 function migrate(s){
@@ -167,7 +167,7 @@ function breedCost(s){const [a,b]=pair(s);return a&&b?20*Math.pow(Math.min(a.sta
 function blocked(s,now){const [a,b]=pair(s);if(!a||!b||a.id===b.id)return '请选择两只不同的怪物';if(s.dispatch&&[a.id,b.id].includes(s.dispatch.monsterId))return '亲代正在派遣中';if(s.egg)return '孵化巢正在使用中';if(s.monsters.length>=s.capacity)return '家园满员，请先扩建';if(a.cooldown>now||b.cooldown>now)return '亲代休息中 · '+Math.ceil((Math.max(a.cooldown,b.cooldown)-now)/1000)+' 秒';if(s.energy+1e-8<breedCost(s))return '灵能不足，伙伴正在积累';return '';}
 function startBreed(s,now,rng=Math.random){if(blocked(s,now))return false;const [a,b]=pair(s),o=odds(a,b);const starRoll=rng();const star=starRoll<o.chance?o.up:starRoll<o.chance+o.down?o.lower:o.base;let type;const roll=rng();if(roll<.45)type=a.species;else if(roll<.90)type=b.species;else{const pool=SPECIES.map((_,i)=>i).filter(i=>i!==a.species&&i!==b.species);type=pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];}
 const genes=a.genes.map((v,i)=>Math.max(.65,Math.min(1.5,(v+b.genes[i])/2*(.9+rng()*.2))));const incubateLv=Math.max(0,...[a,b].filter(m=>SPECIES[m.species].passive==='incubate').map(skillLevel));const baseIncubateSeconds=star===1?15:(22+star*12);const duration=Math.round(baseIncubateSeconds*(1-incubateLv*.025)*1000);
-s.energy=Math.max(0,s.energy-breedCost(s));s.egg={child:createMonster(s.nextId++,type,star,genes,[a.id,b.id]),start:now,ready:now+duration,base:o.base,chance:o.chance};if(star===5&&rng()<0.001){s.egg.child.shiny=true;s.egg.child.locked=true;s.egg.child.shinyAutoLockDone=true;}a.starBoost=0;b.starBoost=0;const colorRoll=rng();s.egg.child.tint=colorRoll<.475?a.tint:colorRoll<.95?b.tint:(()=>{const pool=[0,1,2,3,4,5].filter(c=>c!==a.tint&&c!==b.tint);return pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];})();
+s.energy=Math.max(0,s.energy-breedCost(s));s.egg={child:createMonster(s.nextId++,type,star,genes,[a.id,b.id]),start:now,ready:now+duration,base:o.base,chance:o.chance};if(rng()<Math.max(1,Math.min(5,star))*.001){s.egg.child.shiny=true;s.egg.child.locked=true;s.egg.child.shinyAutoLockDone=true;}a.starBoost=0;b.starBoost=0;const colorRoll=rng();s.egg.child.tint=colorRoll<.475?a.tint:colorRoll<.95?b.tint:(()=>{const pool=[0,1,2,3,4,5].filter(c=>c!==a.tint&&c!==b.tint);return pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];})();
 for(const m of [a,b]){m.cooldown=now+30000;}s.revision++;return true;}
 function hatch(s,now){
   if(!s.egg||s.egg.ready>now||s.monsters.length>=s.capacity)return null;
@@ -222,7 +222,7 @@ function hasUnlockedShinyBuilding(){
   }
   return false;
 }
-function shinyBuildingBonus(){return Math.min(.003,(s.buildings?.shiny||0)*.0003);}
+function shinyBuildingBonus(state=s){return Math.min(.003,(state?.buildings?.shiny||0)*.0003);}
 function itemBuildingBonus(){return Math.min(.05,(s.buildings?.item||0)*.005);}
 function breedRestBuildingMult(state=s){return Math.max(.50,1-Math.max(0,Math.min(10,Number(state.buildings?.breedRest)||0))*.05);}
 function buildingCost(type,lv){
@@ -240,15 +240,26 @@ function buyBuilding(type){
   const cost=buildingCost(type,lv);
   if(s.energy<cost){tell('灵能不足，需要 '+fmt(cost)+'。');return;}
   s.energy-=cost;s.buildings[type]=lv+1;s.revision++;dirty=true;save();render();
-  // v150: force-refresh building panel after purchase so next-level price never stays stale.
+  // v164: force-refresh building panel after purchase so next-level price never stays stale.
   try{renderBuildings();}catch(err){console.error('Building price refresh error:',err);}
   const label={energy:'灵能塔',hatch:'孵化室',shiny:'闪光祭坛',item:'寻宝工坊',breedRest:'亲育休息屋'}[type]||'建筑';
-  tell(label+' 已升到 Lv'+(lv+1)+'。');
+  playSfx('upgrade');tell(label+' 已升到 Lv'+(lv+1)+'。');
+}
+function buySecondHatchSlot(){
+  ensureMonsterSystemsState(s);
+  if(hatchSlotCount(s)>=2){tell('第二孵化栏已经永久解锁。');return;}
+  if(s.energy+1e-8<SECOND_HATCH_SLOT_PRICE){tell('灵能不足，需要 '+fmt(SECOND_HATCH_SLOT_PRICE)+' 灵能。');return;}
+  s.energy-=SECOND_HATCH_SLOT_PRICE;s.hatchSlots=2;s.revision++;dirty=true;
+  fillOpenHatchSlots(s,Date.now());save();render();playSfx('upgrade');tell('第二孵化栏已永久解锁！现在可以同时孵化 2 颗蛋。');
 }
 function renderBuildings(){
   if(!$('building-energy-lv'))return;
   ensureMonsterSystemsState(s);
   const el=s.buildings.energy||0,hl=s.buildings.hatch||0,sl=s.buildings.shiny||0,il=s.buildings.item||0,bl=s.buildings.breedRest||0;
+  const hs=hatchSlotCount(s);
+  if($('second-hatch-slot-status'))$('second-hatch-slot-status').textContent=hs>=2?'已解锁 · 同时孵化 2 颗蛋':'未解锁 · 当前同时孵化 1 颗蛋';
+  if($('second-hatch-slot-price'))$('second-hatch-slot-price').textContent=hs>=2?'永久设施 · 已购买':'价格：'+fmt(SECOND_HATCH_SLOT_PRICE)+' 灵能';
+  if($('buy-second-hatch-slot')){$('buy-second-hatch-slot').disabled=hs>=2;$('buy-second-hatch-slot').textContent=hs>=2?'已永久解锁':'购买 · '+fmt(SECOND_HATCH_SLOT_PRICE)+' 灵能';}
   const unlocked=hasUnlockedShinyBuilding();
   $('building-energy-lv').textContent='Lv'+el+'/10';
   $('building-hatch-lv').textContent='Lv'+hl+'/10';
@@ -257,7 +268,7 @@ function renderBuildings(){
   if($('building-breed-rest-lv'))$('building-breed-rest-lv').textContent='Lv'+bl+'/10';
   $('building-energy-effect').textContent='全牧场灵能 +'+(el*5)+'%';
   $('building-hatch-effect').textContent='孵化时间 -'+(hl*5)+'%';
-  $('building-shiny-effect').textContent=unlocked?'5★闪光率 +'+(sl*.03).toFixed(2)+'%（最高 +0.30%）':'🔒 获得第一只 5★ 后解锁';
+  $('building-shiny-effect').textContent=unlocked?'全星级闪光率 +'+(sl*.03).toFixed(2)+'%（最高 +0.30%）':'🔒 获得第一只 5★ 后解锁';
   $('building-item-effect').textContent='农场普通道具率 +'+(il*.5).toFixed(1)+'%';
   if($('building-breed-rest-effect'))$('building-breed-rest-effect').textContent='亲代生蛋冷却 -'+(bl*5)+'%（当前 '+Math.round(30*breedRestBuildingMult(s))+' 秒）';
   const buildingRows=[
@@ -281,7 +292,7 @@ function renderBuildings(){
   const buffs=[
     el?'灵能 +'+(el*5)+'%':null,
     hl?'孵化 -'+(hl*5)+'%':null,
-    sl&&unlocked?'5★闪光 +'+(sl*.03).toFixed(2)+'%':null,
+    sl&&unlocked?'闪光率 +'+(sl*.03).toFixed(2)+'%':null,
     il?'道具 +'+(il*.5).toFixed(1)+'%':null,
     bl?'生蛋冷却 -'+(bl*5)+'%':null
   ].filter(Boolean);
@@ -293,7 +304,8 @@ const SHOP_PRICES=Object.freeze({
   reroll:2000,
   life:100000,
   timeCut:1000,
-  timeInstant:5000
+  timeInstant:5000,
+  shiny:1000000
 });
 
 const normalizeFarmState=G.normalizeFarmState;
@@ -357,7 +369,7 @@ function autoManageFarm(){
   }
 
   const candidates=s.monsters
-    .filter(mon=>mon&&mon.life>0&&!isDispatched(mon.id)&&!used.has(mon.id))
+    .filter(mon=>mon&&mon.life>0&&!mon.locked&&!isDispatched(mon.id)&&!used.has(mon.id))
     .sort((a,b)=>farmAutoScore(b)-farmAutoScore(a)||b.star-a.star||b.life-a.life||a.id-b.id);
 
   const next=[...current,...candidates.slice(0,need).map(mon=>mon.id)];
@@ -472,7 +484,7 @@ function renderFarmItemInfo(){
 function smartFillFarm(){
   normalizeFarmState(s);
   const pool=s.monsters
-    .filter(mon=>mon&&mon.life>0&&!isDispatched(mon.id))
+    .filter(mon=>mon&&mon.life>0&&!mon.locked&&!isDispatched(mon.id))
     .sort((a,b)=>farmAutoScore(b)-farmAutoScore(a)||b.star-a.star||b.life-a.life||a.id-b.id);
   s.farmIds=pool.slice(0,s.farmSlots).map(mon=>mon.id);
   normalizeFarmState(s);
@@ -483,12 +495,21 @@ function smartFillFarm(){
   tell('已按当前产能评分重新优化一次生产牧场。');
 }
 
+// v169: one canonical view of every monster currently inside an egg, including twin eggs, slot 2, and the waiting queue.
+function eggMonsters(state=s){
+  const eggs=[state?.egg,state?.egg2,...(Array.isArray(state?.eggQueue)?state.eggQueue:[])].filter(Boolean);
+  return eggs.flatMap(e=>[e?.child,e?.twinChild]).filter(Boolean);
+}
 function normalizeMonsterFields(state){
-  for(const m of [...(state.monsters||[]),...(state.memorial||[]),...(state.egg?[state.egg.child]:[])]){
+  for(const m of [...(state.monsters||[]),...(state.memorial||[]),...eggMonsters(state)]){
     if(!Number.isInteger(m.skillLv))m.skillLv=m.star;
     m.skillLv=Math.max(1,Math.min(10,m.skillLv));
-    if(!Number.isFinite(m.starBoost))m.starBoost=0;
-    m.starBoost=Math.max(0,Math.min(.4,m.starBoost));
+    if(!Number.isFinite(m.starBoost))m.starBoost=0;if(!Number.isFinite(m.shinyBoost))m.shinyBoost=0;m.shinyBoost=Math.max(0,Math.min(.03,Number(m.shinyBoost)||0));if(typeof m.dexColorEligible!=='boolean')m.dexColorEligible=true;
+    // v164: 每只怪物最多储存 1 瓶升星药水（+20pp）。旧存档若已有第二瓶，退回背包。
+    if(m.starBoost>.200001&&state.items){
+      state.items.star=(Number(state.items.star)||0)+Math.max(1,Math.round((m.starBoost-.2)/.2));
+    }
+    m.starBoost=Math.max(0,Math.min(.2,m.starBoost));
     if(typeof m.shiny!=='boolean')m.shiny=false;
     if(!Array.isArray(m.colorHistory))m.colorHistory=[];
     const currentColorKey=Number.isInteger(m.specialColor)?('s:'+m.specialColor):('n:'+Math.max(0,Math.min(5,Number(m.tint)||0)));
@@ -549,7 +570,7 @@ function normalizeMonsterFields(state){
   }
 
   if(!state.dispatch||typeof state.dispatch!=='object')state.dispatch=null;
-  if(!state.items||typeof state.items!=='object')state.items={colors:[0,0,0,0,0,0],specialColors:[0,0,0],star:0,skill:0,reroll:0,life:0,timeCut:0,timeInstant:0};
+  if(!state.items||typeof state.items!=='object')state.items={colors:[0,0,0,0,0,0],specialColors:[0,0,0],star:0,skill:0,reroll:0,life:0,timeCut:0,timeInstant:0,shiny:0};
   if(!Array.isArray(state.items.colors))state.items.colors=[0,0,0,0,0,0];
   state.items.colors=Array.from({length:6},(_,i)=>Math.max(0,Math.floor(Number(state.items.colors[i])||0)));
   if(!Array.isArray(state.items.specialColors))state.items.specialColors=[0,0,0];
@@ -560,6 +581,7 @@ function normalizeMonsterFields(state){
   state.items.life=Math.max(0,Math.floor(Number(state.items.life)||0));
   state.items.timeCut=Math.max(0,Math.floor(Number(state.items.timeCut)||0));
   state.items.timeInstant=Math.max(0,Math.floor(Number(state.items.timeInstant)||0));
+  state.items.shiny=Math.max(0,Math.floor(Number(state.items.shiny)||0));
   if(!Number.isFinite(state.capacity))state.capacity=30;
   state.capacity=Math.max(Math.max(30,Math.floor(state.capacity)),(state.monsters||[]).length);
   if(typeof state.autoDispatch!=='boolean')state.autoDispatch=false;
@@ -611,9 +633,11 @@ function sprite(type,tint=0,shiny=false,specialColor=null){
 function colorName(m){return Number.isInteger(m?.specialColor)?SPECIAL_COLORS[m.specialColor].name+'（探索限定）':G.COLORS[m.tint];}
 const MONSTER_ATLAS='monster-atlas.png';const MONSTER_ATLAS_COLS=8;const MONSTER_ATLAS_ROWS=8;
 document.documentElement.style.setProperty('--monster-atlas-image','url("'+MONSTER_ATLAS+'")');
-const EGG_QUEUE_MAX=10,EGG_TOTAL_MAX=11;
+const EGG_QUEUE_MAX=10,SECOND_HATCH_SLOT_PRICE=5000000;
+function hatchSlotCount(state=s){return Number(state?.hatchSlots)>=2?2:1;}
+function eggTotalMax(state=s){return 11;} // v164: second incubator increases concurrency, not total egg capacity
 function eggUnits(egg){return egg?(1+(egg.twinChild?1:0)):0;}
-function totalQueuedEggs(state=s){return eggUnits(state.egg)+(state.eggQueue||[]).reduce((n,e)=>n+eggUnits(e),0);}
+function totalQueuedEggs(state=s){return eggUnits(state.egg)+eggUnits(state.egg2)+(state.eggQueue||[]).reduce((n,e)=>n+eggUnits(e),0);}
 function queuedEggCount(state=s){return (state.eggQueue||[]).reduce((n,e)=>n+eggUnits(e),0);}
 function eggPatternIndex(species){return Math.abs(Number(species)||0)%12;}
 function eggVisualStyle(m){
@@ -642,6 +666,47 @@ function hatchSeconds(m){return 22+m.star*12;}
 function serialName(m){return G.SPECIES[m.species].name+' #'+m.id;}
 function name(m){return m&&m.nickname&&m.nickname.trim()?m.nickname.trim():serialName(m);}
 function tell(msg){$('log').textContent=msg;$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(timer);timer=setTimeout(()=>$('toast').classList.remove('show'),3200);}
+
+// ===== v160 lightweight Web Audio sound system =====
+const AUDIO_PREF_KEY='qinster-audio-v1';
+let audioCtx=null,audioMaster=null;
+let audioPrefs={enabled:true,volume:.55};
+try{const p=JSON.parse(localStorage.getItem(AUDIO_PREF_KEY)||'null');if(p&&typeof p==='object'){audioPrefs.enabled=p.enabled!==false;audioPrefs.volume=Math.max(0,Math.min(1,Number.isFinite(Number(p.volume))?Number(p.volume):.55));}}catch(_){}
+function saveAudioPrefs(){try{localStorage.setItem(AUDIO_PREF_KEY,JSON.stringify(audioPrefs));}catch(_){} }
+function ensureAudio(){
+  if(!audioPrefs.enabled)return null;
+  try{
+    if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;audioCtx=new AC();audioMaster=audioCtx.createGain();audioMaster.gain.value=audioPrefs.volume;audioMaster.connect(audioCtx.destination);}
+    if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+    if(audioMaster)audioMaster.gain.setTargetAtTime(audioPrefs.volume,audioCtx.currentTime,.01);
+    return audioCtx;
+  }catch(_){return null;}
+}
+function sfxTone(freq,dur=.08,type='square',gain=.07,delay=0,slide=0){
+  const c=ensureAudio();if(!c||!audioMaster)return;const t=c.currentTime+delay;
+  const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide),t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(audioMaster);o.start(t);o.stop(t+dur+.02);
+}
+function sfxNoise(dur=.1,gain=.025,delay=0){
+  const c=ensureAudio();if(!c||!audioMaster)return;const n=Math.max(1,Math.floor(c.sampleRate*dur)),buf=c.createBuffer(1,n,c.sampleRate),a=buf.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const src=c.createBufferSource(),g=c.createGain(),t=c.currentTime+delay;src.buffer=buf;g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);src.connect(g);g.connect(audioMaster);src.start(t);
+}
+function playSfx(kind){
+  if(!audioPrefs.enabled)return;
+  switch(kind){
+    case 'click':sfxTone(560,.035,'square',.026);break;
+    case 'breed':sfxTone(392,.10,'triangle',.055);sfxTone(523,.11,'triangle',.05,.07);sfxTone(659,.14,'triangle',.045,.14);break;
+    case 'hatch':sfxTone(523,.10,'triangle',.06);sfxTone(659,.12,'triangle',.06,.08);sfxTone(784,.18,'triangle',.065,.16);break;
+    case 'fiveStar':[659,784,988,1318].forEach((f,i)=>sfxTone(f,.13,'triangle',.06,i*.075));break;
+    case 'shiny':[988,1318,1568,1976,2637].forEach((f,i)=>sfxTone(f,.12,'sine',.052,i*.06));sfxTone(659,.34,'triangle',.035,.06);break;
+    case 'dispatchStart':sfxTone(330,.09,'square',.04);sfxTone(440,.11,'square',.04,.07);sfxTone(587,.13,'square',.04,.14);break;
+    case 'dispatchSuccess':sfxTone(523,.10,'triangle',.055);sfxTone(659,.10,'triangle',.055,.08);sfxTone(784,.18,'triangle',.06,.16);break;
+    case 'dispatchFail':sfxTone(330,.12,'sawtooth',.035,0,-90);sfxTone(220,.18,'triangle',.045,.1,-70);sfxNoise(.12,.018,.04);break;
+    case 'buy':sfxTone(1047,.055,'square',.04);sfxTone(1397,.07,'square',.035,.055);break;
+    case 'upgrade':[523,659,784,1047].forEach((f,i)=>sfxTone(f,.11,'triangle',.05,i*.06));break;
+  }
+}
+function refreshSoundUI(){const btn=$('sound-btn'),en=$('sound-enabled'),vol=$('sound-volume'),lab=$('sound-volume-label');if(btn){btn.textContent=audioPrefs.enabled?'音效 🔊':'音效 🔇';btn.classList.toggle('sound-off',!audioPrefs.enabled);}if(en)en.checked=audioPrefs.enabled;if(vol)vol.value=Math.round(audioPrefs.volume*100);if(lab)lab.textContent=Math.round(audioPrefs.volume*100)+'%';}
+window.addEventListener('pointerdown',()=>{if(audioPrefs.enabled)ensureAudio();},{once:true,capture:true});
 function save(force=true){
   try{
     if(!force){
@@ -696,6 +761,9 @@ function setDexFlags(state,m){
   if(!m)return false;
   let changed=false,ci=dexColorIndex(m);
   if(!state.dex.species[m.species]){state.dex.species[m.species]=true;changed=true;}
+  // v169: ordinary color potions are cosmetic only and must not unlock color/combo dex entries.
+  // Natural hatch, dispatch returns, legacy monsters, and limited-color potions remain dex-eligible.
+  if(m.dexColorEligible===false)return changed;
   if(!state.dex.colors[ci]){state.dex.colors[ci]=true;changed=true;}
   const key=m.species+'-'+ci;
   if(!state.dex.combos[key]){state.dex.combos[key]=true;changed=true;}
@@ -720,7 +788,7 @@ function ensureDex(state){
   return state.dex;
 }
 function markDex(state,m,bump=false){if(!m)return false;ensureDex(state);const changed=setDexFlags(state,m);if(changed&&bump)state.revision++;return changed;}
-let bulkSellMode=false;const parentSearch={a:'',b:''},parentSort={a:'recommended',b:'recommended'};
+let bulkSellMode=false;const parentSearch={a:'',b:''},parentSort={a:'recommended',b:'recommended'},parentSkillFilter={a:'',b:''};let bagTargetSearch='',bagTargetSort='star-desc',bagTargetSkill='';
 const bulkSellSelected=new Set();
 
 function escapeActivity(v){
@@ -769,7 +837,7 @@ function activityEntryHTML(e){
   const time='<span class="activity-time">'+activityTime(e.time)+'</span>';
   if(e.type==='birth'){
     const m=e.monster||{};
-    const growth=Array.isArray(e.skillGrowth)&&e.skillGrowth.length?' · '+e.skillGrowth.map(g=>g.id&&String(g.id).startsWith('family:')?'<b class="family-growth-log">家族技能提升：'+escapeActivity(String(g.name||'').replace(/^家族·/,''))+' Lv'+g.from+'→Lv'+g.to+'</b>':g.id&&String(g.id).startsWith('species:')?'<b class="skill-growth-log">种族技能提升：'+escapeActivity(g.name)+' Lv'+g.from+'→Lv'+g.to+'</b>':'<b class="skill-growth-log">技能提升：'+escapeActivity(g.name)+' Lv'+g.from+'→Lv'+g.to+'</b>').join(' · '):'';return '<div class="activity-entry">'+time+'<div class="activity-text"><span class="activity-tag birth">获得怪物</span>'+logMonsterLink(m)+' · '+G.stars(m.star||1)+(m.shiny?' · 闪光':'')+(m.colorName?' · '+escapeActivity(m.colorName):'')+'<small class="activity-source">来源：'+escapeActivity(e.source||'来源未记录')+'</small>'+growth+'</div></div>';
+    const growth=Array.isArray(e.skillGrowth)&&e.skillGrowth.length?' · '+e.skillGrowth.map(g=>g.id&&String(g.id).startsWith('family:')?'<b class="family-growth-log">家族技能提升：'+escapeActivity(String(g.name||'').replace(/^家族·/,''))+' Lv'+g.from+'→Lv'+g.to+'</b>':g.id&&String(g.id).startsWith('species:')?'<b class="skill-growth-log">种族技能提升：'+escapeActivity(g.name)+' Lv'+g.from+'→Lv'+g.to+'</b>':'<b class="skill-growth-log">技能提升：'+escapeActivity(g.name)+' Lv'+g.from+'→Lv'+g.to+'</b>').join(' · '):'';return '<div class="activity-entry">'+time+'<div class="activity-text"><span class="activity-tag birth">获得怪物</span>'+logMonsterLink(m)+' · '+G.stars(m.star||1)+(m.shiny?' · 闪光':'')+(m.colorName?' · '+escapeActivity(m.colorName):'')+(Number.isFinite(m.life)?' · ❤ '+m.life+(Number.isFinite(m.maxLife)?'/'+m.maxLife:''):'')+'<small class="activity-source">来源：'+escapeActivity(e.source||'来源未记录')+'</small>'+growth+'</div></div>';
   }
   if(e.type==='twin'){
     const parents=Array.isArray(e.parentNames)?e.parentNames.join(' × '):'双亲';
@@ -985,14 +1053,83 @@ function showShinyPopup(m,source='获得'){
   box.innerHTML=sprite(m.species,m.tint,true,m.specialColor)
     +'<h2>'+G.stars(m.star)+' '+name(m)+'</h2>'
     +'<div class="stars">✦ '+colorName(m)+' · 闪光 ✦</div>'
+    +'<p><b>❤ '+m.life+' / '+m.maxLife+' 生命</b></p>'
     +'<p>来源：<b>'+escapeActivity(source)+'</b></p>'
     +'<p>'+G.SPECIES[m.species].skill+' Lv'+skillNum(m)+' · '+skillEffect(m)+'</p>';
   if(!dlg.open){
     try{dlg.showModal();}catch(_){}
   }
 }
-function births(list,offline=false){if(!list.length)return;for(const m of list){markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);gainRanchXp(ranchXpForBirth(m),'孵化新伙伴获得经验。');const skillGrowth=newbornSkillGrowth(m);recordActivity('birth',{key:'birth-'+m.id,time:m.createdAt||Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:!!m.shiny,nickname:m.nickname||'',tint:m.tint,specialColor:m.specialColor??null,colorName:colorName(m)},source:'配种孵化',skillGrowth});}dirty=true;syncActors();if(offline||list.length>1){tell('欢迎回来！'+list.length+' 位新伙伴已经破壳，在草地上等你。');return;}const m=list[0];selected=m.id;talk(m.id,'你好呀 ♡');tell((m.shiny?'✦ 闪光 ':'')+G.stars(m.star)+' '+name(m)+' 破壳了！');if(m.shiny)showShinyPopup(m,'配种孵化');if(!m.shiny&&!s.autoBreed&&!$('guide').open){$('birth-content').innerHTML=sprite(m.species,m.tint,m.shiny,m.specialColor)+'<h2>'+name(m)+genderBadge(m)+(m.shiny?'<span class="shiny-badge">闪光</span>':'')+'</h2><div class="stars">'+G.stars(m.star)+'</div><p>'+G.SPECIES[m.species].skill+' Lv'+skillNum(m)+' · '+skillEffect(m)+'</p>'+skillListHTML(m);$('birth').showModal();}}
+function births(list,offline=false){if(!list.length)return;for(const m of list){markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);gainRanchXp(ranchXpForBirth(m),'孵化新伙伴获得经验。');const skillGrowth=newbornSkillGrowth(m);recordActivity('birth',{key:'birth-'+m.id,time:m.createdAt||Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:!!m.shiny,nickname:m.nickname||'',tint:m.tint,specialColor:m.specialColor??null,colorName:colorName(m),life:m.life,maxLife:m.maxLife},source:'配种孵化',skillGrowth});}dirty=true;syncActors();if(offline||list.length>1){tell('欢迎回来！'+list.length+' 位新伙伴已经破壳，在草地上等你。');return;}const m=list[0];selected=m.id;talk(m.id,'你好呀 ♡');playSfx(m.shiny?'shiny':m.star>=5?'fiveStar':'hatch');tell((m.shiny?'✦ 闪光 ':'')+G.stars(m.star)+' '+name(m)+' 破壳了！');if(m.shiny)showShinyPopup(m,'配种孵化');if(!m.shiny&&!s.autoBreed&&!$('guide').open){$('birth-content').innerHTML=sprite(m.species,m.tint,m.shiny,m.specialColor)+'<h2>'+name(m)+genderBadge(m)+(m.shiny?'<span class="shiny-badge">闪光</span>':'')+'</h2><div class="stars">'+G.stars(m.star)+'</div><p><b>❤ '+m.life+' / '+m.maxLife+' 生命</b></p><p>'+G.SPECIES[m.species].skill+' Lv'+skillNum(m)+' · '+skillEffect(m)+'</p>'+skillListHTML(m);$('birth').showModal();}}
 function settle(){const revision=s.revision;const list=G.advance(s,Date.now());if(s.revision!==revision)dirty=true;births(list);}
+// v165: independent incubator clock/visual settlement. Egg timing must not depend on the full-page render loop.
+function refreshEggClockUI(){
+  const now=Date.now();
+  for(const slot of [1,2]){
+    const unlocked=slot===1||hatchSlotCount(s)>=2;
+    const shell=$(slot===2?'incubator-slot-2':'incubator-slot-1');
+    if(shell)shell.hidden=!unlocked;
+    if(!unlocked)continue;
+    const egg=slot===2?s.egg2:s.egg;
+    const statusEl=$(slot===2?'egg-status-2':'egg-status');
+    const progressEl=$(slot===2?'progress-2':'progress');
+    const hatchEl=$(slot===2?'hatch-2':'hatch');
+    const nestEl=$(slot===2?'nest-2':'nest');
+    const infoEl=$(slot===2?'nest-info-2':'nest-info');
+    if(!statusEl||!progressEl||!hatchEl||!nestEl)continue;
+    if(!egg){
+      statusEl.textContent='空闲';
+      progressEl.value=0;
+      hatchEl.hidden=true;
+      nestEl.className='nest empty';
+      if(nestEl.textContent!=='✧ 等待下一颗蛋')nestEl.textContent='✧ 等待下一颗蛋';
+      if(infoEl)infoEl.textContent='等候列表中的下一颗蛋会自动进入这个栏位。';
+      continue;
+    }
+    const readyAt=Number(egg.ready),startAt=Number(egg.start);
+    if(!Number.isFinite(readyAt)||!Number.isFinite(startAt)||readyAt<=startAt){
+      const duration=Math.max(1000,eggEntryDuration(egg));
+      egg.start=now;egg.ready=now+duration;egg.incubationDuration=duration;s.revision++;dirty=true;
+    }
+    const ready=Number(egg.ready)<=now;
+    const remain=Math.max(0,Math.ceil((Number(egg.ready)-now)/1000));
+    const twinStage=Number(egg.twinStage)||0;
+    const child=egg.child;
+    statusEl.textContent=(slot===2?'栏位 2 · ':'')+(twinStage?'双蛋第 '+twinStage+' 颗 · ':'')+(ready?'可以破壳':remain+' 秒后孵化');
+    const den=Math.max(1,Number(egg.ready)-Number(egg.start));
+    progressEl.value=Math.min(1,Math.max(0,(now-Number(egg.start))/den));
+    hatchEl.hidden=!ready;hatchEl.disabled=s.monsters.length>=s.capacity;
+    const expectedKey=child?String(child.id)+':'+(child.shiny?1:0)+':'+twinStage:'';
+    if(child&&nestEl.dataset.eggKey!==expectedKey){
+      nestEl.innerHTML=(twinStage?'<div class="twin-egg-notice">✦ 双蛋 · 第 '+twinStage+' 颗 / 2</div>':'')+eggArt(child);
+      nestEl.dataset.eggKey=expectedKey;
+    }
+    nestEl.className='nest'+(ready?' ready':'')+(twinStage?' twin-ready':'')+(child?.shiny?' shiny-nest':'');
+    if(infoEl&&child){
+      infoEl.innerHTML=(twinStage?'<b>双潮卵息已触发：这一窝共有 2 颗蛋。</b><br>':'')+'双亲 #'+child.parents.join(' 与 #')+'<br>'+G.stars(child.star)+' '+G.SPECIES[child.species].name+(child.shiny?' · <b>✦ 闪光蛋</b>':'');
+    }
+  }
+  const totalEggs=totalQueuedEggs(s),totalMax=eggTotalMax(s);
+  if($('egg-total-status'))$('egg-total-status').textContent='总蛋数 '+totalEggs+' / '+totalMax;
+  if($('egg-queue-summary'))$('egg-queue-summary').textContent='🥚 '+totalEggs+' / '+totalMax;
+  const qCount=$('egg-queue-count');
+  if(qCount){const activeUnits=eggUnits(s.egg)+eggUnits(s.egg2);qCount.textContent=queuedEggCount(s)+' / '+Math.max(0,totalMax-activeUnits);}
+}
+function incubatorHeartbeat(){
+  if(document.visibilityState==='hidden')return;
+  try{
+    const revision=s.revision;
+    const list=G.advance(s,Date.now());
+    if(s.revision!==revision)dirty=true;
+    if(list.length){
+      births(list);
+      dirty=true;
+      try{render();}catch(err){console.error('Post-hatch render error:',err);}
+      try{save(false);}catch(err){console.error('Post-hatch save error:',err);}
+    }
+  }catch(err){console.error('Incubator settle error:',err);}
+  try{refreshEggClockUI();}catch(err){console.error('Incubator clock error:',err);}
+}
 try{const old=G.migrate(JSON.parse(localStorage.getItem(key)||localStorage.getItem('eggwood-monsters-v2')));if(G.valid(old)){s=old;const elapsed=Date.now()-s.last;const list=G.advance(s,Date.now());if(elapsed>60000){if(list.length)births(list,true);else tell('欢迎回来！离线灵能已经收好，伙伴们一直在等你。');}}else{const previous=JSON.parse(localStorage.getItem('eggwood-v1'));if(previous&&Number.isFinite(previous.coins)&&previous.coins>=0){s.energy+=previous.coins;tell('欢迎来到怪物版！旧版 '+fmt(previous.coins)+' 金币已转为灵能，旧存档仍保留。');}s.paused=reduced;}}catch(e){s.paused=reduced;}
 window.__bootMark&&__bootMark('04 存档读取完成');
 try{
@@ -1006,7 +1143,7 @@ try{
 }
 const EXTRA_SKILLS=[
 {id:'warm_nest',name:'暖巢',tone:'buff',group:'配种',desc:'缩短孵化时间；Lv10 最高 -15%'},
-{id:'lucky_blossom',name:'福星花粉',tone:'buff',group:'配种',desc:'提高升星概率；Lv10 最高 +0.30%，5★ 时不生效'},
+{id:'lucky_blossom',name:'福星花粉',tone:'buff',group:'配种',desc:'提高升星概率；Lv10 最高 +3.0 个百分点；较高亲代为 5★ 时 50% 转为保底'},
 {id:'thick_shell',name:'厚壳',tone:'buff',group:'配种',desc:'降低孵化失败率'},
 {id:'stable_blood',name:'稳血',tone:'buff',group:'配种',desc:'降低掉星概率；Lv10 最高 -7%'},
 {id:'legacy_mark',name:'传承印记',tone:'buff',group:'配种',desc:'提高额外技能继承率；Lv10 最高 +15%'},
@@ -1017,7 +1154,7 @@ const EXTRA_SKILLS=[
 {id:'bounty_hunter',name:'赏金嗅觉',tone:'buff',group:'探索',desc:'提高任务灵能报酬；Lv10 最高 +20%'},
 {id:'mission_guard',name:'护航体魄',tone:'buff',group:'探索',desc:'减少任务结束时的生命损耗，最低仍扣 1'},
 {id:'vital_growth',name:'生命萌芽',tone:'buff',group:'生命',desc:'技能每升 1 级，最大生命 +1'},
-{id:'shiny_breed',name:'星辉血脉',tone:'buff',group:'稀有·配种',desc:'提高 5★ 蛋成为闪光的概率；每级 +0.1%，Lv10 +1%'},
+{id:'shiny_breed',name:'星辉血脉',tone:'buff',group:'稀有·配种',desc:'提高所有星级蛋成为闪光的概率；每级 +0.1%，Lv10 +1%'},
 {id:'shiny_explore',name:'星迹追寻',tone:'buff',group:'稀有·探索',desc:'提高探索发现闪光伙伴的概率；每级 +0.1%，Lv10 +1%'},
 {id:'farm_gather',name:'拾物灵感',tone:'buff',group:'农场',desc:'提高生产牧场捡到普通道具的概率；每级 +0.20 个百分点/分钟'},
 {id:'life_floor_up',name:'生命底蕴',tone:'buff',group:'配种·生命',desc:'提高后代天生生命随机下限；Lv10 +10，若超过最终上限则下限等于上限'},
@@ -1091,7 +1228,7 @@ function extraSkillDesc(id,lv=1){
     case'bounty_hunter':return '探索灵能报酬 +'+(n*2)+'%（Lv10 最高 +20%）';
     case'mission_guard':return '任务生命损耗 -'+(n===10?4:n>=9?3:n>=6?2:n>=3?1:0)+'（最低仍扣 1）';
     case'vital_growth':return '最大生命 +'+n;
-    case'shiny_breed':return '5★ 蛋闪光概率 +'+(n*.1).toFixed(1)+'%';
+    case'shiny_breed':return '所有星级蛋闪光概率 +'+(n*.1).toFixed(1)+'%';
     case'shiny_explore':return '探索发现闪光伙伴概率 +'+(n*.1).toFixed(1)+'%';
     case'farm_gather':return '农场普通道具发现率 +'+(n*.20).toFixed(2)+' 个百分点/分钟';
     case'life_floor_up':return '后代天生生命随机下限 +'+n+'（Lv10 +10；若超过上限，则最终下限=上限）';
@@ -1141,8 +1278,10 @@ function seededSkill(seed,chance=.5){
   const pool=ordinarySkillPool();
   return pool[Math.floor((Math.abs(Math.sin(seed*7.91))*1000)%pool.length)].id;
 }
-function ordinarySkillLevel(rng=Math.random){return 5+Math.floor(rng()*6);}
-function seededOrdinarySkillLevel(seed){const r=Math.abs(Math.sin(seed*9.73+4.11)*43758.5453)%1;return 5+Math.floor(r*6);}
+function ordinarySkillLevel(rng=Math.random){return 1+Math.floor(rng()*10);}
+function shinyBonusSkillLevel(rng=Math.random){return 5+Math.floor(rng()*6);}
+function seededOrdinarySkillLevel(seed){const r=Math.abs(Math.sin(seed*9.73+4.11)*43758.5453)%1;return 1+Math.floor(r*10);}
+function seededShinyBonusSkillLevel(seed){const r=Math.abs(Math.sin(seed*9.73+4.11)*43758.5453)%1;return 5+Math.floor(r*6);}
 function ensureSkillSlots(m){
   if(!Array.isArray(m.extraSkills))m.extraSkills=[null,null,null,null];
   if(!Array.isArray(m.extraSkillLv))m.extraSkillLv=[1,1,1,1];
@@ -1163,7 +1302,12 @@ function ensureSkillSlots(m){
   }
 
   m.extraSkills=[0,1,2,3].map(i=>i===2?null:(extraSkill(m.extraSkills[i])?m.extraSkills[i]:null));
-  m.extraSkillLv=[0,1,2,3].map(i=>m.extraSkills[i]?Math.max(1,Math.min(10,Number.isInteger(m.extraSkillLv[i])?m.extraSkillLv[i]:1)):1);
+  // v169: ordinary skill2/3 use Lv1–Lv10. Only the shiny-exclusive skill5 has a Lv5 floor.
+  m.extraSkillLv=[0,1,2,3].map(i=>{
+    if(!m.extraSkills[i])return 1;
+    const lv=Math.max(1,Math.min(10,Number.isInteger(m.extraSkillLv[i])?m.extraSkillLv[i]:1));
+    return i===3&&m.shiny?Math.max(5,lv):lv;
+  });
 
   if(!m.extraSkills[0]&&!m.extraSkills[1]){
     const seedA=m.id+m.species*11+m.star*7,seedB=m.id*3+m.species*19+.3;
@@ -1173,13 +1317,13 @@ function ensureSkillSlots(m){
     if(m.extraSkills[1])m.extraSkillLv[1]=seededOrdinarySkillLevel(seedB);
   }
 
-  if(m.shiny&&!m.extraSkills[3]){const seed=m.id*13+m.species*5+.7;m.extraSkills[3]=seededSkill(seed,.68);if(m.extraSkills[3])m.extraSkillLv[3]=seededOrdinarySkillLevel(seed);}
+  if(m.shiny&&!m.extraSkills[3]){const seed=m.id*13+m.species*5+.7;m.extraSkills[3]=seededSkill(seed,.68);if(m.extraSkills[3])m.extraSkillLv[3]=seededShinyBonusSkillLevel(seed);}
   if(!m.shiny)m.extraSkills[3]=null;
 
   if((m.generation||1)<10)m.familySkill=null;
   if(typeof m.familyName!=='string')m.familyName='';
 }
-const BASE_LIFE=10,MAX_NATURAL_LIFE=999999,NATURAL_BIRTH_CAP=20,LIFE_UP_CHANCE=.35;
+const BASE_LIFE=5,SHINY_LINEAGE_BASE_LIFE=10,MAX_NATURAL_LIFE=999999,NATURAL_BIRTH_CAP=20,LIFE_UP_CHANCE=.35;
 function deterministicBaseLife(m){
   const seed=Math.abs(Math.sin(((m?.id||1)*17.17+(m?.species||0)*3.71))*43758.5453)%1;
   return BASE_LIFE;
@@ -1245,11 +1389,20 @@ function naturalLifeAbilityMods(a,b){
   return o;
 }
 function naturalLifeRange(a,b){
-  if(!a||!b)return {min:BASE_LIFE,max:BASE_LIFE};
+  if(!a||!b)return {min:BASE_LIFE,max:BASE_LIFE,lineage:false};
   const pa=Math.max(BASE_LIFE,Number(a.maxLife)||Number(a.baseLife)||BASE_LIFE);
   const pb=Math.max(BASE_LIFE,Number(b.maxLife)||Number(b.baseLife)||BASE_LIFE);
-  const max=Math.min(NATURAL_BIRTH_CAP,Math.max(BASE_LIFE,Math.ceil((pa+pb)/1.5+5)));
-  return {min:BASE_LIFE,max};
+  const lineage=shinyLineageCount([a,b])>0;
+  const ability=naturalLifeAbilityMods(a,b);
+  const speciesBonus=offspringHpSpeciesBonus(a,b);
+  const rawMin=lineage?SHINY_LINEAGE_BASE_LIFE:BASE_LIFE;
+  const rawMax=lineage?Math.ceil((pa+pb)/1.5+5):Math.ceil((pa+pb)/2)+1;
+  // Existing life skills/species passives were previously calculated but never applied.
+  // Apply them before the natural-birth cap. Family debuffs may push the floor as low as 0.
+  let max=Math.min(NATURAL_BIRTH_CAP,Math.max(BASE_LIFE,rawMax+speciesBonus+ability.maxUp-ability.maxDown));
+  let min=Math.max(0,rawMin+ability.minUp-ability.minDown);
+  min=Math.min(min,max);
+  return {min,max,lineage,rawMin,rawMax,speciesBonus,ability};
 }
 function naturalLifeOdds(a,b){
   return naturalLifeRange(a,b);
@@ -1264,7 +1417,9 @@ function rollNaturalLife(a,b,rng=Math.random){
   return roll;
 }
 function shinyLineageCount(list){return (list||[]).filter(m=>m&&m.shiny).length;}
+function shinyBaseChanceByStar(star){return Math.max(1,Math.min(5,Number(star)||1))*.001;}
 function shinyLineageBreedBonus(a,b){return shinyLineageCount([a,b])*.01;}
+function shinyPotionBreedBonus(a,b){return Math.min(.06,((a?.shinyBoost||0)+(b?.shinyBoost||0)));}
 function shinyLineageDispatchBonus(team){return shinyLineageCount(team)*.01;}
 function shinyBreedBonus(a,b){
   let lv=0;
@@ -1327,7 +1482,7 @@ const TRAITS=[
 ];
 const TRAIT_MAP=Object.fromEntries(TRAITS.map(x=>[x.id,x]));
 function traitInfo(m){return TRAIT_MAP[m?.trait]||TRAITS[0];}
-function traitBadge(m){const t=traitInfo(m);return '<span class="trait-badge">'+t.name+'</span>';}
+function traitBadge(m){const t=traitInfo(m);return '<span class="trait-badge trait-hover-target" data-trait-tip="'+escapeActivity(t.name)+'" data-trait-desc="'+escapeActivity(t.desc)+'">'+t.name+'</span>';}
 function traitMods(m){const t=m?.trait,o={success:0,death:1,item:0,reward:1,duration:1,state:1,skillFind:1,bond:0,breedDeath:1};if(t==='brave'){o.success+=.03;o.death*=1.08;}else if(t==='careful'){o.success+=.01;o.death*=.80;}else if(t==='curious'){o.item+=.02;o.skillFind*=1.5;}else if(t==='lively'){o.state*=1.05;}else if(t==='gentle'){o.breedDeath*=.92;}else if(t==='tough'){o.death*=.88;}else if(t==='greedy'){o.reward*=1.06;o.duration*=1.05;}else if(t==='friendly'){o.bond+=2;}return o;}
 function archiveSnapshot(m){
   if(!m)return null;
@@ -1347,8 +1502,7 @@ function archiveSnapshot(m){
 }
 function ensureFamilyArchive(state=s){
   if(!state.familyArchive||typeof state.familyArchive!=='object')state.familyArchive={};
-  for(const m of [...(state.monsters||[]),...(state.memorial||[]),...(state.egg?[state.egg.child]:[])])if(m)state.familyArchive[m.id]=archiveSnapshot(m);
-  if(state.egg?.twinChild)state.familyArchive[state.egg.twinChild.id]=archiveSnapshot(state.egg.twinChild);
+  for(const m of [...(state.monsters||[]),...(state.memorial||[]),...eggMonsters(state)])if(m)state.familyArchive[m.id]=archiveSnapshot(m);
   return state.familyArchive;
 }
 function archiveMonster(m,state=s){
@@ -1397,7 +1551,7 @@ function compactFamilyArchive(state=s,limit=6000){
   }
   return removed;
 }
-function familyRecord(id){return s.monsters.find(m=>m.id===id)||s.memorial.find(m=>m.id===id)||(s.egg?.child?.id===id?s.egg.child:null)||s.familyArchive?.[id]||null;}
+function familyRecord(id){return s.monsters.find(m=>m.id===id)||s.memorial.find(m=>m.id===id)||eggMonsters(s).find(m=>m.id===id)||s.familyArchive?.[id]||null;}
 function familySkillSummaryHTML(rec){
   if(!rec)return '';
   const m={...rec,extraSkills:Array.isArray(rec.extraSkills)?[...rec.extraSkills]:[],extraSkillLv:Array.isArray(rec.extraSkillLv)?[...rec.extraSkillLv]:[],familySkill:rec.familySkill?JSON.parse(JSON.stringify(rec.familySkill)):null};
@@ -1471,6 +1625,8 @@ function ensureMonsterSystemsMonster(m,now=Date.now()){
 }
 function ensureMonsterSystemsState(state){
   if(!Array.isArray(state.eggQueue))state.eggQueue=[];
+  state.hatchSlots=Number(state.hatchSlots)>=2?2:1;
+  if(!state.egg2||!state.egg2.child)state.egg2=null;
   state.eggQueue=state.eggQueue.filter(e=>e&&e.child).slice(0,EGG_QUEUE_MAX);
   if(!state.buildings||typeof state.buildings!=='object')state.buildings={energy:0,hatch:0,shiny:0,item:0,breedRest:0};
   state.buildings.energy=Math.max(0,Math.min(10,Math.floor(Number(state.buildings.energy)||0)));
@@ -1481,7 +1637,7 @@ function ensureMonsterSystemsState(state){
   state.flags=state.flags||{};
   if(!state.flags.shinyBuildingUnlocked&&[...(state.monsters||[]),...(state.memorial||[])].some(m=>(m.star||0)>=5))state.flags.shinyBuildingUnlocked=true;
 
-if(!Number.isFinite(state.farmItemLast))state.farmItemLast=Date.now();for(const m of [...(state.monsters||[]),...(state.memorial||[]),...(state.egg?[state.egg.child,state.egg.twinChild].filter(Boolean):[]),...(state.eggQueue||[]).flatMap(e=>[e.child,e.twinChild].filter(Boolean))])ensureMonsterSystemsMonster(m,state.last||Date.now());if(!state.items||typeof state.items!=='object')state.items={colors:[0,0,0,0,0,0],specialColors:[0,0,0],star:0,skill:0,reroll:0,life:0,timeCut:0,timeInstant:0};if(!Array.isArray(state.items.colors))state.items.colors=[0,0,0,0,0,0];state.items.colors=Array.from({length:6},(_,i)=>Math.max(0,Math.floor(Number(state.items.colors[i])||0)));if(!Array.isArray(state.items.specialColors))state.items.specialColors=[0,0,0];state.items.specialColors=Array.from({length:3},(_,i)=>Math.max(0,Math.floor(Number(state.items.specialColors[i])||0)));state.items.star=Math.max(0,Math.floor(Number(state.items.star)||0));state.items.skill=Math.max(0,Math.floor(Number(state.items.skill)||0));state.items.reroll=Math.max(0,Math.floor(Number(state.items.reroll)||0));state.items.life=Math.max(0,Math.floor(Number(state.items.life)||0));if(state.dispatch&&typeof state.dispatch==='object'){if(!Array.isArray(state.dispatch.monsterIds))state.dispatch.monsterIds=state.dispatch.monsterId?[state.dispatch.monsterId]:[];state.dispatch.monsterIds=state.dispatch.monsterIds.filter(id=>(state.monsters||[]).some(m=>m.id===id)).slice(0,3);if(!state.dispatch.monsterIds.length)state.dispatch=null;}if(!state.familyArchive||typeof state.familyArchive!=='object')state.familyArchive={};}
+if(!Number.isFinite(state.farmItemLast))state.farmItemLast=Date.now();for(const m of [...(state.monsters||[]),...(state.memorial||[]),...(state.egg?[state.egg.child,state.egg.twinChild].filter(Boolean):[]),...(state.egg2?[state.egg2.child,state.egg2.twinChild].filter(Boolean):[]),...(state.eggQueue||[]).flatMap(e=>[e.child,e.twinChild].filter(Boolean))])ensureMonsterSystemsMonster(m,state.last||Date.now());if(!state.items||typeof state.items!=='object')state.items={colors:[0,0,0,0,0,0],specialColors:[0,0,0],star:0,skill:0,reroll:0,life:0,timeCut:0,timeInstant:0,shiny:0};if(!Array.isArray(state.items.colors))state.items.colors=[0,0,0,0,0,0];state.items.colors=Array.from({length:6},(_,i)=>Math.max(0,Math.floor(Number(state.items.colors[i])||0)));if(!Array.isArray(state.items.specialColors))state.items.specialColors=[0,0,0];state.items.specialColors=Array.from({length:3},(_,i)=>Math.max(0,Math.floor(Number(state.items.specialColors[i])||0)));state.items.star=Math.max(0,Math.floor(Number(state.items.star)||0));state.items.skill=Math.max(0,Math.floor(Number(state.items.skill)||0));state.items.reroll=Math.max(0,Math.floor(Number(state.items.reroll)||0));state.items.life=Math.max(0,Math.floor(Number(state.items.life)||0));state.items.shiny=Math.max(0,Math.floor(Number(state.items.shiny)||0));if(state.dispatch&&typeof state.dispatch==='object'){if(!Array.isArray(state.dispatch.monsterIds))state.dispatch.monsterIds=state.dispatch.monsterId?[state.dispatch.monsterId]:[];state.dispatch.monsterIds=state.dispatch.monsterIds.filter(id=>(state.monsters||[]).some(m=>m.id===id)).slice(0,3);if(!state.dispatch.monsterIds.length)state.dispatch=null;}if(!state.familyArchive||typeof state.familyArchive!=='object')state.familyArchive={};}
 ensureMonsterSystemsState(s);
 ensureFamilyArchive(s);
 function genderBadge(m){return '<span class="gender-badge '+(m.gender==='公'?'male':'female')+'">'+m.gender+'</span>';}
@@ -1491,10 +1647,10 @@ function shinyText(m){return m&&m.shiny?' · 闪光':'';}
 function dispatchReadyBadge(m){
   if(isDispatched(m.id))return '<span class="dispatch-badge">派遣中</span>';
   if(isEggParent(m.id))return '<span class="dispatch-badge">孵化亲代</span>';
-  if(m.locked)return '<span class="dispatch-badge">已锁定</span>';
+  if(m.locked)return '<span class="dispatch-badge">已锁定 · 仅手动</span>'; 
   return isInFarm(m.id)?'<span class="dispatch-badge farm-badge">生产牧场</span>':'<span class="box-badge">怪物盒</span>';
 }
-function isEggParent(id){const eggs=[s.egg,...(s.eggQueue||[])].filter(Boolean);return eggs.some(e=>Array.isArray(e.child?.parents)&&e.child.parents.includes(id));}
+function isEggParent(id){const eggs=[s.egg,s.egg2,...(s.eggQueue||[])].filter(Boolean);return eggs.some(e=>Array.isArray(e.child?.parents)&&e.child.parents.includes(id));}
 function skillTooltipData(id,kind='extra',m=null,slotIdx=null){
   if(kind==='innate'){
     if(!m)return null;
@@ -1515,9 +1671,9 @@ function calcHoverAttrs(title,formula,extra='鼠标停留 1 秒或点击查看�
 function bindSkillTooltip(){
   let tip=$('skill-tooltip');if(!tip){tip=document.createElement('div');tip.id='skill-tooltip';tip.setAttribute('role','tooltip');document.body.appendChild(tip);}
   let timer=null,current=null,pinned=false;
-  const selector='[data-skill-tip],[data-calc-tip]';
+  const selector='[data-skill-tip],[data-calc-tip],[data-trait-tip]';
   const pos=el=>{const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let l=Math.min(window.innerWidth-w-10,Math.max(10,r.left)),t=r.bottom+8;if(t+h>window.innerHeight-10)t=Math.max(10,r.top-h-8);tip.style.left=l+'px';tip.style.top=t+'px';};
-  const show=(el,pin=false)=>{const host=el.closest?.('dialog[open]')||document.body;if(tip.parentElement!==host)host.appendChild(tip);if(el.dataset.calcTip){tip.innerHTML='<strong>计算 · '+escapeActivity(el.dataset.calcTip)+'</strong><div class="tooltip-tone calc">'+escapeActivity(el.dataset.calcFormula||'')+'</div><div>'+escapeActivity(el.dataset.calcExtra||'')+'</div>';}else{tip.innerHTML='<strong>'+escapeActivity(el.dataset.skillTip||'技能')+'</strong><div class="tooltip-tone '+(el.dataset.skillTone==='debuff'?'debuff':'buff')+'">'+escapeActivity(el.dataset.skillDesc||'')+'</div><div>'+escapeActivity(el.dataset.skillExtra||'')+'</div>';}tip.style.display='block';pinned=pin;tip.classList.toggle('pinned',pinned);requestAnimationFrame(()=>pos(el));};
+  const show=(el,pin=false)=>{const host=el.closest?.('dialog[open]')||document.body;if(tip.parentElement!==host)host.appendChild(tip);if(el.dataset.calcTip){tip.innerHTML='<strong>计算 · '+escapeActivity(el.dataset.calcTip)+'</strong><div class="tooltip-tone calc">'+escapeActivity(el.dataset.calcFormula||'')+'</div><div>'+escapeActivity(el.dataset.calcExtra||'')+'</div>';}else if(el.dataset.traitTip){tip.innerHTML='<strong>个性 · '+escapeActivity(el.dataset.traitTip)+'</strong><div class="tooltip-tone buff">'+escapeActivity(el.dataset.traitDesc||'')+'</div><div>个性效果会直接参与对应的派遣、繁育或亲密度计算。</div>';}else{tip.innerHTML='<strong>'+escapeActivity(el.dataset.skillTip||'技能')+'</strong><div class="tooltip-tone '+(el.dataset.skillTone==='debuff'?'debuff':'buff')+'">'+escapeActivity(el.dataset.skillDesc||'')+'</div><div>'+escapeActivity(el.dataset.skillExtra||'')+'</div>';}tip.style.display='block';pinned=pin;tip.classList.toggle('pinned',pinned);requestAnimationFrame(()=>pos(el));};
   const hide=force=>{if(timer){clearTimeout(timer);timer=null;}current=null;if(pinned&&!force)return;pinned=false;tip.classList.remove('pinned');tip.style.display='none';};
   document.addEventListener('pointerover',e=>{const el=e.target.closest?.(selector);if(!el||el===current||pinned)return;hide(true);current=el;timer=setTimeout(()=>{if(current===el&&!pinned)show(el,false);},1000);});
   document.addEventListener('pointerout',e=>{const from=e.target.closest?.(selector);if(!from)return;const to=e.relatedTarget?.closest?.(selector);if(to===from)return;if(!pinned)hide(true);});
@@ -1582,7 +1738,7 @@ function activeFamilyNames(state=s){
     const fam=(m?.familyName||'').trim();
     if(fam&&m.life>0)out.add(fam);
   }
-  for(const m of [state.egg?.child,state.egg?.twinChild,...(state.eggQueue||[]).flatMap(e=>[e.child,e.twinChild])].filter(Boolean)){
+  for(const m of eggMonsters(state)){
     const fam=(m?.familyName||'').trim();
     if(fam)out.add(fam);
   }
@@ -1598,7 +1754,7 @@ function safeFamilyRegistry(state=s){
   }
 
   const used=new Set(Object.values(state.familySkillRegistry).map(x=>x?.id).filter(id=>extraSkill(id)));
-  const members=[...(state.monsters||[]),state.egg?.child,state.egg?.twinChild,...(state.eggQueue||[]).flatMap(e=>[e.child,e.twinChild])].filter(Boolean);
+  const members=[...(state.monsters||[]),...eggMonsters(state)].filter(Boolean);
 
   for(const fam of active){
     if(state.familySkillRegistry[fam]?.id)continue;
@@ -1727,7 +1883,7 @@ function inheritedLevelRange(id,a,b){
   return {min:1,max:Math.max(1,one||1),a:la,b:lb};
 }
 function rollInheritedAbilityLevel(id,a,b,rng=Math.random){
-  const r=inheritedLevelRange(id,a,b),min=Math.max(5,r.min),max=Math.max(min,Math.min(10,r.max));
+  const r=inheritedLevelRange(id,a,b),min=Math.max(1,r.min),max=Math.max(min,Math.min(10,r.max));
   return min+Math.floor(rng()*(max-min+1));
 }
 function inheritedAbilityPool(a,b){
@@ -1781,7 +1937,7 @@ function skillListHTML(m){
     skillChipHTML('技能3（普通技能）',m.extraSkills[1],'extra',m,1),
     familySkillChipHTML(m)
   ];
-  if(m.shiny)html.push(skillChipHTML('技能5（普通技能）',m.extraSkills[3],'extra',m,3));
+  if(m.shiny)html.push(skillChipHTML('技能5（闪光专属）',m.extraSkills[3],'extra',m,3));
   return '<div class="skill-list">'+html.join('')+'</div>';
 }
 function breedMods(a,b){
@@ -1808,7 +1964,9 @@ function breedMods(a,b){
   }
   mods.inherit=Math.max(.20,Math.min(.85,mods.inherit));
   mods.fail=Math.max(.002,Math.min(.06,mods.fail));
-  mods.down=Math.max(-.08,Math.min(.18,mods.down));
+  // v164: 掉星相关技能允许真正叠加。最终概率仍由 applyDropStarModifier 的自然边界控制，
+  // 因此不再用旧的 -8pp / +18pp 隐藏截断，让多只怪物/多个技能的投入有实际回报。
+  mods.down=Math.max(-.45,Math.min(.45,mods.down));
   return mods;
 }
 function dispatchMods(m){
@@ -1832,7 +1990,7 @@ function dispatchMods(m){
   mods.lifeReduce=Math.min(4,mods.lifeReduce);
   return mods;
 }
-function newbornSkillLevel(id,rng=Math.random){return id?ordinarySkillLevel(rng):1;}
+function newbornSkillLevel(id,rng=Math.random,shinySlot=false){return id?(shinySlot?shinyBonusSkillLevel(rng):ordinarySkillLevel(rng)):1;}
 function uniqueSkillRoll(rng,used){let tries=0,id=null;do{id=randomExtraSkillId(rng);tries++;}while(used.includes(id)&&tries<8);return id;}
 G.breedCost=function(state){const [a,b]=G.pair(state);if(!a||!b)return 20;return Math.max(10,Math.round(coreBreedCost(state)*breedMods(a,b).costMult));};
 G.blocked=function(state,now){const [a,b]=G.pair(state);if(!a||!b||a.id===b.id)return '请选择两只不同的怪物';if(a.gender===b.gender)return '配种需要一公一母；选择一边后，另一边会自动优先匹配异性';if(state.dispatch&&((state.dispatch.monsterIds||[state.dispatch.monsterId]).filter(Boolean)).some(id=>[a.id,b.id].includes(id)))return '亲代正在派遣中';if(state.egg)return '孵化巢正在使用中';if(state.monsters.length>=state.capacity)return '家园满员，请先扩建';if(a.cooldown>now||b.cooldown>now)return '亲代休息中 · '+Math.ceil((Math.max(a.cooldown,b.cooldown)-now)/1000)+' 秒';if(state.energy+1e-8<G.breedCost(state))return '灵能不足，伙伴正在积累';return '';};
@@ -1904,21 +2062,23 @@ function applyTopStarModifier(probs,high,delta){
 }
 function applyDropStarModifier(probs,low,high,delta){
   if(!delta)return probs;
-  // "掉星" means dropping below the lower parent in a mixed pairing,
-  // or below the common parent star in a same-star pairing.
+  // "掉星"严格定义为：掉到较低亲代星级以下（同星时则是掉到共同星级以下）。
   const threshold=low===high?high:low;
   const lower=[1,2,3,4,5].filter(st=>st<threshold);
   const safe=[1,2,3,4,5].filter(st=>st>=threshold);
   const lowerTotal=lower.reduce((sum,st)=>sum+(probs[st]||0),0);
 
+  // v164: 较低亲代已经是 1★ 时不存在“更低星级”。稳血/乱血/5★保底都不应偷偷改动升星分布。
+  if(lower.length===0)return probs;
+
   if(delta>0){
-    // 乱血: move probability mass from safe outcomes into low-star outcomes.
+    // 乱血: move probability mass from safe outcomes into the nearest lower-star result.
     const add=Math.min(delta,.45-lowerTotal);
     if(add<=0)return probs;
     const safeTotal=safe.reduce((sum,st)=>sum+(probs[st]||0),0);
     if(safeTotal<=0)return probs;
     for(const st of safe)probs[st]=Math.max(0,(probs[st]||0)-add*((probs[st]||0)/safeTotal));
-    const target=lower.length?Math.max(...lower):Math.max(1,threshold-1);
+    const target=Math.max(...lower);
     probs[target]=(probs[target]||0)+add;
     return probs;
   }
@@ -1938,7 +2098,8 @@ G.odds=function(a,b){
     fortune=[a,b].filter(m=>G.SPECIES[m.species].passive==='fortune').reduce((sum,m)=>sum+skillNum(m)*.003,0),
     potion=(a.starBoost||0)+(b.starBoost||0),
     mods=breedMods(a,b);
-  let fail=Math.max(0,Math.min(.12,mods.fail));
+  // 闪光血统保证孵化成功：概率面板与实际孵化都直接使用 0% 失败率。
+  let fail=(a.shiny||b.shiny)?0:Math.max(0,Math.min(.12,mods.fail));
   let probs=baseMixedStarDistribution(low,high);
 
   const starDelta=high<5?(fortune+potion+mods.star):0;
@@ -1949,6 +2110,13 @@ G.odds=function(a,b){
   const effectiveDropDelta=mods.down-starFallback;
   probs=applyDropStarModifier(probs,low,high,effectiveDropDelta);
 
+  // v164: 返祖必须直接计入最终星级分布，保证 UI 概率与实际抽取完全一致。
+  const atavism=atavismChance(a,b);
+  if(atavism>0){
+    for(const st of [1,2,3,4,5])probs[st]=(probs[st]||0)*(1-atavism);
+    probs[low]=(probs[low]||0)+atavism;
+  }
+
   const total=Object.values(probs).reduce((x,y)=>x+y,0)||1;
   for(const st of [1,2,3,4,5])probs[st]=(probs[st]||0)/total;
 
@@ -1956,7 +2124,7 @@ G.odds=function(a,b){
   return {
     base:high,up:top,chance:probs[top]||0,down:0,lower:Math.max(1,low-1),stay:probs[high]||0,
     low,high,gap,starProbs:probs,fortune,potion,starDelta,starFallback,
-    effectiveDropDelta,dropDelta:mods.down,fail,
+    effectiveDropDelta,dropDelta:mods.down,atavism,fail,
     inherit:mods.inherit,mutate:.10,thirdChance:.35,incubateMult:mods.incubateMult,
     deathMult:mods.deathMult,cooldownMult:mods.cooldownMult,parentLifeReduce:mods.parentLifeReduce,
     parentLifeBonus:mods.parentLifeBonus
@@ -2058,7 +2226,7 @@ function makeTwinChild(child,state,a,b,shinyChance,rng=Math.random){
   twin.gender=rng()<.5?'公':'母';
   twin.createdAt=child.createdAt;
   twin.genes=child.genes.map(v=>Math.max(.65,Math.min(1.5,v*(.96+rng()*.08))));
-  twin.shiny=child.star===5&&shinyChance&&rng()<shinyChance;
+  twin.shiny=!!shinyChance&&rng()<shinyChance;
   twin.locked=!!twin.shiny;
   twin.shinyAutoLockDone=!!twin.shiny;
 
@@ -2082,7 +2250,7 @@ G.startBreed=function(state,now,rng=Math.random){
     acc+=o.starProbs?.[st]||0;
     if(starRoll<=acc){star=st;break;}
   }
-  if(atavismChance(a,b)>0&&rng()<atavismChance(a,b))star=Math.min(a.star,b.star);
+  // 返祖已包含在 G.odds().starProbs 中，不再进行第二次隐藏判定。
 
   const type=rollBreedSpecies(a,b,rng);
   const genes=a.genes.map((v,i)=>Math.max(.65,Math.min(1.5,(v+b.genes[i])/2*(.9+rng()*.2))));
@@ -2126,8 +2294,8 @@ G.startBreed=function(state,now,rng=Math.random){
     child.specialColor=Math.floor(rng()*SPECIAL_COLORS.length);
   }
 
-  const shinyBonus=shinyBreedBonus(a,b),lineageBonus=shinyLineageBreedBonus(a,b);
-  const shinyChance=star===5?Math.min(.25,.005+shinyBonus+shinyBuildingBonus()+lineageBonus):0;
+  const shinyBonus=shinyBreedBonus(a,b),lineageBonus=shinyLineageBreedBonus(a,b),potionShiny=shinyPotionBreedBonus(a,b);
+  const shinyChance=Math.min(.25,shinyBaseChanceByStar(star)+shinyBonus+shinyBuildingBonus(state)+lineageBonus+potionShiny);
   if(shinyChance&&rng()<shinyChance)child.shiny=true;
 
   const buffBonus=buffInheritanceSpeciesBonus(a,b);
@@ -2149,7 +2317,7 @@ G.startBreed=function(state,now,rng=Math.random){
     normal2?.lv||1,
     normal3?.lv||1,
     1,
-    newbornSkillLevel(child.extraSkills[3],rng)
+    newbornSkillLevel(child.extraSkills[3],rng,true)
   ];
   const disorderChance=skillDisorderChance(a,b);
   if(disorderChance>0){
@@ -2159,7 +2327,7 @@ G.startBreed=function(state,now,rng=Math.random){
         let next=randomExtraSkillId(rng),guard=0;
         while(next===id&&guard++<8)next=randomExtraSkillId(rng);
         child.extraSkills[idx]=next;
-        child.extraSkillLv[idx]=newbornSkillLevel(next,rng);
+        child.extraSkillLv[idx]=newbornSkillLevel(next,rng,idx===3);
       }
     }
   }
@@ -2212,7 +2380,10 @@ G.startBreed=function(state,now,rng=Math.random){
   }
 
   archiveMonster(a,state);archiveMonster(b,state);archiveMonster(child,state);
-  a.starBoost=0;b.starBoost=0;
+  // v164: 升星药水只在较高亲代未达 5★、确实参与升星计算时才消耗。5★封顶配种会保留药水。
+  if(o.high<5){a.starBoost=0;b.starBoost=0;}
+  // v169: each prepared shiny potion gives +3pp to this breeding attempt, then is consumed.
+  a.shinyBoost=0;b.shinyBoost=0;
   const parentLoss=breedingParentLifeLoss(a,b);
   for(const m of [a,b]){
     m.cooldown=now+Math.round(30000*o.cooldownMult*breedRestBuildingMult(state));
@@ -2224,7 +2395,9 @@ G.startBreed=function(state,now,rng=Math.random){
 };
 G.hatch=function(state,now){
   if(!state.egg||state.egg.ready>now||state.monsters.length>=state.capacity)return null;
-  const failChance=state.egg.shinyLineage?0:Math.max(0,Math.min(.12,Number(state.egg.fail)||.01));
+  // v164: preserve a genuine 0% failure rate. `0 || .01` previously reintroduced a hidden 1% failure.
+  const rawFail=Number(state.egg.fail);
+  const failChance=state.egg.shinyLineage?0:Math.max(0,Math.min(.12,Number.isFinite(rawFail)?rawFail:.01));
   if(Math.random()<failChance){state.egg=null;state.revision++;return false;}
 
   const egg=state.egg;
@@ -2303,13 +2476,21 @@ function normalizeEggEntryForQueue(egg,now){
   egg.start=null;egg.ready=null;
   return egg;
 }
-function promoteNextEgg(state,now){
-  if(state.egg||(state.eggQueue||[]).length===0)return false;
+function promoteNextEgg(state,now,slot=1){
+  const key=slot===2?'egg2':'egg';
+  if(state[key]||(state.eggQueue||[]).length===0)return false;
+  if(slot===2&&hatchSlotCount(state)<2)return false;
   const next=state.eggQueue.shift();
   const duration=eggEntryDuration(next);
   next.start=now;next.ready=now+duration;next.incubationDuration=duration;next.queuedAt=null;
-  state.egg=next;state.revision++;
+  state[key]=next;state.revision++;
   return true;
+}
+function fillOpenHatchSlots(state,now){
+  let changed=false;
+  if(!state.egg)changed=promoteNextEgg(state,now,1)||changed;
+  if(hatchSlotCount(state)>=2&&!state.egg2)changed=promoteNextEgg(state,now,2)||changed;
+  return changed;
 }
 G.blocked=function(state,now){
   ensureMonsterSystemsState(state);
@@ -2317,7 +2498,7 @@ G.blocked=function(state,now){
   if(!a||!b||a.id===b.id)return '请选择两只不同的怪物';
   if(a.gender===b.gender)return '配种需要一公一母；选择一边后，另一边会自动优先匹配异性';
   if(state.dispatch&&((state.dispatch.monsterIds||[state.dispatch.monsterId]).filter(Boolean)).some(id=>[a.id,b.id].includes(id)))return '亲代正在派遣中';
-  if(totalQueuedEggs(state)>=EGG_TOTAL_MAX)return '孵蛋队列已满（11 / 11）';
+  if(totalQueuedEggs(state)>=eggTotalMax(state))return '孵蛋队列已满（'+eggTotalMax(state)+' / '+eggTotalMax(state)+'）';
   if(state.monsters.length>=state.capacity)return '家园满员，请先扩建';
   if(a.cooldown>now||b.cooldown>now)return '亲代休息中 · '+Math.ceil((Math.max(a.cooldown,b.cooldown)-now)/1000)+' 秒';
   if(state.energy+1e-8<G.breedCost(state))return '灵能不足，伙伴正在积累';
@@ -2326,51 +2507,88 @@ G.blocked=function(state,now){
 G.startBreed=function(state,now,rng=Math.random){
   ensureMonsterSystemsState(state);
   if(G.blocked(state,now))return false;
-  const active=state.egg;
+  const active1=state.egg,active2=state.egg2;
   const beforeTotal=totalQueuedEggs(state);
-  if(active)state.egg=null;
+  // Temporarily free slot 1 so the legacy generator can build exactly one new egg.
+  state.egg=null;
   let ok=false,created=null;
   try{
     ok=__v144StartBreed(state,now,rng);
     created=state.egg;
   }finally{
-    if(active)state.egg=active;
+    // Never let the legacy generator decide the final queue placement.
+    state.egg=active1||null;
   }
-  if(!ok||!created)return false;
-  created.incubationDuration=eggEntryDuration(created);
-  const slotsLeft=EGG_TOTAL_MAX-beforeTotal;
+  if(!ok||!created||!created.child)return false;
+  created.incubationDuration=Math.max(1000,eggEntryDuration(created));
+  const slotsLeft=eggTotalMax(state)-beforeTotal;
   if(created.twinChild&&slotsLeft<2){
     removeOverflowTwinLog(state,created.twinChild);
     created.twinChild=null;created.twinChance=0;created.twinStage=0;
   }
-  if(active){
+
+  // Explicit transactional placement: slot 1 -> slot 2 -> waiting queue.
+  if(!active1){
+    created.start=now;created.ready=now+created.incubationDuration;created.queuedAt=null;
+    state.egg=created;
+  }else if(hatchSlotCount(state)>=2&&!active2){
+    created.start=now;created.ready=now+created.incubationDuration;created.queuedAt=null;
+    state.egg2=created;
+  }else{
     normalizeEggEntryForQueue(created,now);
     state.eggQueue.push(created);
-    // hard guard by actual egg count, not only number of queue entries
-    while(totalQueuedEggs(state)>EGG_TOTAL_MAX&&state.eggQueue.length)state.eggQueue.pop();
-    state.revision++;
   }
+  while(totalQueuedEggs(state)>eggTotalMax(state)&&state.eggQueue.length)state.eggQueue.pop();
+  const afterTotal=totalQueuedEggs(state);
+  if(afterTotal<=beforeTotal){
+    console.error('Egg commit failed',{beforeTotal,afterTotal,active1:!!active1,active2:!!active2,createdId:created.child?.id});
+    return false;
+  }
+  state.revision++;
   return true;
 };
-G.hatch=function(state,now){
+function hatchFromSlot(state,now,slot=1){
   ensureMonsterSystemsState(state);
+  const key=slot===2?'egg2':'egg';
+  if(slot===2&&hatchSlotCount(state)<2)return null;
+  if(!state[key])return null;
+  if(slot===1){
+    const had=!!state.egg;
+    const result=__v144Hatch(state,now);
+    if(had&&!state.egg)promoteNextEgg(state,now,1);
+    return result;
+  }
+  const primary=state.egg;
+  state.egg=state.egg2;state.egg2=null;
   const had=!!state.egg;
   const result=__v144Hatch(state,now);
-  if(had&&!state.egg)promoteNextEgg(state,now);
+  const after=state.egg;
+  state.egg=primary;state.egg2=after;
+  if(had&&!state.egg2)promoteNextEgg(state,now,2);
   return result;
-};
+}
+G.hatch=function(state,now){return hatchFromSlot(state,now,1);};
+G.hatchSecondary=function(state,now){return hatchFromSlot(state,now,2);};
 G.advance=function(state,now,rng=Math.random){
   ensureMonsterSystemsState(state);
   const end=Math.max(state.last,now),start=Math.max(state.last,end-G.MAX_OFFLINE);
   let t=start,births=[],guard=0;
-  if(!state.egg)promoteNextEgg(state,t);
-  while(t<=end&&guard++<2000){
-    if(state.egg&&Number(state.egg.ready)<=t&&state.autoHatch){
-      const child=G.hatch(state,t);if(child)births.push(child);
+  fillOpenHatchSlots(state,t);
+  while(t<=end&&guard++<4000){
+    if(state.autoHatch){
+      let progressed=true,inner=0;
+      while(progressed&&inner++<8){
+        progressed=false;
+        if(state.egg&&Number(state.egg.ready)<=t){const child=G.hatch(state,t);if(child)births.push(child);progressed=true;}
+        if(hatchSlotCount(state)>=2&&state.egg2&&Number(state.egg2.ready)<=t){const child=G.hatchSecondary(state,t);if(child)births.push(child);progressed=true;}
+      }
     }
     if(t>=end)break;
     let next=end;
-    if(state.egg&&state.autoHatch&&Number(state.egg.ready)>t)next=Math.min(next,state.egg.ready);
+    if(state.autoHatch){
+      if(state.egg&&Number(state.egg.ready)>t)next=Math.min(next,state.egg.ready);
+      if(hatchSlotCount(state)>=2&&state.egg2&&Number(state.egg2.ready)>t)next=Math.min(next,state.egg2.ready);
+    }
     if(next<=t)next=Math.min(end,t+1000);
     const seconds=(next-t)/1000;
     if(seconds>0)state.energy+=G.income(state)*seconds;
@@ -2559,7 +2777,8 @@ function dispatchedMonsters(){if(!s.dispatch)return [];const ids=Array.isArray(s
 function dispatchedMonster(){return dispatchedMonsters()[0]||null;}
 function isDispatched(id){return dispatchedMonsters().some(m=>m.id===id);}
 function dispatchMission(){return s.dispatch?DISPATCH_MISSIONS.find(x=>x.id===s.dispatch.mission)||null:null;}
-function canDispatchMonster(m){return !!(m&&!isDispatched(m.id)&&!m.locked&&!isEggParent(m.id)&&m.life>0);}
+function canDispatchMonster(m){return !!(m&&!isDispatched(m.id)&&!isEggParent(m.id)&&m.life>0);}
+function canAutoDispatchMonster(m){return !!(canDispatchMonster(m)&&!m.locked);} // locked = manual-only
 function missionState(m,mission){const [hp,atk,def,spd,luck]=G.stats(m);let score=0;if(['forage','river'].includes(mission.id))score=spd*.5+luck*.4+def*.1;else if(['ruins','cavern'].includes(mission.id))score=def*.4+atk*.35+luck*.25;else score=atk*.25+def*.25+spd*.25+luck*.25;score*=traitMods(m).state;const expected=['forage','river'].includes(mission.id)?260:['ruins','cavern'].includes(mission.id)?470:760;const bonus=Math.max(-.08,Math.min(.14,(score-expected)/expected*.12));return {score:Math.round(score),bonus};}
 function teamDispatchMods(team,mission=null){
   const o={reward:1,item:0,success:0,death:1,duration:1,skillFind:1,bond:0};
@@ -2687,10 +2906,10 @@ function missionFoundSkillChance(mission,team=[]){
 }
 function rateText(v){const p=v*100;return (p<1?p.toFixed(1):Math.round(p))+'%';}
 function dispatchPossibleReturnsHTML(mission,team=[]){
-  const rates=dispatchItemRates(mission,team),skillChance=missionFoundSkillChance(mission,team),shinyChance=team.length?exploreShinyChance(team,mission):0;
+  const rates=dispatchItemRates(mission,team),skillChance=missionFoundSkillChance(mission,team),shinyChance=team.length?exploreShinyChance(team,mission):0,returnSpecial=dispatchReturnSpecialColorChance(mission);
   return '<div class="dispatch-reward-preview"><b>可能收获</b><div class="dispatch-loot-list">'
     +'<span class="chance-pill">颜色药水 '+rateText(rates.color)+'</span>'
-    +'<span class="chance-pill">探索限定颜色 '+rateText(rates.special)+'</span>'
+    +'<span class="chance-pill">限定颜色药水 '+rateText(rates.special)+'</span>'+'<span class="chance-pill">带回怪限定色 '+rateText(returnSpecial)+'</span>'
     +'<span class="chance-pill">升星药水 '+rateText(rates.star)+'</span>'
     +'<span class="chance-pill">技能药水 '+rateText(rates.skill)+'</span>'
     +'<span class="chance-pill">刷技能药水 '+rateText(rates.reroll)+'</span>'+'<span class="chance-pill">行程压缩药水 '+rateText(rates.timeCut)+'</span>'+'<span class="chance-pill">时跃药水 '+rateText(rates.timeInstant)+'</span>'
@@ -2709,7 +2928,7 @@ function renderDispatchTargetPicker(){
     +(selectedSet.has(m.id)?'<span class="team-check">✓</span>':'')
     +sprite(m.species,m.tint,m.shiny,m.specialColor)
     +'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+traitBadge(m)+'</strong>'
-    +'<small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>位置：'+(isDispatched(m.id)?'派遣中':isEggParent(m.id)?'孵化亲代':isInFarm(m.id)?'生产牧场':'怪物盒')+' · '+(canDispatchMonster(m)?'可加入队伍':m.locked?'已锁定':m.life<=0?'生命耗尽':'当前不可派遣')+'<br>'+monsterSkillSummary(m)+'</small></span></button>'
+    +'<small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>位置：'+(isDispatched(m.id)?'派遣中':isEggParent(m.id)?'孵化亲代':isInFarm(m.id)?'生产牧场':'怪物盒')+' · '+(canDispatchMonster(m)?(m.locked?'已锁定 · 仅手动可用':'可加入队伍'):m.life<=0?'生命耗尽':'当前不可派遣')+'<br>'+monsterSkillSummary(m)+'</small></span></button>'
   ).join('')+'</div><div class="team-limit">最多选择 3 位。林地采集 / 遗迹探索至少 2 位，星门远征必须 3 位。</div>';
 }
 function closeDispatchPicker(){const p=$('dispatch-target-picker'),b=$('dispatch-target-btn');if(p)p.hidden=true;if(b)b.setAttribute('aria-expanded','false');}
@@ -2797,7 +3016,7 @@ function autoDispatchScore(m,mission){
 }
 function dispatchBreedingReserve(){
   if(!s.autoDispatchReserveBreed)return [];
-  const eligible=s.monsters.filter(m=>!isDispatched(m.id)&&!isEggParent(m.id)&&m.life>0);
+  const eligible=s.monsters.filter(m=>!m.locked&&!isDispatched(m.id)&&!isEggParent(m.id)&&m.life>0);
   const eligibleIds=new Set(eligible.map(m=>m.id));
   const pa=s.monsters.find(m=>m.id===s.parentA&&eligibleIds.has(m.id));
   const pb=s.monsters.find(m=>m.id===s.parentB&&eligibleIds.has(m.id));
@@ -2812,8 +3031,9 @@ function dispatchBreedingReserve(){
 }
 function autoDispatchCandidates(ms,includeFarm=false){
   const reserve=new Set(dispatchBreedingReserve());
+  // 系统推荐仍属于自动选择：锁定怪物必须由玩家亲自点选。
   return automationCandidatePool(
-    s.monsters.filter(m=>canDispatchMonster(m)&&m.star>=ms.minStar&&!reserve.has(m.id)&&(includeFarm||!isInFarm(m.id)))
+    s.monsters.filter(m=>canAutoDispatchMonster(m)&&m.star>=ms.minStar&&!reserve.has(m.id)&&(includeFarm||!isInFarm(m.id)))
   );
 }
 
@@ -2925,10 +3145,10 @@ function chooseSmartBreedPair(force=false){
   if(!force&&smartBreedCache.key===key&&Array.isArray(smartBreedCache.ids)){
     const a=s.monsters.find(m=>m.id===smartBreedCache.ids[0]);
     const b=s.monsters.find(m=>m.id===smartBreedCache.ids[1]);
-    if(a&&b&&a.life>0&&b.life>0&&!isDispatched(a.id)&&!isDispatched(b.id)&&a.gender!==b.gender)return [a,b];
+    if(a&&b&&!a.locked&&!b.locked&&a.life>0&&b.life>0&&!isDispatched(a.id)&&!isDispatched(b.id)&&a.gender!==b.gender)return [a,b];
   }
 
-  const eligible=s.monsters.filter(m=>!isDispatched(m.id)&&m.life>0);
+  const eligible=s.monsters.filter(m=>!m.locked&&!isDispatched(m.id)&&m.life>0);
   const mode=s.autoBreedPriority||'star';
   const males=smartBreedShortlist(eligible.filter(m=>m.gender==='公'),mode);
   const females=smartBreedShortlist(eligible.filter(m=>m.gender==='母'),mode);
@@ -3047,21 +3267,26 @@ function manualBreedAttempt(){
   if(!a||!b){setBreedActionStatus('无法开始：需要一公一母两位亲代。','err');tell('需要一公一母两位亲代。');dirty=true;render();return false;}
   const issue=G.blocked(s,Date.now());
   if(issue){setBreedActionStatus('暂时不能生蛋：'+issue,'wait');tell('暂时不能生蛋：'+issue);dirty=true;render();return false;}
+  const beforeTotal=totalQueuedEggs(s),beforeQueue=(s.eggQueue||[]).length;
+  let ok=false;
   try{
-    const beforeTotal=totalQueuedEggs(s),beforeQueue=(s.eggQueue||[]).length;
-    const ok=G.startBreed(s,Date.now());
-    if(!ok||totalQueuedEggs(s)<=beforeTotal){
-      setBreedActionStatus('没有成功创建怪物蛋，请重新选择亲代后再试。','err');tell('没有成功创建怪物蛋，请重新选择亲代后再试。');dirty=true;render();save();return false;
-    }
-    const queued=(s.eggQueue||[]).length>beforeQueue;
-    const egg=queued?s.eggQueue[s.eggQueue.length-1]:s.egg;
-    const child=egg?.child,parentNames=[a,b].map(name).join(' × ');
-    setBreedActionStatus('成功生蛋：'+parentNames+(child?' · '+G.stars(child.star)+' '+G.SPECIES[child.species].name+'蛋':'')+(queued?' · 已加入等候队列 '+queuedEggCount(s)+' / 10':' · 正在孵化'),'ok');
-    tell(queued?'怪物蛋已加入孵化等候列表。':'怪物蛋已经进入孵化巢。');
-    if(s.monsters.some(m=>m.id===a.id))talk(a.id,'一起等宝宝 ♡');
-    if(s.monsters.some(m=>m.id===b.id))talk(b.id,'暖暖的蛋！');
-    dirty=true;render();save();return true;
-  }catch(err){console.error('Manual breed error:',err);setBreedActionStatus('生蛋时发生错误，已阻止存档损坏。请再试一次。','err');tell('生蛋时发生错误，请再试一次。');dirty=true;render();save();return false;}
+    ok=G.startBreed(s,Date.now());
+  }catch(err){
+    console.error('Manual breed engine error:',err);
+    const detail=(err&&err.message)?String(err.message).slice(0,140):'未知错误';
+    setBreedActionStatus('生蛋引擎错误：'+detail,'err');
+    tell('生蛋失败：'+detail);dirty=true;try{render();}catch(_){}try{save();}catch(_){}return false;
+  }
+  if(!ok||totalQueuedEggs(s)<=beforeTotal){
+    setBreedActionStatus('没有成功创建怪物蛋，请重新选择亲代后再试。','err');tell('没有成功创建怪物蛋，请重新选择亲代后再试。');dirty=true;render();save();return false;
+  }
+  const queued=(s.eggQueue||[]).length>beforeQueue;
+  const egg=queued?s.eggQueue[s.eggQueue.length-1]:(s.egg2&&beforeTotal>0?s.egg2:s.egg);
+  const child=egg?.child,parentNames=[a,b].map(name).join(' × ');
+  setBreedActionStatus('成功生蛋：'+parentNames+(child?' · '+G.stars(child.star)+' '+G.SPECIES[child.species].name+'蛋':'')+(queued?' · 已加入等候队列 '+queuedEggCount(s)+' / 10':' · 正在孵化'),'ok');
+  tell(queued?'怪物蛋已加入孵化等候列表。':'怪物蛋已经进入孵化巢。');
+  try{if(s.monsters.some(m=>m.id===a.id))talk(a.id,'一起等宝宝 ♡');if(s.monsters.some(m=>m.id===b.id))talk(b.id,'暖暖的蛋！');playSfx('breed');}catch(err){console.error('Breed feedback error:',err);}
+  dirty=true;try{render();}catch(err){console.error('Breed post-render error:',err);}try{save();}catch(err){console.error('Breed post-save error:',err);}return true;
 }
 
 function fixedBreedPair(){
@@ -3099,7 +3324,7 @@ function autoBreedStatus(){
   if(document.visibilityState==='hidden')return {text:'页面不在前台；连续生蛋已暂停。',cls:'wait'};
   if(s.egg){
     const remain=Math.max(0,Math.ceil((s.egg.ready-Date.now())/1000)),q=queuedEggCount(s),total=totalQueuedEggs(s);
-    if(total>=EGG_TOTAL_MAX)return {text:'孵蛋队列已满：1 颗孵化中 + '+q+' 颗等候（11 / 11）。',cls:'wait'};
+    if(total>=eggTotalMax(s))return {text:'孵蛋队列已满：1 颗孵化中 + '+q+' 颗等候（11 / 11）。',cls:'wait'};
     return {text:(remain>0?'当前蛋剩余约 '+remain+' 秒':'当前蛋已完成，等待自动孵化')+' · 等候 '+q+' / 10；连续生蛋会继续补充队列。',cls:'ready'};
   }
   if(s.monsters.length>=s.capacity)return {text:'怪物盒已满，无法继续生蛋。',cls:'blocked'};
@@ -3127,7 +3352,7 @@ function runOnlineAutomation(force=false){
       if(s.egg&&s.egg.ready<=now&&s.autoHatch&&s.monsters.length<s.capacity){
         const child=G.hatch(s,now);if(child){births([child]);dirty=true;}
       }
-      if(totalQueuedEggs(s)<EGG_TOTAL_MAX&&s.monsters.length<s.capacity){
+      if(totalQueuedEggs(s)<eggTotalMax(s)&&s.monsters.length<s.capacity){
         let pair=null;
         if(s.manualBreedRepeat){
           pair=fixedBreedPair();
@@ -3286,8 +3511,20 @@ function renderDispatch(){
     $('dispatch-active').innerHTML='<div class="dispatch-active-inner"><h3>当前派遣</h3><p>暂无任务。现在可以组成 2–3 人队伍，不同技能与个性会产生组合效果。</p></div>';
   }
 }
-function startDispatch(i,fromRepeat=false){const team=dispatchTeam(),ms=DISPATCH_MISSIONS[i];if(!ms)return;if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}if(team.length<ms.minTeam){tell('这项任务需要至少 '+ms.minTeam+' 位队员。');return;}if(s.dispatch){tell('已经有一支队伍在派遣中了。');return;}if(team.length>3){tell('派遣队最多 3 位。');return;}if(team.some(m=>!canDispatchMonster(m))){tell('队伍里有当前不能派遣的怪物。');return;}if(team.some(m=>m.star<ms.minStar)){const low=team.filter(m=>m.star<ms.minStar).map(name).join('、');tell('「'+ms.name+'」要求每位成员至少 '+ms.minStar+'★；'+low+' 星级不足。1★ 去「牧场巡查」，2★ 去「林地采集」。');return;}if(s.manualDispatchRepeat&&!fromRepeat)captureManualDispatch(ms);const tm=teamDispatchMods(team,ms),now=Date.now();s.dispatch={monsterIds:team.map(m=>m.id),mission:ms.id,start:now,end:now+Math.round(ms.duration*tm.duration)*1000,successChance:teamDispatchSuccessChance(team,ms),outcome:prepareTeamDispatchOutcome(team,ms),timeCutUsed:false};s.revision++;dirty=true;render();save();tell(team.map(name).join('、')+' 组成小队前往「'+ms.name+'」，成功率 '+Math.round(s.dispatch.successChance*100)+'%。');}
+function startDispatch(i,fromRepeat=false){const team=dispatchTeam(),ms=DISPATCH_MISSIONS[i];if(!ms)return;if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}if(team.length<ms.minTeam){tell('这项任务需要至少 '+ms.minTeam+' 位队员。');return;}if(s.dispatch){tell('已经有一支队伍在派遣中了。');return;}if(team.length>3){tell('派遣队最多 3 位。');return;}if(team.some(m=>!canDispatchMonster(m))){tell('队伍里有当前不能派遣的怪物。');return;}if(team.some(m=>m.star<ms.minStar)){const low=team.filter(m=>m.star<ms.minStar).map(name).join('、');tell('「'+ms.name+'」要求每位成员至少 '+ms.minStar+'★；'+low+' 星级不足。1★ 去「牧场巡查」，2★ 去「林地采集」。');return;}if(s.manualDispatchRepeat&&!fromRepeat)captureManualDispatch(ms);const tm=teamDispatchMods(team,ms),now=Date.now();s.dispatch={monsterIds:team.map(m=>m.id),mission:ms.id,start:now,end:now+Math.round(ms.duration*tm.duration)*1000,successChance:teamDispatchSuccessChance(team,ms),outcome:prepareTeamDispatchOutcome(team,ms),timeCutUsed:false};s.revision++;dirty=true;render();save();playSfx('dispatchStart');tell(team.map(name).join('、')+' 组成小队前往「'+ms.name+'」，成功率 '+Math.round(s.dispatch.successChance*100)+'%。');}
 function showPendingSkillDrop(){const drop=s.pendingSkillDrop;if(!drop)return;const m=s.monsters.find(x=>x.id===drop.monsterId);const sk=extraSkill(drop.skillId);if(!m||!sk){s.pendingSkillDrop=null;save();return;}ensureMonsterSystemsMonster(m);$('skill-drop-info').innerHTML='<div class="skill-drop-card"><b>'+name(m)+' 在探索中发现「'+sk.name+' Lv'+drop.lv+'」</b><span>'+sk.desc+'</span></div><p>要不要替换现有技能？</p>';$('skill-drop-actions').innerHTML=getMutableSkillSlots(m).map(slot=>'<button class="secondary" data-accept-skill="'+slot.idx+'">替换 '+slot.label+(m.extraSkills[slot.idx]?'（'+extraSkill(m.extraSkills[slot.idx]).name+' Lv'+extraLv(m,slot.idx)+'）':'（空位）')+'</button>').join('')+'<button class="secondary" data-discard-skill>不要这个技能</button>';$('skill-drop-dialog').showModal();}
+function dispatchReturnSpecialColorChance(mission){
+  const lv=Math.max(1,Math.min(8,Number(mission?.taskLevel)||1));
+  return lv>=8?.10:(.01+lv*.01); // Lv1 2% ... Lv7 8%, final map 10%
+}
+function applyDispatchReturnColor(m,mission){
+  m.dexColorEligible=true;
+  if(Math.random()<dispatchReturnSpecialColorChance(mission)){
+    m.specialColor=Math.floor(Math.random()*SPECIAL_COLORS.length);
+    return true;
+  }
+  return false;
+}
 function createMissionExclusive(speciesId,mission){
   const star=rollMissionReturnStar(mission,Math.random);
   const m=G.createMonster(s.nextId++,speciesId,star,[1,1,1,1,1],[]);
@@ -3298,9 +3535,9 @@ function createMissionExclusive(speciesId,mission){
   m.trait=TRAITS[Math.floor(Math.random()*TRAITS.length)].id;
   m.createdAt=Date.now();
   m.skillLv=Math.max(1,Math.min(10,star+Math.floor(Math.random()*3)));
-  ensureSkillSlots(m);refreshLifeCapacity(m,true);
+  ensureSkillSlots(m);refreshLifeCapacity(m,true);applyDispatchReturnColor(m,mission);
   s.monsters.push(m);markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);
-  recordActivity('birth',{key:'mission-exclusive-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:false,nickname:'',life:m.life,tint:m.tint,specialColor:null},source:'派遣加入 · '+(mission?.name||'任务')+' · 限定怪'});
+  recordActivity('birth',{key:'mission-exclusive-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:false,nickname:'',life:m.life,maxLife:m.maxLife,tint:m.tint,specialColor:m.specialColor??null},source:'派遣加入 · '+(mission?.name||'任务')+' · 限定怪'});
   return m;
 }
 
@@ -3314,18 +3551,19 @@ function createMissionOrdinary(speciesId,mission){
   m.trait=TRAITS[Math.floor(Math.random()*TRAITS.length)].id;
   m.createdAt=Date.now();
   m.skillLv=Math.max(1,Math.min(10,star+Math.floor(Math.random()*2)));
-  ensureSkillSlots(m);refreshLifeCapacity(m,true);
+  ensureSkillSlots(m);refreshLifeCapacity(m,true);applyDispatchReturnColor(m,mission);
   s.monsters.push(m);markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);
-  recordActivity('birth',{key:'mission-ordinary-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:false,nickname:'',life:m.life,tint:m.tint,specialColor:null},source:'派遣加入 · '+(mission?.name||'任务')+' · 普通怪'});
+  recordActivity('birth',{key:'mission-ordinary-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:false,nickname:'',life:m.life,maxLife:m.maxLife,tint:m.tint,specialColor:m.specialColor??null},source:'派遣加入 · '+(mission?.name||'任务')+' · 普通怪'});
   return m;
 }
-function createExplorationShiny(){
-  const m=G.createMonster(s.nextId++,Math.floor(Math.random()*G.SPECIES.length),5,[1,1,1,1,1],[]);
+function createExplorationShiny(mission){
+  const shinyStar=rollMissionReturnStar(mission,Math.random);
+  const m=G.createMonster(s.nextId++,Math.floor(Math.random()*G.SPECIES.length),shinyStar,[1,1,1,1,1],[]);
   ensureMonsterSystemsMonster(m,Date.now());
   m.baseLife=5+Math.floor(Math.random()*6);m.lifePotionUsed=false;m.lifeSkillApplied=0;m.life=m.baseLife;m.maxLife=m.baseLife;
   m.gender=Math.random()<.5?'公':'母';m.shiny=true;m.locked=true;m.shinyAutoLockDone=true;m.trait=TRAITS[Math.floor(Math.random()*TRAITS.length)].id;
-  ensureSkillSlots(m);refreshLifeCapacity(m,true);m.createdAt=Date.now();s.monsters.push(m);markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);
-  recordActivity('birth',{key:'explore-shiny-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:true,nickname:m.nickname||'',life:m.life,tint:m.tint,specialColor:m.specialColor??null},source:'探索邂逅'});showShinyPopup(m,'探索邂逅');
+  ensureSkillSlots(m);refreshLifeCapacity(m,true);applyDispatchReturnColor(m,mission);m.createdAt=Date.now();s.monsters.push(m);markDex(s,m,false);discoverMonsterSkills(m,s);archiveMonster(m,s);
+  recordActivity('birth',{key:'explore-shiny-'+m.id,time:Date.now(),monster:{id:m.id,species:m.species,star:m.star,shiny:true,nickname:m.nickname||'',life:m.life,maxLife:m.maxLife,tint:m.tint,specialColor:m.specialColor??null},source:'探索邂逅'});showShinyPopup(m,'探索邂逅');
   return m;
 }
 
@@ -3350,7 +3588,8 @@ function protectedMissionLoss(team,m,baseLoss){
 }
 function claimDispatch(){
   const team=dispatchedMonsters(),ms=dispatchMission();
-  if(!team.length||!ms||!s.dispatch)return;
+  if(!s.dispatch){tell('目前没有正在结算的派遣。');return;}
+  if(!team.length||!ms){console.error('Dispatch claim state invalid',s.dispatch);tell('派遣资料异常，已保留任务状态。请重新打开派遣页面再领取。');dirty=true;render();return;}
   if(s.dispatch.end>Date.now()){tell('派遣还没结束。');return;}
   const outcome=s.dispatch.outcome||prepareTeamDispatchOutcome(team,ms);
   let msg='',lifeNotes=[];
@@ -3370,23 +3609,23 @@ function claimDispatch(){
       lifeNotes.push(n+' -'+loss+'生命'+(prot.rescuer?'（'+name(prot.rescuer)+' 的救援本能挡下 1 点）':'')+(died?'（离世）':''));
       if(!died)m.bond=Math.min(100,m.bond+6+traitMods(m).bond);
     }
-    addItem(outcome.item,'派遣 · '+mission.name);
+    addItem(outcome.item,'派遣 · '+ms.name);
     if(outcome.foundSkill){
       const survivors=team.filter(m=>s.monsters.some(x=>x.id===m.id));
       const learner=survivors[Math.floor(Math.random()*survivors.length)];
       if(learner)s.pendingSkillDrop={monsterId:learner.id,skillId:outcome.foundSkill.id,lv:outcome.foundSkill.lv};
     }
     let shinyFound=null;
-    if(outcome.shinyFind)shinyFound=createExplorationShiny();
+    if(outcome.shinyFind)shinyFound=createExplorationShiny(ms);
     let exclusiveFound=null,ordinaryFound=null;
     if(Number.isInteger(outcome.exclusiveSpecies)&&s.monsters.length<s.capacity)exclusiveFound=createMissionExclusive(outcome.exclusiveSpecies,ms);
     else if(Number.isInteger(outcome.ordinarySpecies)&&s.monsters.length<s.capacity)ordinaryFound=createMissionOrdinary(outcome.ordinarySpecies,ms);
     msg='任务成功，获得 '+fmt(outcome.reward)+' 灵能。'+lifeNotes.join('、')
       +(outcome.item?'，并获得 '+itemLabel(outcome.item):'')
       +(outcome.foundSkill?'，还发现了一个极稀有技能！':'')
-      +(shinyFound?' ✦ 星迹追寻触发：发现了闪光 '+name(shinyFound)+'！':'')
-      +(exclusiveFound?' ✦ 任务限定邂逅：'+name(exclusiveFound)+' '+G.stars(exclusiveFound.star)+' 加入牧场！':'')
-      +(ordinaryFound?' ✦ 途中结识：'+name(ordinaryFound)+' '+G.stars(ordinaryFound.star)+' 加入牧场！':'')
+      +(shinyFound?' ✦ 星迹追寻触发：发现了闪光 '+name(shinyFound)+'（❤ '+shinyFound.life+'/'+shinyFound.maxLife+'）！':'')
+      +(exclusiveFound?' ✦ 任务限定邂逅：'+name(exclusiveFound)+' '+G.stars(exclusiveFound.star)+(Number.isInteger(exclusiveFound.specialColor)?' · '+colorName(exclusiveFound):'')+' · ❤ '+exclusiveFound.life+'/'+exclusiveFound.maxLife+' 加入牧场！':'')
+      +(ordinaryFound?' ✦ 途中结识：'+name(ordinaryFound)+' '+G.stars(ordinaryFound.star)+(Number.isInteger(ordinaryFound.specialColor)?' · '+colorName(ordinaryFound):'')+' · ❤ '+ordinaryFound.life+'/'+ordinaryFound.maxLife+' 加入牧场！':'')
       +((Number.isInteger(outcome.exclusiveSpecies)||Number.isInteger(outcome.ordinarySpecies))&&!exclusiveFound&&!ordinaryFound&&s.monsters.length>=s.capacity?' ✦ 遇到了怪物，但怪物盒已满。':'')+'。';
   }
   gainRanchXp(ranchXpForDispatch(ms,!outcome.failed),outcome.failed?'派遣失败也获得少量经验。':'完成派遣获得经验。');recordActivity('dispatch',{
@@ -3399,7 +3638,7 @@ function claimDispatch(){
     shiny:(typeof shinyFound!=='undefined'&&shinyFound)?name(shinyFound):'',exclusive:(typeof exclusiveFound!=='undefined'&&exclusiveFound)?name(exclusiveFound):'',ordinary:(typeof ordinaryFound!=='undefined'&&ordinaryFound)?name(ordinaryFound):'',
     life:lifeNotes.join('、')
   });
-  s.dispatch=null;if(s.manualDispatchRepeat){dispatchTeamSelected=(s.manualDispatchTeamIds||[]).filter(id=>s.monsters.some(m=>m.id===id));dispatchSelected=dispatchTeamSelected[0]||null;}else{dispatchTeamSelected=[];dispatchSelected=null;}s.revision++;dirty=true;render();save();tell(msg);if(s.pendingSkillDrop)setTimeout(showPendingSkillDrop,80);
+  s.dispatch=null;if(s.manualDispatchRepeat){dispatchTeamSelected=(s.manualDispatchTeamIds||[]).filter(id=>s.monsters.some(m=>m.id===id));dispatchSelected=dispatchTeamSelected[0]||null;}else{dispatchTeamSelected=[];dispatchSelected=null;}s.revision++;dirty=true;render();save();playSfx(outcome.failed?'dispatchFail':'dispatchSuccess');if(typeof shinyFound!=='undefined'&&shinyFound)setTimeout(()=>playSfx('shiny'),260);tell(msg);if(s.pendingSkillDrop)setTimeout(showPendingSkillDrop,80);
 }
 function renderTraitDex(){
   const box=$('trait-dex');if(!box)return;
@@ -3485,19 +3724,40 @@ function renderSkillLibrary(filter=skillLibraryFilter||'all'){
 function getMutableSkillSlots(m){
   ensureMonsterSystemsMonster(m);
   const slots=[{idx:0,label:'技能2（普通）'},{idx:1,label:'技能3（普通）'}];
-  if(m.shiny)slots.push({idx:3,label:'技能5（普通）'});
+  if(m.shiny)slots.push({idx:3,label:'技能5（闪光专属）'});
   return slots;
 }
 function getLevelableSkillSlots(m){
   ensureMonsterSystemsMonster(m);
   const slots=[{idx:0,label:'技能2（普通）'},{idx:1,label:'技能3（普通）'}];
   if((m.generation||1)>=10)slots.push({idx:'family',label:'技能4（家族）'});
-  if(m.shiny)slots.push({idx:3,label:'技能5（普通）'});
+  if(m.shiny)slots.push({idx:3,label:'技能5（闪光专属）'});
   return slots;
 }
-function bagSortedMonsters(){let list=[...s.monsters];for(const m of list)ensureMonsterSystemsMonster(m);const mode=$('bag-target-sort')?.value||'rarity-desc',q=$('bag-target-search')?.value||'';if(q)list=list.filter(m=>monsterMatchesName(m,q));list.sort((a,b)=>{if(mode==='rarity-asc')return a.star-b.star||Number(a.shiny)-Number(b.shiny)||a.id-b.id;if(mode==='age-desc')return b.life-a.life||b.star-a.star||b.id-a.id;if(mode==='age-asc')return a.life-b.life||b.star-a.star||b.id-a.id;if(mode==='favorite')return Number(b.favorite)-Number(a.favorite)||b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;if(mode==='joined-asc')return (a.createdAt||0)-(b.createdAt||0)||a.id-b.id;if(mode==='joined-desc')return (b.createdAt||0)-(a.createdAt||0)||b.id-a.id;return b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;});return list;}
+function monsterSkillNames(m){
+  if(!m)return [];
+  ensureMonsterSystemsMonster(m);
+  const names=[G.SPECIES[m.species]?.skill];
+  for(const idx of [0,1,3]){
+    if(idx===3&&!m.shiny)continue;
+    const id=m.extraSkills?.[idx],sk=id?extraSkill(id):null;
+    if(sk?.name)names.push(sk.name);
+  }
+  for(const p of familySkillParts(m)){
+    const nm=extraSkill(p.id)?.name;
+    if(nm)names.push(nm);
+  }
+  return [...new Set(names.filter(Boolean))];
+}
+function monsterHasSkillName(m,skillName){return !skillName||monsterSkillNames(m).includes(skillName);}
+function skillFilterOptionsHTML(pool,selected=''){
+  const names=[...new Set((pool||[]).flatMap(monsterSkillNames))].sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
+  if(selected&&!names.includes(selected))names.unshift(selected);
+  return '<option value="">全部技能</option>'+names.map(n=>'<option value="'+escapeActivity(n)+'" '+(n===selected?'selected':'')+'>'+escapeActivity(n)+'</option>').join('');
+}
+function bagSortedMonsters(){let list=[...s.monsters];for(const m of list)ensureMonsterSystemsMonster(m);const mode=bagTargetSort||'star-desc',q=bagTargetSearch||'',skill=bagTargetSkill||'';if(q)list=list.filter(m=>monsterMatchesName(m,q));if(skill)list=list.filter(m=>monsterHasSkillName(m,skill));list.sort((a,b)=>{if(mode==='star-asc')return a.star-b.star||Number(a.shiny)-Number(b.shiny)||a.id-b.id;if(mode==='life-desc')return b.life-a.life||b.star-a.star||b.id-a.id;if(mode==='life-asc')return a.life-b.life||b.star-a.star||b.id-a.id;if(mode==='skill-desc')return rosterMaxSkillLv(b)-rosterMaxSkillLv(a)||b.star-a.star||b.id-a.id;if(mode==='favorite')return Number(b.favorite)-Number(a.favorite)||b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;if(mode==='joined-asc')return (a.createdAt||0)-(b.createdAt||0)||a.id-b.id;if(mode==='joined-desc')return (b.createdAt||0)-(a.createdAt||0)||b.id-a.id;return b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;});return list;}
 function bagTargetButtonHTML(m){if(!m)return '<span class="parent-select-empty">选择一只怪物</span>';ensureMonsterSystemsMonster(m);return sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span class="parent-select-info"><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.favorite?' · 最爱':'')+'</strong><small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命 · 种族 Lv'+skillNum(m)+'</small></span>';}
-function renderBagTargetPicker(){const p=$('bag-target-picker');if(!p)return;const cur=Number($('shop-target')?.value)||null;p.innerHTML='<div class="bag-target-grid">'+bagSortedMonsters().map(m=>'<button type="button" class="bag-target-choice '+(m.id===cur?'selected':'')+'" data-bag-target="'+m.id+'">'+sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.favorite?' · 最爱':'')+'</strong><small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>'+monsterSkillSummary(m)+'</small></span></button>').join('')+'</div>';}
+function renderBagTargetPicker(){const p=$('bag-target-picker');if(!p)return;const cur=Number($('shop-target')?.value)||null;const all=[...s.monsters];p.innerHTML='<div class="bag-picker-toolbar"><input data-bag-search type="search" placeholder="名字 / 昵称 / #编号" value="'+escapeActivity(bagTargetSearch)+'"><select class="bag-picker-sort" data-bag-sort><option value="star-desc" '+(bagTargetSort==='star-desc'?'selected':'')+'>星级 · 高 → 低</option><option value="star-asc" '+(bagTargetSort==='star-asc'?'selected':'')+'>星级 · 低 → 高</option><option value="life-desc" '+(bagTargetSort==='life-desc'?'selected':'')+'>生命 · 高 → 低</option><option value="life-asc" '+(bagTargetSort==='life-asc'?'selected':'')+'>生命 · 低 → 高</option><option value="skill-desc" '+(bagTargetSort==='skill-desc'?'selected':'')+'>技能等级 · 高 → 低</option><option value="favorite" '+(bagTargetSort==='favorite'?'selected':'')+'>我的最爱优先</option><option value="joined-desc" '+(bagTargetSort==='joined-desc'?'selected':'')+'>加入时间 · 新 → 旧</option><option value="joined-asc" '+(bagTargetSort==='joined-asc'?'selected':'')+'>加入时间 · 旧 → 新</option></select><select class="bag-picker-skill" data-bag-skill>'+skillFilterOptionsHTML(all,bagTargetSkill)+'</select></div><div class="bag-target-grid">'+bagSortedMonsters().map(m=>'<button type="button" class="bag-target-choice '+(m.id===cur?'selected':'')+'" data-bag-target="'+m.id+'">'+sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.favorite?' · 最爱':'')+'</strong><small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>'+monsterSkillSummary(m)+'</small></span></button>').join('')+'</div>';} 
 function closeBagTargetPicker(){const p=$('bag-target-picker'),b=$('bag-target-btn');if(p)p.hidden=true;if(b)b.setAttribute('aria-expanded','false');}
 function toggleBagTargetPicker(){const p=$('bag-target-picker'),b=$('bag-target-btn');if(!p||!b)return;const opening=p.hidden;closeBagTargetPicker();if(opening){renderBagTargetPicker();p.hidden=false;b.setAttribute('aria-expanded','true');}}
 function chooseBagTarget(id){
@@ -3513,39 +3773,16 @@ function chooseBagTarget(id){
   const btn=$('bag-target-btn');if(btn)btn.innerHTML=bagTargetButtonHTML(target);
 }
 function bindBagTargetControls(){
-  const btn=$('bag-target-btn'),picker=$('bag-target-picker'),search=$('bag-target-search'),sort=$('bag-target-sort');
-  if(btn&&!btn.dataset.bound){
-    btn.dataset.bound='1';
-    btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleBagTargetPicker();});
-  }
+  const btn=$('bag-target-btn'),picker=$('bag-target-picker');
+  if(btn&&!btn.dataset.bound){btn.dataset.bound='1';btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleBagTargetPicker();});}
   if(picker&&!picker.dataset.bound){
     picker.dataset.bound='1';
-    picker.addEventListener('click',e=>{
-      const choice=e.target.closest?.('[data-bag-target]');
-      if(!choice)return;
-      e.preventDefault();e.stopPropagation();
-      chooseBagTarget(Number(choice.dataset.bagTarget));
-    });
-  }
-  if(search&&!search.dataset.bound){
-    search.dataset.bound='1';
-    search.addEventListener('input',()=>{renderBagTargetPicker();const p=$('bag-target-picker');if(p)p.hidden=false;});
-  }
-  if(sort&&!sort.dataset.bound){
-    sort.dataset.bound='1';
-    sort.addEventListener('change',()=>{renderBagTargetPicker();const p=$('bag-target-picker');if(p)p.hidden=false;});
+    picker.addEventListener('click',e=>{const choice=e.target.closest?.('[data-bag-target]');if(!choice)return;e.preventDefault();e.stopPropagation();chooseBagTarget(Number(choice.dataset.bagTarget));});
+    picker.addEventListener('input',e=>{const inp=e.target.closest?.('[data-bag-search]');if(!inp)return;bagTargetSearch=inp.value;renderBagTargetPicker();const next=picker.querySelector('[data-bag-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});
+    picker.addEventListener('change',e=>{const sort=e.target.closest?.('[data-bag-sort]'),skill=e.target.closest?.('[data-bag-skill]');if(sort)bagTargetSort=sort.value;if(skill)bagTargetSkill=skill.value;if(sort||skill)renderBagTargetPicker();});
   }
   const nativeSel=$('shop-target');
-  if(nativeSel&&!nativeSel.dataset.bound){
-    nativeSel.dataset.bound='1';
-    nativeSel.addEventListener('change',()=>{
-      closeBagTargetPicker();
-      renderShopTargetInfo();
-      renderBag();
-      const m=shopMonster();
-      if($('bag-target-btn'))$('bag-target-btn').innerHTML=bagTargetButtonHTML(m);
-    });
-  }
+  if(nativeSel&&!nativeSel.dataset.bound){nativeSel.dataset.bound='1';nativeSel.addEventListener('change',()=>{closeBagTargetPicker();renderShopTargetInfo();renderBag();const m=shopMonster();if($('bag-target-btn'))$('bag-target-btn').innerHTML=bagTargetButtonHTML(m);});}
 }
 
 
@@ -3559,6 +3796,7 @@ function renderShopOwnedCounts(){
   set('shop-owned-life','背包持有：'+(s.items?.life||0)+' 瓶');
   set('shop-owned-timecut','背包持有：'+(s.items?.timeCut||0)+' 瓶');
   set('shop-owned-timeinstant','背包持有：'+(s.items?.timeInstant||0)+' 瓶');
+  set('shop-owned-shiny','背包持有：'+(s.items?.shiny||0)+' 瓶');
   const colors=Array.isArray(s.items?.colors)?s.items.colors:[0,0,0,0,0,0];
   set('shop-owned-colors','背包颜色药水：'+colors.reduce((a,b)=>a+(Number(b)||0),0)+' 瓶（'+G.COLORS.map((n,i)=>n+' '+(colors[i]||0)).join(' · ')+'）');
 }
@@ -3579,7 +3817,7 @@ function renderShopTargetInfo(){
     ? name(m)+genderBadge(m)+shinyBadge(m)+favoriteBadge(m)+traitBadge(m)+autoUseBadge(m)+lifeBadge(m)
       +(m.locked?' <span class="mission-lock">已锁定</span>':'')
       +' · '+colorName(m)
-      +(m.starBoost?' · 升星药水已准备 +'+Math.round(m.starBoost*100)+'%':'')
+      +(m.starBoost?' · 升星药水已准备 +'+Math.round(m.starBoost*100)+'%':'')+(m.shinyBoost?' · 闪光药水已准备 +'+Math.round(m.shinyBoost*100)+'%':'')
       +'<div class="skill-mini">'+monsterSkillSummary(m)+'</div>'
     :'请选择一只怪物。';
 }
@@ -3623,13 +3861,14 @@ function renderBag(){
     const current=sk?(sk.name+' Lv'+extraLv(target,slot.idx)):'空技能';
     return '<button class="secondary reroll-skill-btn" data-use-reroll="'+slot.idx+'" '+(s.items.reroll?'':'disabled')+'><b>重刷 '+slot.label+'</b><small>当前：'+escapeActivity(current)+'</small></button>';
   }).join(''):'<button class="secondary" disabled>先选择怪物</button>';
-  const levelButtons=target?'<button class="secondary" data-level-skill="innate" '+(s.items.skill&&skillNum(target)<10?'':'disabled')+'>提升技能1（种族） Lv'+skillNum(target)+'</button>'+getLevelableSkillSlots(target).map(slot=>{if(slot.idx==='family'){const parts=familySkillParts(target);return '<button class="secondary" data-level-skill="family" '+(s.items.skill&&parts.length===2&&parts.some(p=>p.lv<10)?'':'disabled')+'>提升 '+slot.label+(parts.length===2?' · '+familySkillName(target):'（空）')+'</button>';}return '<button class="secondary" data-level-skill="'+slot.idx+'" '+(s.items.skill&&target.extraSkills[slot.idx]&&extraLv(target,slot.idx)<10?'':'disabled')+'>提升 '+slot.label+(target.extraSkills[slot.idx]?' Lv'+extraLv(target,slot.idx):'（空）')+'</button>';}).join(''):'<button class="secondary" disabled>先选择怪物</button>';
+  const levelButtons=target?'<button class="secondary" data-level-skill="innate" '+(s.items.skill&&skillNum(target)<10?'':'disabled')+'>提升技能1（种族）· '+escapeActivity(G.SPECIES[target.species].skill)+' Lv'+skillNum(target)+'</button>'+getLevelableSkillSlots(target).map(slot=>{if(slot.idx==='family'){const parts=familySkillParts(target);return '<button class="secondary" data-level-skill="family" '+(s.items.skill&&parts.length===1&&parts.some(p=>p.lv<10)?'':'disabled')+'>提升 '+slot.label+(parts.length===1?' · '+escapeActivity(familySkillName(target)):'（空）')+'</button>';}const sid=target.extraSkills[slot.idx],sk=sid?extraSkill(sid):null;return '<button class="secondary" data-level-skill="'+slot.idx+'" '+(s.items.skill&&sid&&extraLv(target,slot.idx)<10?'':'disabled')+'>提升 '+slot.label+(sid?' · '+escapeActivity(sk?.name||sid)+' Lv'+extraLv(target,slot.idx):'（空）')+'</button>';}).join(''):'<button class="secondary" disabled>先选择怪物</button>';
   box.innerHTML=
     G.COLORS.map((color,i)=>{const st=monsterColorStatus(target,'normal',i);return '<div class="bag-item color-item '+(st.current?'current-color':st.seen?'seen-color':'')+'"><h4>'+color+' 颜色药水 <span class="color-status">'+st.label+'</span></h4><p>持有：<span class="count">'+s.items.colors[i]+'</span></p><p>固定色板：'+color+' 永远使用同一套颜色，不再按物种改变色相。</p><div class="item-actions"><button class="secondary" data-use-color="'+i+'" '+(s.items.colors[i]&&target&&!st.current?'':'disabled')+'>'+(st.current?'当前颜色':'使用')+'</button></div></div>';}).join('')+
     SPECIAL_COLORS.map((color,i)=>{const st=monsterColorStatus(target,'special',i);return '<div class="bag-item color-item '+(st.current?'current-color':st.seen?'seen-color':'')+'"><h4>'+color.name+' 颜色药水 <span class="explore-only">探索限定</span> <span class="color-status">'+st.label+'</span></h4><p>持有：<span class="count">'+s.items.specialColors[i]+'</span></p><p>这种颜色无法通过配种自然出生。</p><div class="item-actions"><button class="secondary" data-use-special-color="'+i+'" '+(s.items.specialColors[i]&&target&&!st.current?'':'disabled')+'>'+(st.current?'当前颜色':'使用')+'</button></div></div>';}).join('')+
-    '<div class="bag-item"><h4>升星药水</h4><p>持有：<span class="count">'+s.items.star+'</span></p><p>下一次作为亲代配种时，升星概率 +20 个百分点。</p><div class="item-actions"><button class="secondary" data-use-item="star" '+(s.items.star&&target?'':'disabled')+'>使用</button></div></div>'+
+    '<div class="bag-item"><h4>升星药水</h4><p>持有：<span class="count">'+s.items.star+'</span></p><p>下一次有效升星配种 +20pp；每只最多 1 瓶，5★封顶配种不消耗。</p><div class="item-actions"><button class="secondary" data-use-item="star" '+(s.items.star&&target?'':'disabled')+'>使用</button></div></div>'+
+    '<div class="bag-item"><h4>✨ 闪光药水</h4><p>持有：<span class="count">'+(s.items.shiny||0)+'</span></p><p>目标怪物下一次作为亲代时，后代闪光率 +3 个百分点。每只最多准备 1 瓶；双亲可叠加到 +6pp。</p><div class="item-actions"><button class="secondary" data-use-item="shiny" '+((s.items.shiny||0)&&target&&!(target.shinyBoost>0)?'':'disabled')+'>准备 +3%</button></div></div>'+
     '<div class="bag-item"><h4>技能药水</h4><p>持有：<span class="count">'+s.items.skill+'</span></p><p>指定任意已有技能 +1 级，最高 Lv10。</p><div class="slot-actions">'+levelButtons+'</div></div>'+
-    '<div class="bag-item"><h4>刷技能药水</h4><p>持有：<span class="count">'+s.items.reroll+'</span></p><p>可重刷普通技能2 / 3；闪光怪物还可重刷普通技能5。家族技能4不能用刷技能药水重刷。</p>'+(target?rerollTargetSummaryHTML(target):'')+'<div class="slot-actions">'+rerollButtons+'</div></div>'+
+    '<div class="bag-item"><h4>刷技能药水</h4><p>持有：<span class="count">'+s.items.reroll+'</span></p><p>普通技能2 / 3 重刷后为 Lv1–Lv10；闪光专属技能5重刷后为 Lv5–Lv10。家族技能4不能用刷技能药水重刷。</p>'+(target?rerollTargetSummaryHTML(target):'')+'<div class="slot-actions">'+rerollButtons+'</div></div>'+
     '<div class="bag-item"><h4>❤ 生命药水</h4><p>持有：<span class="count">'+(s.items.life||0)+'</span></p><p>'+(target?'当前生命：<b>'+target.life+' / '+target.maxLife+'</b><br>'+(target.lifePotionUsed?'这只怪物已经使用过，不能再次使用。':'这只怪物还可以使用 1 次。'):'请先选择怪物。')+'</p><div class="item-actions"><button class="secondary" data-use-life '+((s.items.life||0)&&target&&!target.lifePotionUsed?'':'disabled')+'>生命 +5（每只限 1 次）</button></div></div>'+
     '<div class="bag-item"><h4>⌛ 行程压缩药水</h4><p>持有：<span class="count">'+(s.items.timeCut||0)+'</span></p><p>当前派遣剩余时间减少 50%，每次派遣限用 1 瓶。</p><p class="time-bag-note">'+(s.dispatch?(s.dispatch.timeCutUsed?'本次派遣已经使用过。':'当前有派遣，可使用。'):'目前没有进行中的派遣。')+'</p><div class="item-actions"><button class="secondary" data-use-time-cut '+((s.items.timeCut||0)&&s.dispatch&&!s.dispatch.timeCutUsed&&s.dispatch.end>Date.now()?'':'disabled')+'>剩余时间 -50%</button></div></div>'+
     '<div class="bag-item"><h4>⏱ 时跃药水</h4><p>持有：<span class="count">'+(s.items.timeInstant||0)+'</span></p><p>当前派遣立即完成计时，可以马上领取结果。</p><p class="time-bag-note">不会改变任务已经决定好的成功 / 失败。</p><div class="item-actions"><button class="secondary" data-use-time-instant '+((s.items.timeInstant||0)&&s.dispatch&&s.dispatch.end>Date.now()?'':'disabled')+'>立即完成</button></div></div>';
@@ -3640,9 +3879,9 @@ function useColorPotion(tint){
   if(s.items.colors[tint]<=0){tell('背包里没有这瓶颜色药水。');return;}
   if(!Number.isInteger(m.specialColor)&&m.tint===tint){tell(name(m)+' 已经是'+G.COLORS[tint]+'。');return;}
   s.items.colors[tint]--;
-  m.tint=tint;m.specialColor=null;
+  m.tint=tint;m.specialColor=null;m.dexColorEligible=false;
   rememberMonsterColor(m,'normal',tint);
-  s.revision++;markDex(s,m,false);dirty=true;save();render();
+  s.revision++;dirty=true;save();render();
   tell(name(m)+' 已变为'+G.COLORS[tint]+'。');
 }
 function useSpecialColorPotion(variant){
@@ -3651,12 +3890,12 @@ function useSpecialColorPotion(variant){
   if(s.items.specialColors[variant]<=0){tell('背包里没有这瓶探索限定颜色药水。');return;}
   if(m.specialColor===variant){tell(name(m)+' 已经是「'+SPECIAL_COLORS[variant].name+'」。');return;}
   s.items.specialColors[variant]--;
-  m.specialColor=variant;
+  m.specialColor=variant;m.dexColorEligible=true;
   rememberMonsterColor(m,'special',variant);
   markDex(s,m,false);s.revision++;dirty=true;save();render();
   tell(name(m)+' 已变为探索限定颜色「'+SPECIAL_COLORS[variant].name+'」。');
 }
-function useStoredItem(type){const m=shopMonster();if(!m){tell('请先选择一只怪物。');return;}if(type==='star'){if(s.items.star<=0){tell('背包里没有升星药水。');return;}if((m.starBoost||0)>=.4){tell(name(m)+' 已经储存了两瓶升星药水效果。');return;}s.items.star--;m.starBoost=(m.starBoost||0)+.2;s.revision++;dirty=true;render();save();tell(name(m)+' 的下一次配种升星概率 +20 个百分点。');}}
+function useStoredItem(type){const m=shopMonster();if(!m){tell('请先选择一只怪物。');return;}if(type==='star'){if(s.items.star<=0){tell('背包里没有升星药水。');return;}if((m.starBoost||0)>=.2){tell(name(m)+' 已经准备了 1 瓶升星药水；每只怪物最多储存 1 瓶。');return;}s.items.star--;m.starBoost=.2;s.revision++;dirty=true;render();save();tell(name(m)+' 的下一次有效升星配种概率 +20 个百分点。若较高亲代已是 5★，药水不会消耗。');return;}if(type==='shiny'){if((s.items.shiny||0)<=0){tell('背包里没有闪光药水。');return;}if((m.shinyBoost||0)>=.03){tell(name(m)+' 已经准备了 1 瓶闪光药水。');return;}s.items.shiny--;m.shinyBoost=.03;s.revision++;dirty=true;render();save();tell(name(m)+' 的下一次配种后代闪光率 +3 个百分点；若另一位亲代也准备了药水，可叠加到 +6%。');}}
 function levelSkill(slot){
   const m=shopMonster();if(!m){tell('请先选择一只怪物。');return;}
   if(s.items.skill<=0){tell('背包里没有技能药水。');return;}
@@ -3693,11 +3932,12 @@ function useRerollPotion(slotIdx){
   s.items.reroll--;
   const used=(m.extraSkills||[]).filter((x,i)=>i!==slotIdx&&x);
   m.extraSkills[slotIdx]=uniqueSkillRoll(Math.random,used);
-  m.extraSkillLv[slotIdx]=1;
+  // v169: normal slots reroll Lv1–Lv10; shiny-exclusive slot5 rerolls Lv5–Lv10.
+  m.extraSkillLv[slotIdx]=slotIdx===3?shinyBonusSkillLevel(Math.random):ordinarySkillLevel(Math.random);
   discoverSkill(m.extraSkills[slotIdx],s);
   refreshLifeCapacity(m,true);
   s.revision++;dirty=true;render();save();
-  tell(name(m)+' 的技能'+(slotIdx===3?'5':slotIdx+2)+'已刷新为「'+extraSkill(m.extraSkills[slotIdx]).name+'」Lv1。');
+  tell(name(m)+' 的技能'+(slotIdx===3?'5':slotIdx+2)+'已刷新为「'+extraSkill(m.extraSkills[slotIdx]).name+'」Lv'+m.extraSkillLv[slotIdx]+'。');
 }
 function useLifePotion(){
   const m=shopMonster();if(!m){tell('请先选择一只怪物。');return;}
@@ -3721,7 +3961,7 @@ function useTimeInstantPotion(){
   if(s.dispatch.end<=Date.now()){tell('派遣已经完成，可以直接领取。');return;}
   s.items.timeInstant--;s.dispatch.end=Date.now();s.revision++;dirty=true;render();save();tell('派遣计时已经完成，可以立即领取结果。');
 }
-function spend(amount){if(s.energy<amount){tell('灵能不足，需要 '+fmt(amount)+' 灵能。');return false;}s.energy-=amount;return true;}
+function spend(amount){if(s.energy<amount){tell('灵能不足，需要 '+fmt(amount)+' 灵能。');return false;}s.energy-=amount;playSfx('buy');return true;}
 const BREED_SKILL_WEIGHTS={
   warm_nest:90,lucky_blossom:105,thick_shell:70,stable_blood:80,
   legacy_mark:100,guardian_heart:65,swift_rest:55,shiny_breed:120,
@@ -3816,7 +4056,9 @@ function renderParentPicker(which){
     picker=$('parent-'+which+'-picker');
   if(!picker)return;
   const q=parentSearch[which]||'',
-    raw=s.monsters.filter(m=>(!other||m.gender!==other.gender||m.id===currentId)&&monsterMatchesName(m,q)),
+    skill=parentSkillFilter[which]||'',
+    eligible=s.monsters.filter(m=>(!other||m.gender!==other.gender||m.id===currentId)&&monsterMatchesName(m,q)),
+    raw=eligible.filter(m=>monsterHasSkillName(m,skill)),
     pool=sortParentPickerPool(raw,which,other),
     mode=parentSort[which]||'recommended';
 
@@ -3834,6 +4076,7 @@ function renderParentPicker(which){
         '<option value="joined-desc" '+(mode==='joined-desc'?'selected':'')+'>加入时间 · 新 → 旧</option>'+
         '<option value="joined-asc" '+(mode==='joined-asc'?'selected':'')+'>加入时间 · 旧 → 新</option>'+
       '</select>'+
+      '<select class="parent-picker-skill" data-parent-skill="'+which+'" aria-label="按技能筛选">'+skillFilterOptionsHTML(eligible,skill)+'</select>'+
     '</div>'+
     '<div class="parent-picker-grid">'+pool.map((m,index)=>
       '<button type="button" class="parent-choice '+(m.id===currentId?'selected ':'')+(m.id===otherId?'disabled ':'')+(isDispatched(m.id)?'dispatched ':'')+'" data-parent-choice="'+m.id+'" '+(m.id===otherId?'disabled':'')+'>'+
@@ -4008,23 +4251,27 @@ function renderParents(){
   const [a,b]=G.pair(s);
   for(const [label,m] of [['a',a],['b',b]]){$('portrait-'+label).innerHTML=m?sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span class="stars">'+m.gender+' · '+G.stars(m.star)+' · ❤ '+m.life+'/'+m.maxLife+(isDispatched(m.id)?' · 派遣中':'')+'</span>':'<small>等待伙伴</small>';$('parent-'+label+'-btn').innerHTML=parentButtonHTML(m);const picker=$('parent-'+label+'-picker');if(picker&&!picker.hidden)renderParentPicker(label);}
   const o=G.odds(a,b);if(!o){$('odds').innerHTML='<div class="breed-summary-head"><b>本次后代</b><span class="breed-help-hint">详细规则见玩法说明</span></div><p class="odds-note">请选择一公一母两位可用伙伴。</p>';return;}
-  const lo=naturalLifeOdds(a,b),sb=shinyBreedBonus(a,b),slb=shinyLineageBreedBonus(a,b),buildingShiny=shinyBuildingBonus(),totalShiny=Math.min(.25,.005+sb+buildingShiny+slb);
+  const lo=naturalLifeOdds(a,b),sb=shinyBreedBonus(a,b),slb=shinyLineageBreedBonus(a,b),spb=shinyPotionBreedBonus(a,b),buildingShiny=shinyBuildingBonus(s),shinyAdd=sb+buildingShiny+slb+spb;
+  const shinyByStar={};for(const st of [1,2,3,4,5])shinyByStar[st]=Math.min(.25,shinyBaseChanceByStar(st)+shinyAdd);
+  const totalShiny=[1,2,3,4,5].reduce((sum,st)=>sum+(o.starProbs?.[st]||0)*shinyByStar[st],0);
   const starRows=[1,2,3,4,5].filter(st=>(o.starProbs?.[st]||0)>.00001).map(st=>[st,(o.starProbs[st]||0)*(1-o.fail)]);
-  const starCalc='双亲 '+a.star+'★ × '+b.star+'★ → 基础星级分布，再叠加升星 / 掉星 / 稳血 / 5★保底等技能效果'+(o.starFallback>0?'；当前 5★封顶转换保底 +'+(o.starFallback*100).toFixed(1)+'pp':'')+'，最后计入 '+(o.fail*100).toFixed(1)+'% 孵化失败率。';
-  const lifeCalc='ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 1.5 + 5) = '+Math.ceil((a.maxLife+b.maxLife)/1.5+5)+'；新生天生生命最低 10，出生上限封顶 20，所以本次范围为 '+lo.min+'–'+lo.max+'。';
-  const shinyCalc='5★ 后才判定闪光：基础 0.5% + 星辉血脉 '+(sb*100).toFixed(1)+'% + 闪光祭坛 '+(buildingShiny*100).toFixed(1)+'% + 闪光血统 '+(slb*100).toFixed(1)+'% = '+(totalShiny*100).toFixed(1)+'%。';
+  const starCalc='双亲 '+a.star+'★ × '+b.star+'★ → 基础星级分布；升星加成 '+(o.starDelta*100).toFixed(1)+'pp（升星药水 '+(o.potion*100).toFixed(0)+'pp）'+(o.starFallback>0?'；5★封顶时正向升星技能 50% 转保底 +'+(o.starFallback*100).toFixed(1)+'pp':'')+'；掉星修正 '+(o.effectiveDropDelta*100).toFixed(1)+'pp'+(o.atavism>0?'；返祖 '+(o.atavism*100).toFixed(1)+'% 已直接计入最终各星概率':'')+'；最后再计入 '+(o.fail*100).toFixed(1)+'% 孵化失败率。'+(o.high>=5&&o.potion>0?' 当前较高亲代已为 5★，升星药水本次不生效且不会消耗。':'');
+  const lifeCalc=lo.lineage
+    ? '闪光血统：ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 1.5 + 5) = '+Math.ceil((a.maxLife+b.maxLife)/1.5+5)+'；最低 10，出生上限封顶 20，所以本次范围为 '+lo.min+'–'+lo.max+'。'
+    : '普通血统：ceil(('+a.maxLife+' + '+b.maxLife+') ÷ 2) + 1 = '+(Math.ceil((a.maxLife+b.maxLife)/2)+1)+'；最低 5，出生上限封顶 20，所以本次范围为 '+lo.min+'–'+lo.max+'。';
+  const shinyCalc='1★–5★ 都可闪光。基础率按星级为 0.1% / 0.2% / 0.3% / 0.4% / 0.5%；再统一叠加：星辉血脉 '+(sb*100).toFixed(1)+'% + 闪光祭坛 '+(buildingShiny*100).toFixed(1)+'% + 闪光血统 '+(slb*100).toFixed(1)+'% + 闪光药水 '+(spb*100).toFixed(1)+'%。当前各星结果：'+[1,2,3,4,5].filter(st=>(o.starProbs?.[st]||0)>0).map(st=>st+'★ '+(shinyByStar[st]*100).toFixed(1)+'%').join('、')+'；按当前星级分布加权，本次每颗蛋综合闪光率约 '+(totalShiny*100).toFixed(2)+'%。';
   const parentCost=[a,b].map(m=>{const loss=m.shiny?1:breedingParentLifeLoss(a,b);return '<span>'+escapeActivity(name(m))+' <b>-'+loss+'❤</b>'+(m.life<=loss?' <em class="life-status">将离世</em>':'')+'</span>';}).join('<span class="breed-cost-sep">·</span>');
   $('odds').innerHTML='<div class="breed-summary-head"><b>本次后代</b><span class="breed-help-hint">数字可悬停 / 点击查看计算</span></div>'+
   '<div class="breed-result-grid">'+
     '<div class="breed-result-card stars-result"><small>星级</small><div>'+starRows.map(([star,p])=>'<span class="breed-star-row"><span>'+G.stars(star)+'</span><b'+calcHoverAttrs(star+'★ 概率',starCalc)+'>'+((p*100)<1?(p*100).toFixed(1):Math.round(p*100))+'%</b></span>').join('')+(o.fail>0?'<span class="breed-star-row fail"><span>失败</span><b'+calcHoverAttrs('孵化失败',slb?'闪光血统存在，本次失败率应为 0%。':'基础孵化失败率与当前效果共同计算后为 '+(o.fail*100).toFixed(1)+'%。')+'>'+((o.fail*100)<1?(o.fail*100).toFixed(1):Math.round(o.fail*100))+'%</b></span>':'')+'</div></div>'+
     '<div class="breed-result-card"><small>天生生命</small><strong'+calcHoverAttrs('天生生命',lifeCalc)+'>❤ '+lo.min+'–'+lo.max+'</strong></div>'+
-    (((o.starProbs?.[5]||0)>0)?'<div class="breed-result-card shiny"><small>5★ 闪光</small><strong'+calcHoverAttrs('闪光率',shinyCalc)+'>✦ '+(totalShiny*100).toFixed(1)+'%</strong></div>':'')+
+    '<div class="breed-result-card shiny"><small>本次后代闪光率</small><strong'+calcHoverAttrs('闪光率',shinyCalc)+'>✦ '+(totalShiny*100).toFixed(2)+'%</strong></div>'+
   '</div>'+
   '<div class="breed-parent-cost"><small>本次亲代消耗</small>'+parentCost+'</div>'+
   breedSpeciesPreviewHTML(a,b)+breedingSkillPreview(a,b,o);
 }
 function companionParentsHTML(m){if(!m?.parents?.length)return '<div class="companion-parent-strip empty"><b>双亲</b><span>初代伙伴，没有双亲记录。</span></div>';return '<div class="companion-parent-strip"><b>双亲</b><div class="companion-parent-cards">'+m.parents.slice(0,2).map(id=>{const p=familyRecord(id);if(!p)return '<div class="companion-parent-card missing">#'+id+' · 资料缺失</div>';return '<button type="button" class="companion-parent-card" data-parent-jump="'+p.id+'">'+sprite(p.species,p.tint,p.shiny,p.specialColor)+'<span><strong>'+((p.nickname||G.SPECIES[p.species]?.name||'怪物')+' #'+p.id)+'</strong><small>'+G.stars(p.star||1)+' · '+(p.gender||'？')+' · ❤ '+(p.life??'?')+'/'+(p.maxLife??'?')+'</small></span></button>';}).join('')+'</div></div>';}
-function renderCompanion(){const m=s.monsters.find(m=>m.id===selected)||s.monsters[0];if(!m){$('companion').innerHTML='<p>草地暂时安静了。孵化已有的蛋，或领养一位新伙伴。</p>';return;}ensureMonsterSystemsMonster(m);selected=m.id;const t=G.SPECIES[m.species],away=isDispatched(m.id),sellDisabled=(!!m.rescue&&!isMissionExclusiveSpecies(m.species))||away||m.locked;$('companion').innerHTML=sprite(m.species,m.tint,m.shiny,m.specialColor)+'<div><h2>'+name(m)+' <span class="stars">'+G.stars(m.star)+'</span>'+genderBadge(m)+shinyBadge(m)+favoriteBadge(m)+traitBadge(m)+farmBadge(m)+naturalLifeBadge(m)+lifeBadge(m)+(m.locked?'<span class="shiny-badge" style="background:#c9b7bf;color:#402732;border-color:#7d4c5d">已锁定</span>':'')+dispatchReadyBadge(m)+'</h2><div class="meta">'+serialName(m)+(m.nickname?' · 昵称中':'')+' · '+t.element+'系 · '+colorName(m)+' · 第 '+(m.generation||1)+' 代'+(m.familyName?' · '+m.familyName:'')+' · ❤ '+m.life+'/'+m.maxLife+' · 技能 Lv'+skillNum(m)+'/10'+shinyText(m)+' · '+(m.parents.length?'双亲 #'+m.parents.join(' 与 #'):'最初的伙伴')+'</div>'+(m.shiny?'<p class="shiny-line">✦ 闪光怪物拥有额外的技能5（普通技能），总共可拥有 5 个技能。</p>':'')+(away?'<p class="shiny-line">✦ 这位伙伴正在派遣中，暂时不能摸摸、出售或作为亲代。</p>':'')+(m.locked?'<p class="shiny-line">✦ 已锁定：防止误出售与误派遣。</p>':'')+'</div>'+companionParentsHTML(m)+'<div class="trait-line"><b>个性 · '+traitInfo(m).name+'</b>：'+traitInfo(m).desc+'</div><div class="stat-list">'+G.stats(m).map((n,i)=>'<div><span>'+['体质','攻击','防御','速度','幸运'][i]+'</span><b>'+n+'</b></div>').join('')+'</div>'+skillListHTML(m)+'<div class="auto-priority-note">自动优先：自动生蛋 / 自动派遣会先选它；数量不足时会自动补其他合适怪物。</div><div class="companion-actions"><button id="rename-monster" class="secondary">改名</button><button id="family-monster" class="secondary">家谱</button><button id="toggle-favorite" class="secondary '+(m.favorite?'active':'')+'">'+(m.favorite?'取消最爱':'设为最爱')+'</button><button id="toggle-lock" class="secondary">'+(m.locked?'解除锁定':'锁定怪物')+'</button><button id="toggle-farm" class="secondary '+(isInFarm(m.id)?'active':'')+'">'+(isInFarm(m.id)?'移回怪物盒':'放入生产牧场')+'</button><button id="toggle-auto-use" class="secondary '+(m.autoUse?'active':'')+'">'+(m.autoUse?'取消自动优先':'设为自动优先')+'</button><button id="sell-monster" class="secondary" '+(sellDisabled?'disabled':'')+'>'+(away?'派遣中暂不可出售':m.locked?'已锁定，暂不可出售':(m.rescue&&!isMissionExclusiveSpecies(m.species))?'救助伙伴不可出售':'出售 · '+fmt(G.salePrice(m))+' 灵能')+'</button></div>';$('family-monster').onclick=()=>renderFamily(m);$('rename-monster').onclick=()=>{const next=prompt('给这只怪物起个名字吧（留空可恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);s.revision++;dirty=true;render();save();tell(m.nickname?serialName(m)+' 现在叫「'+m.nickname+'」':'已恢复默认名字。');};$('toggle-favorite').onclick=()=>{m.favorite=!m.favorite;s.revision++;dirty=true;render();save();tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已从我的最爱移除。'));};$('toggle-lock').onclick=()=>{m.locked=!m.locked;s.revision++;dirty=true;render();save();tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));};$('toggle-farm').onclick=()=>setFarmAssignment(m.id,!isInFarm(m.id));$('toggle-auto-use').onclick=()=>{m.autoUse=!m.autoUse;s.revision++;dirty=true;render();save();tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));};$('sell-monster').onclick=()=>{settle();if(!s.monsters.some(x=>x.id===m.id)){dirty=true;render();return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、'+m.life+' / '+m.maxLife+' 生命），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。已产出的蛋会保留。';$('sale-dialog').showModal();};$('companion').querySelectorAll('[data-parent-jump]').forEach(btn=>btn.onclick=()=>{const p=s.monsters.find(x=>x.id===Number(btn.dataset.parentJump));if(p){selected=p.id;dirty=true;render();}else renderFamily(m);});}
+function renderCompanion(){const m=s.monsters.find(m=>m.id===selected)||s.monsters[0];if(!m){$('companion').innerHTML='<p>草地暂时安静了。孵化已有的蛋，或领养一位新伙伴。</p>';return;}ensureMonsterSystemsMonster(m);selected=m.id;const t=G.SPECIES[m.species],away=isDispatched(m.id),sellDisabled=(!!m.rescue&&!isMissionExclusiveSpecies(m.species))||away||m.locked;$('companion').innerHTML=sprite(m.species,m.tint,m.shiny,m.specialColor)+'<div><h2>'+name(m)+' <span class="stars">'+G.stars(m.star)+'</span>'+genderBadge(m)+shinyBadge(m)+favoriteBadge(m)+traitBadge(m)+farmBadge(m)+naturalLifeBadge(m)+lifeBadge(m)+(m.locked?'<span class="shiny-badge" style="background:#c9b7bf;color:#402732;border-color:#7d4c5d">已锁定</span>':'')+dispatchReadyBadge(m)+'</h2><div class="meta">'+serialName(m)+(m.nickname?' · 昵称中':'')+' · '+t.element+'系 · '+colorName(m)+' · 第 '+(m.generation||1)+' 代'+(m.familyName?' · '+m.familyName:'')+' · ❤ '+m.life+'/'+m.maxLife+' · 技能 Lv'+skillNum(m)+'/10'+shinyText(m)+' · '+(m.parents.length?'双亲 #'+m.parents.join(' 与 #'):'最初的伙伴')+'</div>'+(m.shiny?'<p class="shiny-line">✦ 闪光怪物拥有额外的技能5（闪光专属），该槽新获得/重刷等级为 Lv5–Lv10，总共可拥有 5 个技能。</p>':'')+(away?'<p class="shiny-line">✦ 这位伙伴正在派遣中，暂时不能摸摸、出售或作为亲代。</p>':'')+(m.locked?'<p class="shiny-line">✦ 已锁定：自动生蛋、自动派遣、自动补牧场都不会选择它；仍可由你手动指定使用，也不能误出售。</p>':'')+'</div>'+companionParentsHTML(m)+'<div class="trait-line"><b>个性 · '+traitInfo(m).name+'</b>：'+traitInfo(m).desc+'</div><div class="stat-list">'+G.stats(m).map((n,i)=>'<div><span>'+['体质','攻击','防御','速度','幸运'][i]+'</span><b>'+n+'</b></div>').join('')+'</div>'+skillListHTML(m)+'<div class="auto-priority-note">自动优先：自动生蛋 / 自动派遣会先选它；数量不足时会自动补其他合适怪物。</div><div class="companion-actions"><button id="rename-monster" class="secondary">改名</button><button id="family-monster" class="secondary">家谱</button><button id="toggle-favorite" class="secondary '+(m.favorite?'active':'')+'">'+(m.favorite?'取消最爱':'设为最爱')+'</button><button id="toggle-lock" class="secondary">'+(m.locked?'解除锁定':'锁定怪物')+'</button><button id="toggle-farm" class="secondary '+(isInFarm(m.id)?'active':'')+'">'+(isInFarm(m.id)?'移回怪物盒':'放入生产牧场')+'</button><button id="toggle-auto-use" class="secondary '+(m.autoUse?'active':'')+'">'+(m.autoUse?'取消自动优先':'设为自动优先')+'</button><button id="sell-monster" class="secondary" '+(sellDisabled?'disabled':'')+'>'+(away?'派遣中暂不可出售':m.locked?'已锁定，暂不可出售':(m.rescue&&!isMissionExclusiveSpecies(m.species))?'救助伙伴不可出售':'出售 · '+fmt(G.salePrice(m))+' 灵能')+'</button></div>';$('family-monster').onclick=()=>renderFamily(m);$('rename-monster').onclick=()=>{const next=prompt('给这只怪物起个名字吧（留空可恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);s.revision++;dirty=true;render();save();tell(m.nickname?serialName(m)+' 现在叫「'+m.nickname+'」':'已恢复默认名字。');};$('toggle-favorite').onclick=()=>{m.favorite=!m.favorite;s.revision++;dirty=true;render();save();tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已从我的最爱移除。'));};$('toggle-lock').onclick=()=>{m.locked=!m.locked;s.revision++;dirty=true;render();save();tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));};$('toggle-farm').onclick=()=>setFarmAssignment(m.id,!isInFarm(m.id));$('toggle-auto-use').onclick=()=>{m.autoUse=!m.autoUse;s.revision++;dirty=true;render();save();tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));};$('sell-monster').onclick=()=>{settle();if(!s.monsters.some(x=>x.id===m.id)){dirty=true;render();return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、'+m.life+' / '+m.maxLife+' 生命），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。已产出的蛋会保留。';$('sale-dialog').showModal();};$('companion').querySelectorAll('[data-parent-jump]').forEach(btn=>btn.onclick=()=>{const p=s.monsters.find(x=>x.id===Number(btn.dataset.parentJump));if(p){selected=p.id;dirty=true;render();}else renderFamily(m);});}
 function renderRosterQuick(){const box=$('roster-quick');if(!box)return;const m=s.monsters.find(x=>x.id===selected)||s.monsters[0];if(!m){box.innerHTML='<p>这里还没有怪物。</p>';return;}ensureMonsterSystemsMonster(m);box.innerHTML=sprite(m.species,m.tint,m.shiny,m.specialColor)+'<div><h3>'+name(m)+' '+G.stars(m.star)+genderBadge(m)+shinyBadge(m)+favoriteBadge(m)+traitBadge(m)+autoUseBadge(m)+farmBadge(m)+naturalLifeBadge(m)+lifeBadge(m)+dispatchReadyBadge(m)+'</h3><p>'+serialName(m)+' · '+m.gender+' · '+m.life+' / '+m.maxLife+' 生命 · '+colorName(m)+'</p><p class="roster-quick-skills">'+monsterSkillSummary(m)+'</p></div><div class="roster-quick-actions"><button class="secondary" data-quick="favorite">'+(m.favorite?'取消最爱':'最爱')+'</button><button class="secondary" data-quick="lock">'+(m.locked?'解锁':'锁定')+'</button><button class="secondary" data-quick="farm">'+(isInFarm(m.id)?'移回怪物盒':'放入生产牧场')+'</button><button class="secondary" data-quick="autoUse">'+(m.autoUse?'取消自动优先':'设为自动优先')+'</button><button class="secondary" data-quick="rename">改名</button><button class="secondary" data-quick="family">家谱</button><button class="secondary" data-quick="parentA">设为亲代 A</button><button class="secondary" data-quick="parentB">设为亲代 B</button><button class="secondary" data-quick="dispatch" '+(canDispatchMonster(m)?'':'disabled')+'>派遣</button><button class="secondary" data-quick="sell" '+(canBulkSell(m)?'':'disabled')+'>出售 · '+fmt(G.salePrice(m))+'</button></div>';}
 
 function ensureSkillDex(state=s){
@@ -4037,11 +4284,14 @@ function ensureSkillDex(state=s){
       if(extraSkill(id))state.skillDex.extra[id]=true;
     }
   }
-  if(state.egg?.child){
-    ensureMonsterSystemsMonster(state.egg.child);
-    for(const id of (state.egg.child.extraSkills||[]).filter(Boolean)){
+  // v169: skills already present in either incubator slot, twin eggs, or the waiting queue count as discovered.
+  for(const m of eggMonsters(state)){
+    ensureMonsterSystemsMonster(m);
+    for(const id of (m.extraSkills||[]).filter(Boolean)){
       if(extraSkill(id))state.skillDex.extra[id]=true;
     }
+    const parts=m.familySkill?.parts||[];
+    for(const p of parts){if(p?.id&&extraSkill(p.id))state.skillDex.extra[p.id]=true;}
   }
 }
 function discoverSkill(id,state=s){
@@ -4201,6 +4451,20 @@ function runIntegrityAudit(){
   if(!G.valid(s))issues.push('Current save failed G.valid().');
   if((s.monsters||[]).length>s.capacity)issues.push('Monster count exceeds box capacity.');
 
+  const eggList=[s.egg,s.egg2,...(s.eggQueue||[])].filter(Boolean);
+  const eggMons=eggMonsters(s);
+  if(totalQueuedEggs(s)>eggTotalMax(s))issues.push('Egg capacity exceeded: '+totalQueuedEggs(s)+' / '+eggTotalMax(s));
+  const liveIds=new Set((s.monsters||[]).map(m=>m.id));
+  const eggIds=eggMons.map(m=>m.id);
+  if(new Set(eggIds).size!==eggIds.length)issues.push('Duplicate monster id inside incubators/queue.');
+  for(const id of eggIds)if(liveIds.has(id))issues.push('Egg monster id already exists in live roster: #'+id);
+  for(const [i,e] of eggList.entries()){
+    if(!e?.child)issues.push('Egg entry '+i+' has no child.');
+    if((e===s.egg||e===s.egg2)&&(!Number.isFinite(Number(e.start))||!Number.isFinite(Number(e.ready))||Number(e.ready)<=Number(e.start)))issues.push('Active incubator has invalid timing.');
+  }
+  const activeFamilies=activeFamilyNames(s);
+  for(const fam of Object.keys(s.familySkillRegistry||{}))if(!activeFamilies.has(fam))issues.push('Stale family registry entry: '+fam);
+
   const missionIds=DISPATCH_MISSIONS.map(m=>m.id);
   if(new Set(missionIds).size!==missionIds.length)issues.push('Duplicate dispatch mission ids.');
 
@@ -4224,34 +4488,38 @@ function runIntegrityAudit(){
   else console.info('[Qinster integrity audit] OK');
   return issues;
 }
-function render(){bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';for(const id of ['buy-time-cut','buy-time-instant']){const b=$(id);if(b)b.disabled=rl.level<3;}document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
-const egg=s.egg,ready=egg&&Number(egg.ready)<=Date.now();
-if(egg){
-  const twinStage=Number(egg.twinStage)||0;
-  $('nest').innerHTML=(twinStage?'<div class="twin-egg-notice">✦ 双蛋 · 第 '+twinStage+' 颗 / 2</div>':'')+eggArt(egg.child);
-  $('nest').className='nest'+(ready?' ready':'')+(twinStage?' twin-ready':'')+(egg.child?.shiny?' shiny-nest':'');
-  const remain=Math.max(0,Math.ceil((Number(egg.ready)-Date.now())/1000));
-  $('egg-status').textContent=(twinStage?'双蛋第 '+twinStage+' 颗 · ':'')+(ready?'可以破壳':remain+' 秒后孵化')+' · 总蛋数 '+totalQueuedEggs(s)+' / 11';
-  $('nest-info').innerHTML=(twinStage?'<b>双潮卵息已触发：这一窝共有 2 颗蛋。</b><br>':'')+'双亲 #'+egg.child.parents.join(' 与 #')+'<br>当前蛋种：'+G.stars(egg.child.star)+' '+G.COLORS[egg.child.tint]+' · '+G.SPECIES[egg.child.species].name+(egg.child.shiny?' · <b>✦ 闪光蛋</b>':'')+'<br>只有当前第 1 颗蛋会计时；等候蛋不会提前消耗孵化时间。';
-  $('progress').value=Math.min(1,Math.max(0,(Date.now()-Number(egg.start))/(Number(egg.ready)-Number(egg.start))));
-}else{
-  $('nest').className='nest empty';$('nest').textContent='✧ 温暖的巢穴，等待新生命';$('egg-status').textContent='等待怪物蛋 · 0 / 11';$('progress').value=0;
-  $('nest-info').textContent=s.autoBreed?'自动配种已开启：'+(why||'准备迎接下一颗蛋。'):'选好两位伙伴，开始配种。';
+function render(){bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';for(const id of ['buy-time-cut','buy-time-instant']){const b=$(id);if(b)b.disabled=rl.level<3;}document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('shiny-potion-price'))$('shiny-potion-price').textContent=fmt(SHOP_PRICES.shiny)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg||!!s.egg2;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
+const totalEggs=totalQueuedEggs(s),totalMax=eggTotalMax(s);
+function renderIncubatorSlot(slot){
+  const egg=slot===2?s.egg2:s.egg;
+  const nestEl=$(slot===2?'nest-2':'nest'),statusEl=$(slot===2?'egg-status-2':'egg-status'),progressEl=$(slot===2?'progress-2':'progress'),infoEl=$(slot===2?'nest-info-2':'nest-info'),hatchEl=$(slot===2?'hatch-2':'hatch');
+  if(!nestEl||!statusEl||!progressEl||!infoEl||!hatchEl)return;
+  const unlocked=slot===1||hatchSlotCount(s)>=2;
+  const shell=$(slot===2?'incubator-slot-2':'incubator-slot-1');if(shell)shell.hidden=!unlocked;
+  if(!unlocked)return;
+  const ready=egg&&Number(egg.ready)<=Date.now();
+  if(egg){
+    const twinStage=Number(egg.twinStage)||0;
+    nestEl.innerHTML=(twinStage?'<div class="twin-egg-notice">✦ 双蛋 · 第 '+twinStage+' 颗 / 2</div>':'')+eggArt(egg.child);
+    nestEl.className='nest'+(ready?' ready':'')+(twinStage?' twin-ready':'')+(egg.child?.shiny?' shiny-nest':'');
+    const remain=Math.max(0,Math.ceil((Number(egg.ready)-Date.now())/1000));
+    statusEl.textContent=(slot===2?'栏位 2 · ':'')+(twinStage?'双蛋第 '+twinStage+' 颗 · ':'')+(ready?'可以破壳':remain+' 秒后孵化');
+    infoEl.innerHTML=(twinStage?'<b>双潮卵息已触发：这一窝共有 2 颗蛋。</b><br>':'')+'双亲 #'+egg.child.parents.join(' 与 #')+'<br>'+G.stars(egg.child.star)+' '+G.SPECIES[egg.child.species].name+(egg.child.shiny?' · <b>✦ 闪光蛋</b>':'');
+    const den=Math.max(1,Number(egg.ready)-Number(egg.start));progressEl.value=Math.min(1,Math.max(0,(Date.now()-Number(egg.start))/den));
+  }else{
+    nestEl.className='nest empty';nestEl.textContent='✧ 等待下一颗蛋';statusEl.textContent='空闲';progressEl.value=0;infoEl.textContent='等候列表中的下一颗蛋会自动进入这个栏位。';
+  }
+  hatchEl.hidden=!ready;hatchEl.disabled=s.monsters.length>=s.capacity;
 }
+renderIncubatorSlot(1);renderIncubatorSlot(2);
+if($('egg-total-status'))$('egg-total-status').textContent='总蛋数 '+totalEggs+' / '+totalMax;
 const qList=$('egg-queue-list'),qCount=$('egg-queue-count'),qSummary=$('egg-queue-summary');
-if(qSummary)qSummary.textContent='🥚 '+totalQueuedEggs(s)+' / 11';
+if(qSummary)qSummary.textContent='🥚 '+totalEggs+' / '+totalMax;
 if(qList){
   const queue=(s.eggQueue||[]);
-  if(qCount)qCount.textContent=queuedEggCount(s)+' / 10';
-  qList.innerHTML=queue.length?queue.map((qe,i)=>{
-    const child=qe.child;
-    return '<div class="egg-queue-slot '+(child?.shiny?'queue-shiny':'')+'" title="第 '+(i+1)+' 位等候 · '+G.SPECIES[child.species].name+'">'
-      +'<span class="queue-number">'+(i+1)+'</span>'+eggArt(child,{compact:true,labels:false})
-      +'<small>'+G.stars(child.star)+' '+G.SPECIES[child.species].name+(child.shiny?' ✦':'')+'</small>'
-      +(qe.twinChild?'<em>+ 双蛋</em>':'')+'</div>';
-  }).join(''):'<div class="egg-queue-empty">暂无等候蛋。可以继续生蛋，最多排 10 颗。</div>';
+  if(qCount){const activeUnits=eggUnits(s.egg)+eggUnits(s.egg2);qCount.textContent=queuedEggCount(s)+' / '+Math.max(0,eggTotalMax(s)-activeUnits);}
+  qList.innerHTML=queue.length?queue.map((qe,i)=>{const child=qe.child;return '<div class="egg-queue-slot '+(child?.shiny?'queue-shiny':'')+'" title="第 '+(i+1)+' 位等候 · '+G.SPECIES[child.species].name+'"><span class="queue-number">'+(i+1)+'</span>'+eggArt(child,{compact:true,labels:false})+'<small>'+G.stars(child.star)+' '+G.SPECIES[child.species].name+(child.shiny?' ✦':'')+'</small>'+(qe.twinChild?'<em>+ 双蛋</em>':'')+'</div>';}).join(''):'<div class="egg-queue-empty">暂无等候蛋。总蛋数最多 11 颗；第二孵化栏只增加同时孵化数量，不增加总容量。</div>';
 }
-$('hatch').hidden=!ready;$('hatch').disabled=s.monsters.length>=s.capacity;
 }
 function renderMemorial(){renderActivityLog();}
 
@@ -4293,7 +4561,7 @@ function renderDex(){
     const shinyColorSeen=DEX_COLORS.filter((_,ci)=>!!s.dex.shinyCombos?.[i+'-'+ci]).length;
     const best=currentList.length?Math.max(...currentList.map(m=>m.star)):0;
     const shinyEggKnown=Object.keys(s.dex.shinyCombos||{}).some(k=>Number(k.split('-')[0])===i);
-    const eggPreview=unlocked?('<div class="dex-egg-preview"><b>蛋型图鉴</b><div class="dex-egg-pair">'+eggArt({species:i,tint:0,star:Math.max(1,best||1),shiny:false},{compact:true,labels:false})+(shinyEggKnown?eggArt({species:i,tint:0,star:5,shiny:true},{compact:true,labels:false}):'<span class="dex-shiny-egg-locked">✦ 闪光蛋未发现</span>')+'</div><small>每个怪物品种都有独立蛋壳纹样；闪光蛋会持续发光。</small></div>'):'<div class="dex-egg-preview locked"><b>蛋型图鉴</b><span class="unknown-egg">?</span><small>发现这个品种后解锁蛋型。</small></div>';
+    const eggPreview=unlocked?('<div class="dex-egg-preview"><b>蛋型图鉴</b><div class="dex-egg-pair">'+eggArt({species:i,tint:0,star:Math.max(1,best||1),shiny:false},{compact:true,labels:false})+(shinyEggKnown?eggArt({species:i,tint:0,star:Math.max(1,best||1),shiny:true},{compact:true,labels:false}):'<span class="dex-shiny-egg-locked">✦ 闪光蛋未发现</span>')+'</div><small>每个怪物品种都有独立蛋壳纹样；闪光蛋会持续发光。</small></div>'):'<div class="dex-egg-preview locked"><b>蛋型图鉴</b><span class="unknown-egg">?</span><small>发现这个品种后解锁蛋型。</small></div>';
 
     const swatches=DEX_COLORS.map((c,ci)=>{
       const has=!!s.dex.combos[i+'-'+ci];
@@ -4330,7 +4598,7 @@ function renderDex(){
     +'<div class="dex-stat shiny-dex-stat"><small>✦ 闪光组合</small><strong>'+seenShinyCombos+' / '+comboTotal+'</strong><em>每个品种 × 每种颜色独立解锁</em></div>'
     +'<div class="dex-stat"><small>当前持有怪物</small><strong>'+s.monsters.length+'</strong><em>Log记录 '+s.deaths+' 位</em></div>'
     +'</div>'
-    +'<div class="dex-note">普通与闪光图鉴分开记录。只有真正出现过「该品种 + 该颜色」的闪光怪物，才会点亮对应的闪光颜色格；换颜色药水后也会记录新的闪光颜色组合。</div>'
+    +'<div class="dex-note">普通与闪光图鉴分开记录。只有真正出现过「该品种 + 该颜色」的闪光怪物，才会点亮对应的闪光颜色格；普通颜色药水只改变外观，不解锁颜色图鉴；配种出生或派遣带回会解锁。探索限定颜色药水属于例外，使用后可以解锁对应限定颜色。</div>'
     +'<div class="dex-board">'+colorBoard+'</div><div class="dex-species-grid">'+speciesCards+'</div>';
 }
 $('close-family').onclick=()=>$('family-dialog').close();$('cancel-sale').onclick=()=>$('sale-dialog').close();$('confirm-sale').onclick=()=>{settle();const selling=s.monsters.find(m=>m.id===sellTarget);if(selling)archiveMonster(selling,s);const result=G.sell(s,sellTarget);$('sale-dialog').close();if(result){safeFamilyRegistry(s);dirty=true;tell(name(result.monster)+' 已出售，获得 '+fmt(result.price)+' 灵能。');render();save();}else tell('这位伙伴已无法出售。');};
@@ -4428,7 +4696,7 @@ $('parent-a-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('a');};
 $('parent-b-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('b');};
 $('parent-a-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('a',id);};
 $('parent-b-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('b',id);};
-document.addEventListener('input',e=>{const q=e.target.closest?.('[data-parent-search]');if(!q)return;const which=q.dataset.parentSearch;parentSearch[which]=q.value;renderParentPicker(which);const next=$('parent-'+which+'-picker').querySelector('[data-parent-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-parent-sort]');if(!sel)return;const which=sel.dataset.parentSort;parentSort[which]=sel.value;renderParentPicker(which);});document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
+document.addEventListener('input',e=>{const q=e.target.closest?.('[data-parent-search]');if(!q)return;const which=q.dataset.parentSearch;parentSearch[which]=q.value;renderParentPicker(which);const next=$('parent-'+which+'-picker').querySelector('[data-parent-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-parent-sort]'),skillSel=e.target.closest?.('[data-parent-skill]');if(sel){const which=sel.dataset.parentSort;parentSort[which]=sel.value;renderParentPicker(which);return;}if(skillSel){const which=skillSel.dataset.parentSkill;parentSkillFilter[which]=skillSel.value;renderParentPicker(which);}});document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
 $('breed').onclick=()=>{manualBreedAttempt();};
 $('auto-breed').onchange=e=>{settle();s.autoBreed=e.target.checked;if(s.autoBreed){s.manualBreedRepeat=false;s.manualBreedPairIds=[];runOnlineAutomation(true);}tell(s.autoBreed?'智能生蛋连发已开启：每轮都会重新选择双亲。':'智能生蛋连发已关闭。');dirty=true;render();save();};$('auto-breed-priority').onchange=e=>{s.autoBreedPriority=e.target.value==='skill'?'skill':'star';s.revision++;dirty=true;save();render();if(s.autoBreed)runOnlineAutomation(true);tell('智能生蛋已切换为「'+(s.autoBreedPriority==='star'?'高星优先':'配种技能优先')+'」。');};
 $('manual-breed-repeat').onchange=e=>{
@@ -4465,7 +4733,7 @@ $('manual-breed-repeat').onchange=e=>{
     stopManualBreedRepeat('你手动关闭了连发');
   }
   dirty=true;render();save();
-};$('auto-hatch').onchange=e=>{settle();s.autoHatch=e.target.checked;settle();render();save();};$('hatch').onclick=()=>{settle();if(!s.egg){tell('孵化巢里目前没有怪物蛋。');render();return;}if(s.egg.ready>Date.now()){tell('怪物蛋还没有孵化完成。');render();return;}if(s.monsters.length>=s.capacity){tell('牧场已满，先扩建或腾出位置再破壳。');render();return;}const m=G.hatch(s,Date.now());if(m){births([m]);tell(name(m)+' 已经成功破壳！');}else tell('这颗蛋没有成功孵化。');dirty=true;render();save();};$('motion').onclick=()=>{s.paused=!s.paused;render();save();};$('activity-list').onclick=e=>{const link=e.target.closest('[data-log-monster]');if(link)goToLogMonster(Number(link.dataset.logMonster));};$('roster').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;const id=Number(b.dataset.id);if(bulkSellMode){const m=s.monsters.find(x=>x.id===id);if(!canBulkSell(m)){tell('这只怪物当前不能批量出售。');return;}if(bulkSellSelected.has(id))bulkSellSelected.delete(id);else bulkSellSelected.add(id);renderRoster();return;}selected=id;talk(selected,'我在这里！');dirty=true;render();};$('roster-quick').onclick=e=>{const b=e.target.closest('[data-quick]');if(!b)return;const m=s.monsters.find(x=>x.id===selected);if(!m)return;const act=b.dataset.quick;if(act==='favorite'){m.favorite=!m.favorite;tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已取消最爱。'));}else if(act==='lock'){m.locked=!m.locked;tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));}else if(act==='autoUse'){m.autoUse=!m.autoUse;tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));}else if(act==='rename'){const next=prompt('给这只怪物起个名字吧（留空恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);}else if(act==='family'){renderFamily(m);return;}else if(act==='farm'){setFarmAssignment(m.id,!isInFarm(m.id));return;}else if(act==='parentA'){if(s.parentB===m.id){tell('它已经是亲代 B。');return;}s.parentA=m.id;if(s.manualBreedRepeat){const p=G.pair(s);if(p[0]&&p[1]&&p[0].gender!==p[1].gender)s.manualBreedPairIds=[p[0].id,p[1].id];}tell(name(m)+' 已设为亲代 A。');}else if(act==='parentB'){if(s.parentA===m.id){tell('它已经是亲代 A。');return;}s.parentB=m.id;if(s.manualBreedRepeat){const p=G.pair(s);if(p[0]&&p[1]&&p[0].gender!==p[1].gender)s.manualBreedPairIds=[p[0].id,p[1].id];}tell(name(m)+' 已设为亲代 B。');}else if(act==='dispatch'){dispatchSelected=m.id;if(!dispatchTeamSelected.includes(m.id))dispatchTeamSelected=[m.id];setPage('dispatch');dirty=true;render();}else if(act==='sell'){if(!canBulkSell(m)){tell('这只怪物当前不能出售。');return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、❤ '+m.life+'/'+m.maxLife+'），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。';$('sale-dialog').showModal();return;}s.revision++;dirty=true;render();save();};$('bulk-select-toggle').onclick=()=>{bulkSellMode=true;bulkSellSelected.clear();renderRoster();};
+};$('auto-hatch').onchange=e=>{settle();s.autoHatch=e.target.checked;settle();render();save();};$('hatch').onclick=()=>{settle();if(!s.egg){tell('孵化巢里目前没有怪物蛋。');render();return;}if(s.egg.ready>Date.now()){tell('怪物蛋还没有孵化完成。');render();return;}if(s.monsters.length>=s.capacity){tell('牧场已满，先扩建或腾出位置再破壳。');render();return;}const m=G.hatch(s,Date.now());if(m){births([m]);tell(name(m)+' 已经成功破壳！');}else tell('这颗蛋没有成功孵化。');dirty=true;render();save();};if($('hatch-2'))$('hatch-2').onclick=()=>{settle();if(!s.egg2){tell('第二孵化栏目前没有怪物蛋。');render();return;}if(s.egg2.ready>Date.now()){tell('第二颗怪物蛋还没有孵化完成。');render();return;}if(s.monsters.length>=s.capacity){tell('牧场已满，先扩建或腾出位置再破壳。');render();return;}const m=G.hatchSecondary(s,Date.now());if(m){births([m]);tell(name(m)+' 已经成功破壳！');}else tell('这颗蛋没有成功孵化。');dirty=true;render();save();};$('motion').onclick=()=>{s.paused=!s.paused;render();save();};$('activity-list').onclick=e=>{const link=e.target.closest('[data-log-monster]');if(link)goToLogMonster(Number(link.dataset.logMonster));};$('roster').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;const id=Number(b.dataset.id);if(bulkSellMode){const m=s.monsters.find(x=>x.id===id);if(!canBulkSell(m)){tell('这只怪物当前不能批量出售。');return;}if(bulkSellSelected.has(id))bulkSellSelected.delete(id);else bulkSellSelected.add(id);renderRoster();return;}selected=id;talk(selected,'我在这里！');dirty=true;render();};$('roster-quick').onclick=e=>{const b=e.target.closest('[data-quick]');if(!b)return;const m=s.monsters.find(x=>x.id===selected);if(!m)return;const act=b.dataset.quick;if(act==='favorite'){m.favorite=!m.favorite;tell(name(m)+(m.favorite?' 已加入我的最爱。':' 已取消最爱。'));}else if(act==='lock'){m.locked=!m.locked;tell(name(m)+(m.locked?' 已锁定。':' 已解除锁定。'));}else if(act==='autoUse'){m.autoUse=!m.autoUse;tell(name(m)+(m.autoUse?' 已设为自动优先。':' 已取消自动优先。'));}else if(act==='rename'){const next=prompt('给这只怪物起个名字吧（留空恢复默认名）',m.nickname||'');if(next===null)return;m.nickname=next.trim().slice(0,16);}else if(act==='family'){renderFamily(m);return;}else if(act==='farm'){setFarmAssignment(m.id,!isInFarm(m.id));return;}else if(act==='parentA'){if(s.parentB===m.id){tell('它已经是亲代 B。');return;}s.parentA=m.id;if(s.manualBreedRepeat){const p=G.pair(s);if(p[0]&&p[1]&&p[0].gender!==p[1].gender)s.manualBreedPairIds=[p[0].id,p[1].id];}tell(name(m)+' 已设为亲代 A。');}else if(act==='parentB'){if(s.parentA===m.id){tell('它已经是亲代 A。');return;}s.parentB=m.id;if(s.manualBreedRepeat){const p=G.pair(s);if(p[0]&&p[1]&&p[0].gender!==p[1].gender)s.manualBreedPairIds=[p[0].id,p[1].id];}tell(name(m)+' 已设为亲代 B。');}else if(act==='dispatch'){dispatchSelected=m.id;if(!dispatchTeamSelected.includes(m.id))dispatchTeamSelected=[m.id];setPage('dispatch');dirty=true;render();}else if(act==='sell'){if(!canBulkSell(m)){tell('这只怪物当前不能出售。');return;}sellTarget=m.id;$('sale-info').textContent='出售 '+name(m)+(m.shiny?'（闪光）':'')+'（'+m.star+' 星、❤ '+m.life+'/'+m.maxLife+'），获得 '+fmt(G.salePrice(m))+' 灵能。怪物将离开家园，无法撤回。';$('sale-dialog').showModal();return;}s.revision++;dirty=true;render();save();};$('bulk-select-toggle').onclick=()=>{bulkSellMode=true;bulkSellSelected.clear();renderRoster();};
 $('bulk-select-all').onclick=()=>{bulkSellSelected.clear();for(const m of s.monsters)if(canBulkSell(m))bulkSellSelected.add(m.id);renderRoster();};
 $('bulk-select-filtered').onclick=()=>{const list=getFilteredSellableMonsters();bulkSellSelected.clear();for(const m of list)bulkSellSelected.add(m.id);renderRoster();tell(list.length?'已勾选当前技能筛选下的 '+list.length+' 只怪物。':'当前技能筛选下没有可出售怪物。');};
 $('cancel-bulk-sale').onclick=()=>{$('bulk-sale-dialog').close();pendingBulkSaleIds=[];};
@@ -4511,7 +4779,7 @@ $('back-farm').onclick=()=>{setPage('farm');};$('back-from-bag').onclick=()=>{se
 $('back-from-dex').onclick=()=>{setPage('farm');};
 $('back-from-skills').onclick=()=>{setPage('farm');};
 document.querySelector('.brand').onclick=e=>{e.preventDefault();setPage('farm');};
-$('smart-fill-farm').onclick=()=>smartFillFarm();$('buy-building-energy').onclick=()=>buyBuilding('energy');$('buy-building-hatch').onclick=()=>buyBuilding('hatch');$('buy-building-shiny').onclick=()=>buyBuilding('shiny');$('buy-building-item').onclick=()=>buyBuilding('item');if($('buy-building-breed-rest'))$('buy-building-breed-rest').onclick=()=>buyBuilding('breedRest');$('auto-fill-farm').onchange=e=>{s.autoFillFarm=e.target.checked;if(s.autoFillFarm)autoManageFarm();s.revision++;dirty=true;render();save();tell(s.autoFillFarm?'自动补满已开启：只补空位，不会替换你手动选择的怪物。':'自动补满已关闭：农场完全由你手动安排。');};$('buy-farm-expand').onclick=()=>buyFarmExpansion();$('buy-capacity').onclick=()=>{
+$('smart-fill-farm').onclick=()=>smartFillFarm();$('buy-building-energy').onclick=()=>buyBuilding('energy');$('buy-building-hatch').onclick=()=>buyBuilding('hatch');$('buy-building-shiny').onclick=()=>buyBuilding('shiny');$('buy-building-item').onclick=()=>buyBuilding('item');if($('buy-building-breed-rest'))$('buy-building-breed-rest').onclick=()=>buyBuilding('breedRest');if($('buy-second-hatch-slot'))$('buy-second-hatch-slot').onclick=()=>buySecondHatchSlot();$('auto-fill-farm').onchange=e=>{s.autoFillFarm=e.target.checked;if(s.autoFillFarm)autoManageFarm();s.revision++;dirty=true;render();save();tell(s.autoFillFarm?'自动补满已开启：只补空位，不会替换你手动选择的怪物。':'自动补满已关闭：农场完全由你手动安排。');};$('buy-farm-expand').onclick=()=>buyFarmExpansion();$('buy-capacity').onclick=()=>{
   if(s.capacity>=500){tell('怪物盒已经达到最大容量 500。');return;}
   const cost=expandCost();
   if(s.energy<cost){tell('灵能不足，需要 '+fmt(cost)+' 灵能。');return;}
@@ -4522,7 +4790,7 @@ $('smart-fill-farm').onclick=()=>smartFillFarm();$('buy-building-energy').onclic
 };
 $('color-potions').onclick=e=>{const b=e.target.closest('[data-buy-color]');if(!b)return;const tint=Number(b.dataset.buyColor);if(!spend(100000))return;s.items.colors[tint]++;recordActivity('item',{item:G.COLORS[tint]+'颜色药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶'+G.COLORS[tint]+'颜色药水。');};
 $('bag-items').onclick=e=>{const c=e.target.closest('[data-use-color]');if(c){useColorPotion(Number(c.dataset.useColor));return;}const sc=e.target.closest('[data-use-special-color]');if(sc){useSpecialColorPotion(Number(sc.dataset.useSpecialColor));return;}const i=e.target.closest('[data-use-item]');if(i){useStoredItem(i.dataset.useItem);return;}const lvl=e.target.closest('[data-level-skill]');if(lvl){levelSkill(lvl.dataset.levelSkill);return;}const r=e.target.closest('[data-use-reroll]');if(r){useRerollPotion(Number(r.dataset.useReroll));return;}if(e.target.closest('[data-use-life]')){useLifePotion();return;}if(e.target.closest('[data-use-time-cut]')){useTimeCutPotion();return;}if(e.target.closest('[data-use-time-instant]')){useTimeInstantPotion();return;}};
-$('buy-star-potion').onclick=()=>{if(!spend(100000))return;s.items.star++;recordActivity('item',{item:'升星药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶升星药水。');};
+$('buy-star-potion').onclick=()=>{if(!spend(100000))return;s.items.star++;recordActivity('item',{item:'升星药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶升星药水。');};$('buy-shiny-potion').onclick=()=>{if(!spend(SHOP_PRICES.shiny))return;s.items.shiny=(s.items.shiny||0)+1;recordActivity('item',{item:'闪光药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶闪光药水。');};
 $('buy-skill-potion').onclick=()=>{if(!spend(SHOP_PRICES.skill))return;s.items.skill++;recordActivity('item',{item:'技能药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶技能药水。');};
 $('buy-reroll-potion').onclick=()=>{if(!spend(SHOP_PRICES.reroll))return;s.items.reroll++;recordActivity('item',{item:'刷技能药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶刷技能药水。');};$('buy-life-potion').onclick=()=>{if(!spend(SHOP_PRICES.life))return;s.items.life=(s.items.life||0)+1;recordActivity('item',{item:'生命药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶生命药水。');};$('buy-time-cut').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(SHOP_PRICES.timeCut))return;s.items.timeCut=(s.items.timeCut||0)+1;recordActivity('item',{item:'行程压缩药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶行程压缩药水。');};$('buy-time-instant').onclick=()=>{if(ranchLevel()<3){tell('牧场 Lv3 才能购买。');return;}if(!spend(SHOP_PRICES.timeInstant))return;s.items.timeInstant=(s.items.timeInstant||0)+1;recordActivity('item',{item:'时跃药水',source:'商店购买'});s.revision++;dirty=true;render();save();tell('已购买 1 瓶时跃药水。');};document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};$('dispatch-target').onchange=e=>{const id=Number(e.target.value)||null;if(id)chooseDispatchTarget(id);};$('dispatch-target-btn').onclick=e=>{e.stopPropagation();toggleDispatchPicker();};$('dispatch-sort').onchange=()=>renderDispatch();$('dispatch-search').oninput=()=>renderDispatch();$('dispatch-target-picker').onclick=e=>{const b=e.target.closest('[data-dispatch-target]');if(!b)return;e.stopPropagation();chooseDispatchTarget(Number(b.dataset.dispatchTarget));renderDispatchTargetPicker();const btn=$('dispatch-target-btn');if(btn)btn.innerHTML=dispatchTeamButtonHTML(dispatchTeam());};document.addEventListener('click',e=>{if(!e.target.closest('.dispatch-target-tools'))closeDispatchPicker();});$('dispatch-missions').onclick=e=>{const auto=e.target.closest('[data-dispatch-auto]');if(auto){autoSelectDispatchTeam(Number(auto.dataset.dispatchAuto));return;}const b=e.target.closest('[data-dispatch-start]');if(!b)return;startDispatch(Number(b.dataset.dispatchStart));};$('dispatch-active').onclick=e=>{if(e.target.closest('[data-dispatch-claim]'))claimDispatch();};$('dispatch-top-status').onclick=e=>{if(e.target.closest('[data-top-dispatch-claim]')){claimDispatch();return;}if(e.target.closest('[data-open-dispatch]'))setPage('dispatch');};$('auto-dispatch').onchange=e=>{s.autoDispatch=e.target.checked;if(s.autoDispatch){s.manualDispatchRepeat=false;s.manualDispatchTeamIds=[];s.manualDispatchMission=null;runOnlineAutomation(true);}s.revision++;dirty=true;render();save();tell(s.autoDispatch?'智能派遣连发已开启：每轮重新选择队伍。':'智能派遣连发已关闭。');};
 $('lock-manual-dispatch-team').onclick=()=>{
@@ -4565,8 +4833,15 @@ $('import-save-file').onchange=e=>{
   reader.onerror=()=>tell('读取存档失败，请重新选择文件。');
   reader.readAsText(file);
 };
-function openGuide(){document.body.classList.add('modal-open');document.querySelectorAll('[data-guide-tab]').forEach((b,i)=>b.classList.toggle('active',i===0));document.querySelectorAll('[data-guide-panel]').forEach((p,i)=>p.hidden=i!==0);$('guide').showModal();}function closeGuide(){document.body.classList.remove('modal-open');$('guide').close();}$('skill-drop-actions').onclick=e=>{const b=e.target.closest('[data-accept-skill]');if(b&&s.pendingSkillDrop){const drop=s.pendingSkillDrop,m=s.monsters.find(x=>x.id===drop.monsterId);if(m){const idx=Number(b.dataset.acceptSkill);ensureMonsterSystemsMonster(m);if(idx<=1||(idx===3&&m.shiny)){m.extraSkills[idx]=drop.skillId;m.extraSkillLv[idx]=drop.lv;refreshLifeCapacity(m,true);tell(name(m)+' 学会了「'+extraSkill(drop.skillId).name+' Lv'+drop.lv+'」。');}}s.pendingSkillDrop=null;$('skill-drop-dialog').close();s.revision++;dirty=true;render();save();return;}if(e.target.closest('[data-discard-skill]')){s.pendingSkillDrop=null;$('skill-drop-dialog').close();save();tell('你放弃了这次探索发现的技能。');}};
+function openGuide(){document.body.classList.add('modal-open');document.querySelectorAll('[data-guide-tab]').forEach((b,i)=>b.classList.toggle('active',i===0));document.querySelectorAll('[data-guide-panel]').forEach((p,i)=>p.hidden=i!==0);$('guide').showModal();}function closeGuide(){document.body.classList.remove('modal-open');$('guide').close();}$('skill-drop-actions').onclick=e=>{const b=e.target.closest('[data-accept-skill]');if(b&&s.pendingSkillDrop){const drop=s.pendingSkillDrop,m=s.monsters.find(x=>x.id===drop.monsterId);if(m){const idx=Number(b.dataset.acceptSkill);ensureMonsterSystemsMonster(m);if(idx<=1||(idx===3&&m.shiny)){m.extraSkills[idx]=drop.skillId;m.extraSkillLv[idx]=idx===3?Math.max(5,drop.lv):drop.lv;refreshLifeCapacity(m,true);tell(name(m)+' 学会了「'+extraSkill(drop.skillId).name+' Lv'+m.extraSkillLv[idx]+'」。');}}s.pendingSkillDrop=null;$('skill-drop-dialog').close();s.revision++;dirty=true;render();save();return;}if(e.target.closest('[data-discard-skill]')){s.pendingSkillDrop=null;$('skill-drop-dialog').close();save();tell('你放弃了这次探索发现的技能。');}};
 $('close-skill-drop').onclick=()=>{s.pendingSkillDrop=null;$('skill-drop-dialog').close();save();};
+if($('sound-btn'))$('sound-btn').onclick=()=>{refreshSoundUI();$('sound-dialog').showModal();};
+if($('sound-close'))$('sound-close').onclick=()=>$('sound-dialog').close();
+if($('sound-enabled'))$('sound-enabled').onchange=e=>{audioPrefs.enabled=!!e.target.checked;saveAudioPrefs();if(audioPrefs.enabled){ensureAudio();playSfx('click');}refreshSoundUI();};
+if($('sound-volume'))$('sound-volume').oninput=e=>{audioPrefs.volume=Math.max(0,Math.min(1,Number(e.target.value)/100));if(audioMaster&&audioCtx)audioMaster.gain.setTargetAtTime(audioPrefs.volume,audioCtx.currentTime,.01);saveAudioPrefs();refreshSoundUI();};
+if($('sound-test'))$('sound-test').onclick=()=>{ensureAudio();playSfx('shiny');};
+refreshSoundUI();
+document.addEventListener('click',e=>{const b=e.target.closest?.('button');if(!b||!audioPrefs.enabled)return;const id=b.id||'';if(['sound-btn','sound-close','sound-test','breed','hatch','confirm-sale'].includes(id)||id.startsWith('buy-')||b.matches('[data-dispatch-start],[data-dispatch-claim],[data-top-dispatch-claim]'))return;playSfx('click');});
 $('help').onclick=openGuide;$('close-guide-top').onclick=closeGuide;document.querySelector('.guide-tabs').onclick=e=>{const b=e.target.closest('[data-guide-tab]');if(!b)return;document.querySelectorAll('[data-guide-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('[data-guide-panel]').forEach(p=>p.hidden=p.dataset.guidePanel!==b.dataset.guideTab);document.querySelector('.guide-scroll').scrollTop=0;};$('guide').addEventListener('cancel',e=>{e.preventDefault();closeGuide();});$('close-birth').onclick=()=>$('birth').close();$('close-shiny-popup').onclick=()=>$('shiny-dialog').close();
 document.addEventListener('visibilitychange',()=>{if(document.hidden){settle();save();}else{const list=G.advance(s,Date.now());dirty=true;births(list,true);render();save();}});window.addEventListener('pagehide',()=>{settle();save();});window.__bootMark&&__bootMark('08 绑定完成');
 safeFamilyRegistry(s);window.__bootMark&&__bootMark('09 家族完成');
@@ -4576,6 +4851,7 @@ bindSkillTooltip();setPage('farm');window.__bootMark&&__bootMark('12 页面切�
 render();window.__bootMark&&__bootMark('13 首次渲染完成');
 runOnlineAutomation(true);window.__bootMark&&__bootMark('14 自动系统完成');
 render();save();window.__bootMark&&__bootMark('15 启动完成');if(s.pendingSkillDrop)setTimeout(showPendingSkillDrop,120);requestAnimationFrame(frame);
+setInterval(incubatorHeartbeat,250);
 setInterval(()=>{if(document.visibilityState!=='hidden')refreshDispatchClock();},500);
 setInterval(()=>{
   if(document.visibilityState!=='hidden'){
@@ -4589,8 +4865,8 @@ setInterval(()=>{
 setInterval(()=>{if(!document.hidden)save(false);},15000);
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v150';
+window.__qinsterVersion='v169';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v150 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v169 · engine '+__n;},1000);
