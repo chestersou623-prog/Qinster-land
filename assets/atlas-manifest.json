@@ -1,0 +1,41 @@
+{
+  "version": 189,
+  "columns": 8,
+  "rows": 8,
+  "cellSize": 80,
+  "sourceSize": 40,
+  "speciesCount": 58,
+  "colors": [
+    "原色",
+    "薄荷",
+    "绯红",
+    "月蓝",
+    "紫晶",
+    "金辉",
+    "极光",
+    "琉璃",
+    "夜曜"
+  ],
+  "files": [
+    "monster-atlas.png",
+    "assets/monster-atlas-1.png",
+    "assets/monster-atlas-2.png",
+    "assets/monster-atlas-3.png",
+    "assets/monster-atlas-4.png",
+    "assets/monster-atlas-5.png",
+    "assets/monster-atlas-6.png",
+    "assets/monster-atlas-7.png",
+    "assets/monster-atlas-8.png"
+  ],
+  "sha256": {
+    "monster-atlas.png": "1c5d6585fd2f0d5122195f3f83ee6fc14423becf6c9859200a3d553317bd8cf8",
+    "assets/monster-atlas-1.png": "d8d1e708154c6a6276cb00dd47f21f3c8a8da71915d8bbb7d7575ab461e5b718",
+    "assets/monster-atlas-2.png": "851554647e8445090d2ecec7e34c818a10284990ab7ada7b8134bf0eda2cc593",
+    "assets/monster-atlas-3.png": "15ca5f47ddd89d06e233d3e7a2842e00dbe2d2559088a5b1f06eb9185edded3e",
+    "assets/monster-atlas-4.png": "a6c95016a564576c3e4841a25dd228da35966538131bcd26e62a218464e02c53",
+    "assets/monster-atlas-5.png": "9a7687b1be9ae301ccd289f1d0f3eb38255a0fb76c2361d544b18c9b6f6424a0",
+    "assets/monster-atlas-6.png": "9b96520f7893d1d8784d14220a549d46e57cd37ee88b03a96cde8739024b84f5",
+    "assets/monster-atlas-7.png": "8d16b0720896a8eeb33b2a810a9790d7b14ae587705b7d7b019de62be6e3303a",
+    "assets/monster-atlas-8.png": "6ed0a2aa1a8b36fa6a408bc0ca42014591d7bbe072e8282a87fba84a060535a6"
+  }
+}

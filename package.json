@@ -1,0 +1,12 @@
+{
+  "name": "qinster-land",
+  "version": "189.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "art": "node art/sprites.mjs && python3 scripts/build-atlas.py",
+    "test": "node scripts/check-game.mjs"
+  },
+  "devDependencies": {"vite": "8.3.0"}
+}

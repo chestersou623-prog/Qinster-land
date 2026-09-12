@@ -190,7 +190,7 @@ dialog{width:min(90%,590px);padding:18px;background:#a8a8ac;color:#202126;border
 .shop-head h2{margin:6px 0;font-size:24px;color:#222}
 .shop-head p{margin:0;color:#4a4851}
 .shop-target{display:grid;grid-template-columns:auto minmax(220px,420px) 1fr;align-items:center;gap:10px;background:#2d2a33;color:#fff6d0;border:3px solid #77727f;padding:10px;margin-bottom:12px}
-.shop-target select{width:100%}#bag-page #shop-target{display:block!important;min-height:42px;font-size:12px;background:#ece9df;border:2px solid #77727f;padding:7px}
+.shop-target select{width:100%}#bag-page #shop-target[hidden]{display:none!important}
 #shop-target-info{font-size:11px;color:#ddd8c7}
 .shop-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .shop-card{display:flex;flex-direction:column;gap:6px;padding:14px!important;min-height:180px}
@@ -204,8 +204,6 @@ dialog{width:min(90%,590px);padding:18px;background:#a8a8ac;color:#202126;border
 .color-potion i{width:13px;height:13px;border:2px solid #34313a;display:inline-block}
 .skill-level{display:inline-block;padding:2px 5px;margin-left:6px;background:#332f39;color:#ffe59a;border:1px solid #7f7886;font-size:10px}
 .boost-ready{display:inline-block;padding:2px 5px;margin-left:5px;background:#7d342f;color:#fff;border:1px solid #d66;font-size:10px}
-.shiny-sprite{filter:var(--sprite-filter,none) drop-shadow(0 0 3px rgba(255,236,121,.85)) drop-shadow(0 0 6px rgba(255,236,121,.45));position:relative}
-.shiny-sprite::after{content:"✦";position:absolute;right:-3px;top:-5px;font-size:12px;color:#ffe45c;text-shadow:1px 1px 0 #6d5512}
 .companion-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .tag.locked{background:#6d4b55}
 .bag-panel{margin-top:14px;padding:14px!important}
@@ -386,10 +384,13 @@ dialog{width:min(90%,590px);padding:18px;background:#a8a8ac;color:#202126;border
   bottom:-10px;
   padding:1px 3px;
   font-size:8px;
-  opacity:.86;
+  opacity:0;
   pointer-events:none;
+  transition:opacity .12s linear;
 }
-.critter:hover .nameplate,.critter.chosen .nameplate{opacity:1}
+.critter:hover .nameplate,.critter.chosen .nameplate,.critter.talk .nameplate{opacity:1}
+.critter.tap-shake .sprite{animation:critterTapShake .24s steps(2,end) 1!important}
+@keyframes critterTapShake{0%,100%{transform:scaleX(var(--face)) translateX(0) translateY(0)}25%{transform:scaleX(var(--face)) translateX(-3px) translateY(-1px)}50%{transform:scaleX(var(--face)) translateX(3px) translateY(-2px)}75%{transform:scaleX(var(--face)) translateX(-2px) translateY(-1px)}}
 
 
 /* ===== Shiny + dispatch ===== */
@@ -928,7 +929,7 @@ body.modal-open{overflow:hidden}
   display:grid;grid-template-columns:minmax(180px,1fr) 190px 190px;gap:8px
 }
 .parent-picker-toolbar .parent-picker-search-wrap{position:static;margin:0;padding:0;border:0;background:none}
-.parent-picker-sort,.parent-picker-skill,.bag-picker-sort,.bag-picker-skill{width:100%;box-sizing:border-box;padding:7px 8px;background:#e1e0e4;color:#242229;border:2px solid #7c7882;font:inherit;font-size:10px}.bag-picker-toolbar{position:sticky;top:-8px;z-index:12;margin:-8px -8px 8px;padding:8px;background:#6f6b76;border-bottom:2px solid #45414b;display:grid;grid-template-columns:minmax(180px,1fr) 180px 180px;gap:7px}.bag-picker-toolbar input{width:100%;box-sizing:border-box;padding:7px 8px;background:#e1e0e4;color:#242229;border:2px solid #7c7882;font:inherit;font-size:10px}@media(max-width:620px){.bag-picker-toolbar{grid-template-columns:1fr}}
+.parent-picker-sort,.parent-picker-skill,.bag-picker-sort,.bag-picker-skill,.bag-picker-star,.bag-picker-species,.bag-picker-family{width:100%;box-sizing:border-box;padding:7px 8px;background:#e1e0e4;color:#242229;border:2px solid #7c7882;font:inherit;font-size:10px}.bag-picker-toolbar{position:sticky;top:-8px;z-index:12;margin:-8px -8px 8px;padding:8px;background:#6f6b76;border-bottom:2px solid #45414b;display:grid;grid-template-columns:minmax(180px,1fr) 180px 180px;gap:7px}.bag-picker-toolbar input{width:100%;box-sizing:border-box;padding:7px 8px;background:#e1e0e4;color:#242229;border:2px solid #7c7882;font:inherit;font-size:10px}@media(max-width:620px){.bag-picker-toolbar{grid-template-columns:1fr}}
 @media(max-width:620px){.parent-picker-toolbar{grid-template-columns:1fr}}
 
 
@@ -1056,7 +1057,7 @@ body.modal-open{overflow:hidden}
 .breed-queue-prominent{margin:8px 0 10px;border:3px solid #615d67;box-shadow:inset 0 0 0 2px #c7c6ca}
 .breed-queue-prominent .egg-queue-head{font-size:11px}
 
-/* v170: building system moved into shop */
+/* v171: building system moved into shop */
 .building-shop-card{min-height:0!important}
 .shop-building-system{padding:0;background:transparent;border-top:0}
 .shop-building-system .building-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1065,14 +1066,43 @@ body.modal-open{overflow:hidden}
 .shop-building-system .building-buff-summary{margin-top:9px}
 @media(max-width:640px){.shop-building-system .building-grid{grid-template-columns:1fr}}
 .incubator-slot{margin-top:8px;padding:7px;border:2px solid #77727f;background:#b9b8bc}.incubator-slot-head{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:900;margin-bottom:4px}.second-slot{border-color:#89782f;background:#c5c0aa}.premium-building{box-shadow:inset 0 0 0 2px rgba(181,151,45,.28)}
-</style></head>
 
-<style id="v170-sound-css">
+.dispatch-filter-toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px;position:sticky;top:-8px;z-index:2;background:#5f5a66;padding:8px 0 6px}.dispatch-filter-toolbar select{width:100%;box-sizing:border-box;padding:7px 8px;background:#e1e0e4;color:#242229;border:2px solid #7c7882;font:inherit;font-size:10px}@media(max-width:760px){.dispatch-filter-toolbar{grid-template-columns:1fr 1fr}}@media(max-width:480px){.dispatch-filter-toolbar{grid-template-columns:1fr}}
+/* v189: rendering is shared across every game context. FX are a child layer,
+   so movement animations, atlas cropping and pigment pixels stay independent. */
+.sprite{position:relative;overflow:visible;isolation:isolate}
+.sprite.shiny-sprite{filter:drop-shadow(0 0 3px #fff2a8) drop-shadow(0 0 6px #d9a83bcc)!important}
+#roster .monster-card>.sprite.shiny-sprite{filter:drop-shadow(0 0 3px #fff2a8) drop-shadow(0 0 6px #d9a83bcc)!important}
+.shiny-fx{position:absolute;inset:0;pointer-events:none;z-index:2}
+.shiny-fx i{position:absolute;width:5px;height:5px;background:#fff6be;box-shadow:0 -3px #ffe170,0 3px #ffe170,3px 0 #ffe170,-3px 0 #ffe170;animation:qinsterSpark 1.4s steps(2,end) infinite}
+.shiny-fx i:nth-child(1){left:10%;top:15%}
+.shiny-fx i:nth-child(2){right:9%;top:35%;animation-delay:-.5s;scale:.75}
+.shiny-fx i:nth-child(3){left:26%;bottom:10%;animation-delay:-.9s;scale:.65}
+@keyframes qinsterSpark{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.6)}}
+@media(prefers-reduced-motion:reduce){.shiny-fx i{animation:none}}
+.still .shiny-fx i{animation:none}
+
+</style>
+<style id="v184-family-skill-note-css">
+.family-potion-note{margin-top:8px;padding:8px 10px;border:1px dashed #9b7f65;border-radius:8px;background:#fff8e9;display:flex;flex-direction:column;gap:3px}.family-potion-note small{line-height:1.45;color:#6c5544}
+</style>
+
+<style id="v184-shop-bulk-css">
+.shop-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}.shop-actions .shop-buy{margin:0}.color-potion-buy-row{display:flex;gap:4px;align-items:stretch}.color-potion-buy-row .color-potion:first-child{flex:1}.color-potion-buy-row .color-potion.bulk{flex:0 0 auto;min-width:48px}
+.potion-card{position:relative;padding-left:92px!important;min-height:190px!important}.potion-art{position:absolute;left:16px;top:18px;width:58px;height:72px;border:3px solid #5a5660;background:#d8d5cf;box-shadow:inset 0 0 0 3px #efede7,3px 3px 0 #6f6b74;display:flex;align-items:center;justify-content:center;font-size:34px;line-height:1}.potion-art::after{content:"";position:absolute;left:10px;right:10px;bottom:7px;height:5px;background:rgba(0,0,0,.14)}.potion-card h3{padding-right:4px}.potion-card .shop-price{font-weight:900;color:#5f3d08}.potion-card .shop-owned{display:block;margin-top:2px;font-weight:800;color:#4f4b53}.potion-card .shop-actions{margin-top:auto}.potion-card .shop-actions .shop-buy{min-width:120px}.potion-art.star{background:#e7dfbd}.potion-art.shiny{background:#efe4ad}.potion-art.skill{background:#d8e4d8}.potion-art.reroll{background:#ddd8e8}.potion-art.life{background:#ead9d9}.potion-art.timecut,.potion-art.timeinstant{background:#d8e1e8}@media(max-width:640px){.potion-card{padding-left:82px!important}.potion-art{left:12px;width:52px;height:64px;font-size:30px}}
+</style>
+
+<style id="v184-auto-reroll-css">
+.reroll-slot-block{display:grid;gap:6px;padding:7px;border:1px solid #9b96a0;background:#d8d5dc;margin:6px 0}.reroll-auto-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.reroll-auto-row select{min-width:180px;max-width:100%;padding:6px;border:2px solid #817b87;background:#f0eee8;font:700 10px inherit}.reroll-auto-hint{font-size:9px;color:#5e5964;line-height:1.35}.reroll-auto-btn{font-weight:900}
+</style>
+</head>
+
+<style id="v184-sound-css">
 #sound-dialog{max-width:420px;width:min(92vw,420px);border:3px solid #5f5968;border-radius:14px;background:#f7f2df;color:#302b35;padding:0;box-shadow:0 18px 60px #0006}
 #sound-dialog::backdrop{background:#17131d88}
 .sound-panel{padding:18px}.sound-panel h2{margin:0 0 12px}.sound-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:14px 0}.sound-row input[type=range]{flex:1;min-width:130px}.sound-hint{font-size:12px;line-height:1.6;color:#665f6c}.sound-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}#sound-btn.sound-off{opacity:.7}
 </style>
-<body><div id="boot-check" style="position:fixed;left:6px;bottom:6px;z-index:999999;background:#27242d;color:#ffe36f;border:2px solid #77717f;padding:4px 7px;font:700 10px monospace">v170 · 等待</div><div id="engine-heartbeat">v170 · engine</div><div class="shell"><header><a href="#" class="brand"><span>✦</span><div>Qinster 牧场<small>QINSTER RANCH</small></div></a><div class="wallet"><span>灵能</span><strong id="energy">200</strong><b>◆</b></div><div class="wallet ranch-wallet"><span>牧场</span><strong id="ranch-level">Lv1</strong><small id="ranch-xp">0 / 100 XP</small></div><button class="subtle" id="dispatch-btn">派遣</button><button class="subtle" id="shop-btn">商店</button><button class="subtle" id="bag-btn">背包</button><button class="subtle" id="dex-btn">图鉴</button><button class="subtle" id="skill-btn">技能图鉴</button><button class="subtle" id="export-save">导出存档</button><button class="subtle" id="import-save">导入存档</button><input id="import-save-file" type="file" accept=".json,application/json" hidden><button class="subtle" id="sound-btn" aria-label="音效设置">音效 🔊</button><button class="subtle" id="help">玩法说明 ?</button></header><div id="dispatch-top-status" class="dispatch-top-status" hidden></div>
+<body><div id="boot-check" style="position:fixed;left:6px;bottom:6px;z-index:999999;background:#27242d;color:#ffe36f;border:2px solid #77717f;padding:4px 7px;font:700 10px monospace">v189 · 等待</div><div id="engine-heartbeat">v189 · engine</div><div class="shell"><header><a href="#" class="brand"><span>✦</span><div>Qinster 牧场<small>QINSTER RANCH</small></div></a><div class="wallet"><span>灵能</span><strong id="energy">200</strong><b>◆</b></div><div class="wallet ranch-wallet"><span>牧场</span><strong id="ranch-level">Lv1</strong><small id="ranch-xp">0 / 100 XP</small></div><button class="subtle" id="dispatch-btn">派遣</button><button class="subtle" id="shop-btn">商店</button><button class="subtle" id="bag-btn">背包</button><button class="subtle" id="dex-btn">图鉴</button><button class="subtle" id="skill-btn">技能图鉴</button><button class="subtle" id="export-save">导出存档</button><button class="subtle" id="import-save">导入存档</button><input id="import-save-file" type="file" accept=".json,application/json" hidden><button class="subtle" id="sound-btn" aria-label="音效设置">音效 🔊</button><button class="subtle" id="help">玩法说明 ?</button></header><div id="dispatch-top-status" class="dispatch-top-status" hidden></div>
 <main><button id="motion" class="motion" aria-pressed="false" hidden>暂停走动</button>
 <section id="dex-page" style="display:none">
   <div class="dex-head">
@@ -1101,7 +1131,17 @@ body.modal-open{overflow:hidden}
     <article class="shop-card shop-card-wide building-shop-card">
       <h3>🏗️ 建筑系统</h3>
       <p>所有牧场建筑统一在商店升级。建筑效果会立即应用到牧场、孵化、闪光、道具发现与配种冷却。</p>
-      <div class="building-system shop-building-system"><div class="building-grid"><div class="building-card"><b>⚡ 灵能塔 <span id="building-energy-lv">Lv0/10</span></b><small id="building-energy-effect">全牧场灵能 +0%</small><small class="building-price" id="building-energy-price">下一等级：2,500 灵能</small><button id="buy-building-energy" class="secondary">升级</button></div><div class="building-card"><b>🥚 孵化室 <span id="building-hatch-lv">Lv0/10</span></b><small id="building-hatch-effect">孵化时间 -0%</small><small class="building-price" id="building-hatch-price">下一等级：3,000 灵能</small><button id="buy-building-hatch" class="secondary">升级</button></div><div class="building-card premium-building"><b>🥚🥚 第二孵化栏</b><small id="second-hatch-slot-status">未解锁 · 当前同时孵化 1 颗蛋</small><small class="building-price" id="second-hatch-slot-price">价格：5,000,000 灵能</small><button id="buy-second-hatch-slot" class="secondary">购买 · 5,000,000 灵能</button></div><div class="building-card"><b>✨ 闪光祭坛 <span id="building-shiny-lv">Lv0/10</span></b><small id="building-shiny-effect">全星级闪光率 +0.0%</small><small class="building-price" id="building-shiny-price">下一等级：5,000 灵能</small><button id="buy-building-shiny" class="secondary">升级</button></div><div class="building-card"><b>🎁 寻宝工坊 <span id="building-item-lv">Lv0/10</span></b><small id="building-item-effect">农场普通道具率 +0.0%</small><small class="building-price" id="building-item-price">下一等级：3,500 灵能</small><button id="buy-building-item" class="secondary">升级</button></div><div class="building-card"><b>🛏️ 亲育休息屋 <span id="building-breed-rest-lv">Lv0/10</span></b><small id="building-breed-rest-effect">亲代生蛋冷却 -0%（当前 30 秒）</small><small class="building-price" id="building-breed-rest-price">下一等级：3,500 灵能</small><button id="buy-building-breed-rest" class="secondary">升级</button></div><div class="building-card"><b>🏡 怪物宿舍扩建</b><small>怪物容量 +10，最高 500。</small><small class="building-price" id="capacity-price">500 灵能</small><small class="shop-owned" id="shop-owned-capacity">当前容量：—</small><button class="secondary" id="buy-capacity">购买</button></div><div class="building-card"><b>🌱 生产牧场扩建</b><small>生产位 +2，仅生产位中的怪物产出灵能。</small><small>当前生产位：<b id="farm-slot-count">4</b></small><small class="building-price" id="farm-expand-price">1,000 灵能</small><small class="shop-owned" id="shop-owned-farm">当前生产位：—</small><button class="secondary" id="buy-farm-expand">购买</button></div></div><div id="building-buff-summary" class="building-buff-summary"></div></div>
+      <div class="building-system shop-building-system"><div class="building-grid"><div class="building-card"><b>⚡ 灵能塔 <span id="building-energy-lv">Lv0/10</span></b><small id="building-energy-effect">全牧场灵能 +0%</small><small class="building-price" id="building-energy-price">下一等级：2,500 灵能</small><button id="buy-building-energy" class="secondary">升级</button></div><div class="building-card"><b>🥚 孵化室 <span id="building-hatch-lv">Lv0/10</span></b><small id="building-hatch-effect">孵化时间 -0%</small><small class="building-price" id="building-hatch-price">下一等级：3,000 灵能</small><button id="buy-building-hatch" class="secondary">升级</button></div><div class="building-card premium-building"><b>🥚🥚 第二孵化栏</b><small id="second-hatch-slot-status">未解锁 · 当前同时孵化 1 颗蛋</small><small class="building-price" id="second-hatch-slot-price">价格：5,000,000 灵能</small><button id="buy-second-hatch-slot" class="secondary">购买</button></div><div class="building-card"><b>✨ 闪光祭坛 <span id="building-shiny-lv">Lv0/10</span></b><small id="building-shiny-effect">全星级闪光率 +0.0%</small><small class="building-price" id="building-shiny-price">下一等级：5,000 灵能</small><button id="buy-building-shiny" class="secondary">升级</button></div><div class="building-card"><b>🎁 寻宝工坊 <span id="building-item-lv">Lv0/10</span></b><small id="building-item-effect">农场普通道具率 +0.0%</small><small class="building-price" id="building-item-price">下一等级：3,500 灵能</small><button id="buy-building-item" class="secondary">升级</button></div><div class="building-card"><b>🛏️ 亲育休息屋 <span id="building-breed-rest-lv">Lv0/20</span></b><small id="building-breed-rest-effect">亲代生蛋冷却 -0%（当前 30 秒）</small><small class="building-price" id="building-breed-rest-price">下一等级：3,500 灵能</small><button id="buy-building-breed-rest" class="secondary">升级</button></div><div class="building-card"><b>🏡 怪物宿舍扩建</b><small>效果：怪物容量 +10，最高 500。</small><small class="shop-owned" id="shop-owned-capacity">当前：—</small><small class="building-price" id="capacity-price">价格：—</small><button class="secondary" id="buy-capacity">购买</button></div><div class="building-card"><b>🌱 生产牧场扩建</b><small>效果：生产位 +2，仅生产位中的怪物产出灵能。</small><small class="shop-owned" id="shop-owned-farm">当前：—</small><small class="building-price" id="farm-expand-price">价格：—</small><span id="farm-slot-count" hidden>4</span><button class="secondary" id="buy-farm-expand">购买</button></div></div><div id="building-buff-summary" class="building-buff-summary"></div></div>
+    </article>
+
+    <article class="shop-card shop-card-wide starter-monster-shop">
+      <h3>🌱 1★ 基础伙伴</h3>
+      <p>用于补充基础繁育亲代。固定为 1★ 苗芽团，可重复购买；购买后进入怪物盒。</p>
+      <div class="shop-actions starter-monster-actions">
+        <button class="shop-buy primary" id="buy-starter-male">购买 1★ 苗芽团（公） · 100 灵能</button>
+        <button class="shop-buy primary" id="buy-starter-female">购买 1★ 苗芽团（母） · 100 灵能</button>
+      </div>
+      <small class="shop-owned" id="shop-owned-starters">当前怪物：—</small>
     </article>
 
 
@@ -1114,56 +1154,63 @@ body.modal-open{overflow:hidden}
       <small class="shop-owned" id="shop-owned-colors">背包颜色药水：—</small><div id="color-potions" class="color-potions"></div>
     </article>
 
-    <article class="shop-card">
+    <article class="shop-card potion-card">
+      <div class="potion-art star" aria-hidden="true">🧪</div>
       <h3>⬆ 升星药水</h3>
       <p>放入背包后可指定给任意怪物使用：下一次作为亲代配种时，升星概率 +20 个百分点。</p>
       <p>可与另一位亲代的升星药水叠加；使用一次配种后消耗。</p>
       <p class="shop-price">100,000 灵能</p>
-      <button class="shop-buy primary" id="buy-star-potion">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="star" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="star" data-buy-qty="10">购买 ×10</button></div>
     </article>
 
-    <article class="shop-card">
+    <article class="shop-card potion-card">
+      <div class="potion-art shiny" aria-hidden="true">✨</div>
       <h3>✨ 闪光药水</h3>
       <p>放入背包后指定给怪物准备：下一次作为亲代时，后代闪光率 <b>+3 个百分点</b>。</p>
       <p>每只亲代最多准备 1 瓶；双亲都使用可叠加到 +6%，配种完成后消耗。</p>
       <p class="shop-price" id="shiny-potion-price">1,000,000 灵能</p><small class="shop-owned" id="shop-owned-shiny">背包持有：—</small>
-      <button class="shop-buy primary" id="buy-shiny-potion">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="shiny" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="shiny" data-buy-qty="10">购买 ×10</button></div>
     </article>
 
-    <article class="shop-card">
+    <article class="shop-card potion-card">
+      <div class="potion-art skill" aria-hidden="true">✦</div>
       <h3>✦ 技能药水</h3>
-      <p>放入背包后可指定给任意怪物使用。技能等级 +1，最高 Lv10。</p>
-      <p>普通技能2/3的新获得与重刷为 Lv1–Lv10；闪光专属技能5为 Lv5–Lv10。任何已有技能都可用技能药水继续培养到 Lv10。</p>
+      <p>放入背包后可指定怪物使用。技能1、普通技能2/3、闪光专属技能5可 +1级，最高 Lv10。</p>
+      <p>普通技能2/3的新获得与重刷为 Lv1–Lv10；闪光专属技能5为 Lv5–Lv10。<b>家族技能4不能使用技能药水升级，只能通过血统繁育成长。</b></p>
       <p class="shop-price" id="skill-potion-price">3,000 灵能</p><small class="shop-owned" id="shop-owned-skill">背包持有：—</small>
-      <button class="shop-buy primary" id="buy-skill-potion">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="skill" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="skill" data-buy-qty="10">购买 ×10</button></div>
     </article>
 
-    <article class="shop-card">
-      <h3>🔁 刷技能药水</h3>
-      <p>购买后放入背包，可重刷普通技能2 / 3；闪光怪物还可重刷专属技能5。技能1为种族技能、技能4为家族技能，不能用此药水改变。</p>
+    <article class="shop-card potion-card">
+      <div class="potion-art reroll" aria-hidden="true">↻</div>
+      <h3>🔁 技能重塑药水</h3>
+      <p>购买后放入背包，可重塑普通技能2 / 3；闪光怪物还可重塑专属技能5。技能1为种族技能、技能4为家族技能，不能用此药水改变。<b>星辉血脉与星迹追寻也可重塑获得，但属于稀有技能，出现权重仅为普通技能的 25%。</b></p>
       <p class="shop-price" id="reroll-potion-price">2,000 灵能</p><small class="shop-owned" id="shop-owned-reroll">背包持有：—</small>
-      <button class="shop-buy primary" id="buy-reroll-potion">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="reroll" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="reroll" data-buy-qty="10">购买 ×10</button></div>
     </article>
-    <article class="shop-card">
+    <article class="shop-card potion-card">
+      <div class="potion-art life" aria-hidden="true">♥</div>
       <h3>❤ 生命药水</h3>
       <p>使用后给目标怪物生命 +5。每只怪物一生只能使用 1 次。</p>
       <p>生命归零时怪物会离世。</p>
-      <p class="shop-price">100,000 灵能</p>
-      <button class="shop-buy primary" id="buy-life-potion">购买</button>
+      <p class="shop-price">100,000 灵能</p><small class="shop-owned" id="shop-owned-life">背包持有：—</small>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="life" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="life" data-buy-qty="10">购买 ×10</button></div>
     </article>
-    <article class="shop-card time-shop-card">
+    <article class="shop-card time-shop-card potion-card">
+      <div class="potion-art timecut" aria-hidden="true">⌛</div>
       <h3>⌛ 行程压缩药水 <span class="level-require">牧场 Lv3</span></h3>
       <p>当前派遣<b>剩余时间减少 50%</b>。</p>
       <p>每次派遣最多使用 1 瓶。定位为后期冲图鉴的高价便利道具。</p>
       <p class="shop-price" id="time-cut-price">1,000 灵能</p><small class="shop-owned" id="shop-owned-timecut">背包持有：—</small>
-      <button class="shop-buy primary" id="buy-time-cut">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="timeCut" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="timeCut" data-buy-qty="10">购买 ×10</button></div>
     </article>
-    <article class="shop-card time-shop-card">
+    <article class="shop-card time-shop-card potion-card">
+      <div class="potion-art timeinstant" aria-hidden="true">⏱</div>
       <h3>⏱ 时跃药水 <span class="level-require">牧场 Lv3</span></h3>
       <p>当前派遣<b>立即完成计时</b>，可以马上领取结果。</p>
       <p>只跳过等待，不会改变本次任务已经决定好的成功 / 失败。</p>
       <p class="shop-price" id="time-instant-price">5,000 灵能</p><small class="shop-owned" id="shop-owned-timeinstant">背包持有：—</small>
-      <button class="shop-buy primary" id="buy-time-instant">购买</button>
+      <div class="shop-actions"><button class="shop-buy primary" data-buy-potion="timeInstant" data-buy-qty="1">购买 ×1</button><button class="shop-buy secondary" data-buy-potion="timeInstant" data-buy-qty="10">购买 ×10</button></div>
     </article>
   </div>
 </section>
@@ -1215,7 +1262,7 @@ body.modal-open{overflow:hidden}
 <select id="parent-b" hidden></select>
 <button type="button" class="parent-select-btn" id="parent-b-btn" aria-expanded="false"></button>
 <div class="parent-picker" id="parent-b-picker" hidden></div>
-</div></div><div class="odds" id="odds"></div><button id="breed" class="primary full">开始生蛋</button><div id="breed-action-status" class="breed-action-status">选择好一公一母后，点击开始生蛋。</div><div class="egg-queue breed-queue-prominent"><div class="egg-queue-head"><b>🥚 孵蛋等候列表</b><span id="egg-queue-count">0 / 10</span></div><div id="egg-queue-list" class="egg-queue-list"><div class="egg-queue-empty">暂无等候蛋。可以继续生蛋，最多排 10 颗。</div></div><p class="egg-queue-note">等候蛋只会左右轻晃，不计算孵化时间；有空闲孵化栏时才会按顺序进入并开始计时。第二孵化栏解锁后可同时推进 2 颗，离线也有效。</p></div><div class="repeat-mode-box"><b>连续生蛋模式</b><label class="toggle"><input id="auto-breed" type="checkbox"> 智能连发：系统每轮重新选双亲</label><div class="auto-breed-priority-row"><label for="auto-breed-priority">智能选择依据</label><select id="auto-breed-priority"><option value="star">后代提星优先</option><option value="skill">技能升级优先</option></select></div><small class="auto-breed-priority-help">后代提星优先先看最高可出星级，再优先较高且更接近的双亲星级；有 5★+5★ 时不会莫名改用 3★，也会避免在有更好组合时出现 5★+2★。技能升级优先则寻找真正有机会把共有技能提升到更高等级的组合。</small><label class="toggle"><input id="manual-breed-repeat" type="checkbox"> 固定双亲连发：锁定当前亲代 A + B，不自动换人</label></div><div id="auto-breed-status" class="auto-breed-status">连续生蛋未开启。</div><div class="incubator"><div class="incubator-head"><h3>孵化巢</h3><span id="egg-total-status">总蛋数 0 / 11</span></div><div id="incubator-slot-1" class="incubator-slot"><div class="incubator-slot-head"><b>栏位 1</b><span id="egg-status">等待怪物蛋</span></div><div id="nest" class="nest"></div><progress id="progress" max="1" value="0"></progress><p id="nest-info">选好两位伙伴，开始第一次配种。</p><button id="hatch" class="secondary full" hidden>轻轻敲开蛋壳</button></div><div id="incubator-slot-2" class="incubator-slot second-slot" hidden><div class="incubator-slot-head"><b>栏位 2</b><span id="egg-status-2">空闲</span></div><div id="nest-2" class="nest"></div><progress id="progress-2" max="1" value="0"></progress><p id="nest-info-2">购买第二孵化栏后可同时孵化。</p><button id="hatch-2" class="secondary full" hidden>轻轻敲开蛋壳</button></div><label class="toggle"><input id="auto-hatch" type="checkbox" checked> 完成后自动孵化（离线也有效）</label></div></aside><section class="activity-log-panel">
+</div></div><div class="odds" id="odds"></div><button id="breed" class="primary full">开始生蛋</button><div id="breed-action-status" class="breed-action-status">选择好一公一母后，点击开始生蛋。</div><div class="egg-queue breed-queue-prominent"><div class="egg-queue-head"><b>🥚 孵蛋等候列表</b><span id="egg-queue-count">0 / 10</span></div><div id="egg-queue-list" class="egg-queue-list"><div class="egg-queue-empty">暂无等候蛋。可以继续生蛋，最多排 10 颗。</div></div><p class="egg-queue-note">等候蛋只会左右轻晃，不计算孵化时间；有空闲孵化栏时才会按顺序进入并开始计时。第二孵化栏解锁后可同时推进 2 颗，离线也有效。</p></div><div class="repeat-mode-box"><b>连续生蛋模式</b><label class="toggle"><input id="auto-breed" type="checkbox"> 智能连发：系统每轮重新选双亲</label><div class="auto-breed-priority-row"><label for="auto-breed-priority">智能选择依据</label><select id="auto-breed-priority"><option value="star">后代提星优先</option><option value="skill">技能升级优先</option></select></div><small class="auto-breed-priority-help">后代提星优先先看最高可出星级，再优先较高且更接近的双亲星级；有 5★+5★ 时不会莫名改用 3★，也会避免在有更好组合时出现 5★+2★。技能升级优先则寻找真正有机会把共有技能提升到更高等级的组合。</small><label class="toggle"><input id="manual-breed-repeat" type="checkbox"> 固定双亲连发：锁定当前画面亲代 A + B；勾选时绝不自动换人</label></div><div id="auto-breed-status" class="auto-breed-status">连续生蛋未开启。</div><div class="incubator"><div class="incubator-head"><h3>孵化巢</h3><span id="egg-total-status">总蛋数 0 / 11</span></div><div id="incubator-slot-1" class="incubator-slot"><div class="incubator-slot-head"><b>栏位 1</b><span id="egg-status">等待怪物蛋</span></div><div id="nest" class="nest"></div><progress id="progress" max="1" value="0"></progress><p id="nest-info">选好两位伙伴，开始第一次配种。</p><button id="hatch" class="secondary full" hidden>轻轻敲开蛋壳</button></div><div id="incubator-slot-2" class="incubator-slot second-slot" hidden><div class="incubator-slot-head"><b>栏位 2</b><span id="egg-status-2">空闲</span></div><div id="nest-2" class="nest"></div><progress id="progress-2" max="1" value="0"></progress><p id="nest-info-2">购买第二孵化栏后可同时孵化。</p><button id="hatch-2" class="secondary full" hidden>轻轻敲开蛋壳</button></div><label class="toggle"><input id="auto-hatch" type="checkbox" checked> 完成后自动孵化（离线也有效）</label></div></aside><section class="activity-log-panel">
   <div class="section-title">
     <h2>牧场 Log</h2>
     <span id="activity-count">最近记录</span>
@@ -1258,6 +1305,23 @@ body.modal-open{overflow:hidden}
           <option value="">全部技能</option>
         </select>
       </div>
+      <div class="sort-control">
+        <label for="filter-star">筛选星级</label>
+        <select id="filter-star">
+          <option value="">全部星级</option>
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3">★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+      </div>
+      <div class="sort-control sort-control-wide">
+        <label for="filter-species">筛选种族</label>
+        <select id="filter-species">
+          <option value="">全部种族</option>
+        </select>
+      </div>
       <div class="sort-control sort-control-wide">
         <label for="filter-family">筛选家族</label>
         <select id="filter-family">
@@ -1279,6 +1343,8 @@ body.modal-open{overflow:hidden}
       <option value="age-asc">生命 低 → 高</option>
       <option value="age-desc">生命 高 → 低</option>
       <option value="favorite">我的最爱优先</option>
+      <option value="skill-desc">技能等级 高 → 低</option>
+      <option value="species-asc">种族 A → Z</option>
     </select>
     <button type="button" id="dispatch-target-btn" class="parent-select-btn dispatch-target-btn" aria-expanded="false"></button>
     <div id="dispatch-target-picker" class="dispatch-target-picker" hidden></div>
@@ -1327,7 +1393,7 @@ body.modal-open{overflow:hidden}
     <p class="hint">你可以替换普通技能2 / 技能3；闪光怪物也可以替换普通技能5。家族技能4不会被探索技能覆盖。</p>
   </div>
 </dialog>
-<dialog id="guide"><div class="guide-shell"><div class="guide-head"><div><span class="eyebrow">QINSTER GUIDE</span><h2>玩法说明</h2></div><button id="close-guide-top" class="secondary">关闭</button></div><nav class="guide-tabs"><button class="secondary active" data-guide-tab="basic">基础</button><button class="secondary" data-guide-tab="breed">配种</button><button class="secondary" data-guide-tab="skills">技能</button><button class="secondary" data-guide-tab="dispatch">派遣</button><button class="secondary" data-guide-tab="shop">商店 / 存档</button></nav><div class="guide-scroll"><section data-guide-panel="basic"><h3>基础牧场</h3><p>开局固定获得 <b>1 公 + 1 母</b> 两只 1★ 伙伴，确保可以立即开始配种。怪物会自然散步、停留和小睡；正在派遣的队员会在草地底部持续行进。</p><h4>个性效果</h4><p>怪物名字旁的个性标签可悬停查看；手机上点一下标签也会弹出实际效果。</p><ul><li><b>勇敢：</b>派遣成功率 +3 个百分点，但派遣失败时事故风险 +8%。</li><li><b>谨慎：</b>派遣成功率 +1 个百分点，事故风险 -20%。</li><li><b>好奇：</b>探索道具发现率 +2 个百分点，稀有技能发现倍率 ×1.5。</li><li><b>活泼：</b>派遣属性评分 +5%，草地活动表现更活跃。</li><li><b>温顺：</b>作为亲代时，产蛋后的死亡风险 -8%。</li><li><b>坚韧：</b>派遣事故风险 -12%。</li><li><b>贪吃：</b>派遣灵能报酬 +6%，但任务时间 +5%。</li><li><b>亲人：</b>摸摸与成功派遣获得的亲密度额外 +2。</li></ul><ul><li><b>生命：</b>普通后代天生生命最低 5，上限为 min(20, ceil((父 maxHP + 母 maxHP) / 2) + 1)；若至少一位亲代为闪光，则触发「闪光血统」，最低 10，上限改为 min(20, ceil((父 maxHP + 母 maxHP) / 1.5 + 5))。20 只限制出生天生生命，后续养成仍可超过。</li><li>怪物详情会显示双亲图片；家谱可查看更完整血缘。</li><li>怪物盒、背包、派遣和亲代选择都有搜索 / 排序。生产牧场可以手动安排，也可以勾选「自动补满空位」让系统只在有空位时补怪。</li><li><b>农场拾取道具：</b>生产牧场中的怪物会根据全队幸运、拾物技能和 Debuff 计算每分钟普通道具发现率，所有怪物效果可叠加。任务限定怪物还可凭种族技能额外找到指定道具；当前普通道具概率会直接显示在「每分钟灵能」旁边；鼠标停留可查看幸运、技能、Debuff 与限定道具明细。</li></ul></section><section data-guide-panel="breed" hidden><h3>配种与孵化</h3><ul><li><b>闪光：</b>1★–5★ 都可能成为闪光。基础闪光率依次为 0.1% / 0.2% / 0.3% / 0.4% / 0.5%，再叠加星辉血脉、闪光祭坛、闪光血统与闪光药水。每位闪光亲代额外 +1%，可叠加；闪光药水让指定亲代下一次配种 +3 个百分点，双亲可叠加到 +6%。每位闪光派遣队员也会让带回怪物成为闪光的概率 +1%。闪光怪物自动锁定，自动生蛋、自动派遣和自动补牧场不会使用，只能由玩家手动指定。</li><li><b>后代星级：</b>同星与混星配种都按当前亲代组合计算。混星时最高有机会达到较高亲代星级 +1，最高仍为 5★；星差越大，高星结果通常越少。</li><li><b>天生生命：</b>普通血统范围为 5 到 min(20, ceil((父 maxHP + 母 maxHP) / 2) + 1)。例如 6+6 → 5–7，10+10 → 5–11，11+13 → 5–13。若至少一位亲代为闪光，则触发闪光血统：范围改为 10 到 min(20, ceil((父 maxHP + 母 maxHP) / 1.5 + 5))。</li><li><b>亲代生命消耗：</b>普通亲代按当前繁育效果扣生命；闪光亲代拥有「闪光血统」，繁育时固定只扣 1 生命。只要双亲中至少有一位闪光，本次蛋不会孵化失败。</li><li><b>品种与颜色：</b>普通品种以继承双亲为主，也有变异机会；普通颜色为父方 47.5%、母方 47.5%、双亲以外新颜色 5%。颜色图鉴只会由配种出生或派遣带回的怪物解锁；普通颜色药水只改外观，不解图。探索限定颜色药水是例外，使用后可以解锁限定颜色。</li><li><b>技能继承：</b>配种页只显示当前这对亲代真正可能出现的技能与概率；详细技能继承等级和家族技能规则放在「技能」说明页。</li><li>5★ 为星级上限，不会继续升星。</li><li>普通品种可正常继承 / 变异。</li><li><b>任务限定品种不能凭空变异。</b>必须先从对应任务获得，之后至少有一位该限定种亲代，后代才有较低概率继承该品种。</li><li>智能自动生蛋会优先使用标记为「自动优先」的公 / 母怪物；没有标记时会自动挑选培育评分最高的组合。</li><li>智能自动生蛋只在游戏页面打开时运行，离线期间不会自己继续创建新蛋。</li><li><b>生产牧场：</b>你可以手动把喜欢的怪物放进农场。勾选「自动补满空位」后，系统只会在生产位有空缺时补上其他怪物，不会替换你已经放进去的怪物；「智能优化一次」则会主动重排整套阵容。怪物盒中的怪物产能为 0，派遣中的怪物暂停产能。</li><li><b>离线灵能：</b>关闭游戏后，生产牧场中的怪物仍会继续产出灵能，最多累计 12 小时。超过 12 小时的部分不会继续累积。</li><li><b>生产牧场扩建：</b>商店中可购买，每次生产位 +2。第一次只要 1,000 灵能，之后价格约按 1.8 倍递增，前期容易扩建、后期会越来越贵。</li><li><b>配种稀有度调整：</b>新普通颜色自然变异降至 5%。配种稀有度已改成前期更容易起步、后期更难冲顶：1→2 为 20%，2→3 为 16%，3→4 为 9%，4→5 仅 2%；跨星配种也同步调整，低中星更容易成长，但 5★ 依旧需要更强组合、技能或药水辅助。</li><li>1★ 怪物蛋基础孵化时间为 <b>15 秒</b>；孵化加速技能仍可继续缩短。</li><li><b>亲育休息屋：</b>可在商店的「建筑系统」升级；每级让亲代生蛋后的休息冷却缩短 5%，Lv10 共 -50%；基础 30 秒冷却满级后约 15 秒。它只影响亲代再次生蛋的等待时间，不影响蛋本身的孵化时间。</li><li><b>生命消耗：</b>只要还有至少 1 点生命，就允许进行配种或其他会消耗生命的行动。即使剩余生命不足以支付完整消耗也可以执行，生命会降到 0 并离世。</li><li><b>智能生蛋不会因亲代离世而关闭：</b>智能模式会自动寻找下一组可用的一公一母继续连发。只有「固定双亲连发」在固定亲代离世时才会停止。</li><li><b>智能选亲代：</b>可选「后代提星优先」或「技能升级优先」。提星模式先看最高可出的星级，再看较低亲代星级、双亲总星级和星差，最后才比较提星概率与预期星级。因此 5★+5★ 会优先于 5★+3★，4★+4★ 会优先于 5★+2★；只有 4★ 母怪而没有 4★/5★ 公怪时，才会主动找 3★ 公怪冲 5★。技能模式优先寻找后代确实有机会突破父母当前技能等级的组合。</li><li>手动「开始生蛋」会在按钮下方直接显示成功、冷却、灵能不足、牧场已满等状态，不再无反应。</li><li><b>普通技能：</b>普通技能不会随机出 Debuff。普通技能2 / 3 新获得、重刷或派遣发现时为 Lv1–Lv10；闪光怪物额外的专属技能5为 Lv5–Lv10。Debuff 主要保留给家族技能等特殊来源。</li><li><b>计算提示：</b>配种结果页只保留关键数字。鼠标停留约 1 秒或点击带虚线下划线的结果数字，可查看星级、生命、闪光、品种与技能概率的计算方法；详细规则统一放在本教学中。</li></ul></section><section data-guide-panel="skills" hidden><h3>技能系统</h3><p><b>种族技能差异化：</b>基础怪物不再只是同效果换名字。农场、双蛋、后代生命、属性、技能精炼、Buff 继承、派遣速度、售价和颜色遗传都有独立种族技能。</p><p><b>限定怪技能也已分化：</b>40 只任务限定怪仍保留「成功 / 道具 / 护返 / 报酬 / 追迹」主职，但不同任务的限定怪现在拥有不同副效果，例如任务加速、额外报酬、额外道具率、限定怪率、闪光探索率或稀有技能发现倍率，不再只是换名字。</p><p>普通怪物最多 4 个技能：技能1 为种族技能，技能2 / 3 为普通技能，技能4 为家族技能。闪光怪物额外拥有技能5（闪光专属），该槽新获得/重刷时为 Lv5–Lv10。家族名字不再在第10代自动出现：每逢第5、10、15……代，后代都有 50% 几率建立一个新的家族名字，不论双亲原本属于同一家族、不同家族或没有家族。非创立代时，同一家族双亲会延续家族；不同家族或单一家族亲代则有机会继承，也有机会保持无家族，避免整个牧场最后全变成同一家族。家族技能现在只有 1 个：第1–9代绝不会有家族技能；第10代起可形成家族技能。旧存档原本的双家族技能会自动保留其中等级较高的一项。家族技能等级不会因为繁育而下降；如果新生后代的普通技能刚好与家族技能相同，就有机会让家族技能 +1，等级越高成功率越低，Lv10 为上限。</p><p><b>普通技能继承等级：</b>如果双亲都拥有同一个可继承技能，后代继承它时等级随机为 Lv1 到「双亲该技能等级平均值向下取整 +1」。例如 Lv1+Lv1 → Lv1–2；Lv2+Lv2 → Lv1–3；Lv1+Lv2 → Lv1–2。若一边的种族技能和另一边的普通技能其实是同一个技能，也按同一个技能来源一起计算。<b>家族技能独立成长：新形成时从 Lv1 开始；已有家族技能传给后代时等级不会下降，同名普通技能会触发额外升级判定。</b></p><p><b>家族技能升级概率：</b>只有后代的普通技能与家族技能同名时才判定升级。Lv1→2 约55%，Lv2→3 46%，Lv3→4 38%，Lv4→5 30%，Lv5→6 23%，Lv6→7 17%，Lv7→8 12%，Lv8→9 8%，Lv9→10 4%。失败不会掉级。</p><p><b>技能全面叠加：</b>同一只怪的种族技能、普通技能、家族技能、闪光技能，以及队伍 / 农场中不同怪物的同类效果，都可以同时叠加，不再只取最高等级。例如普通「稳步 Lv4」+ 家族「稳步 Lv3」会按两份效果叠加计算。继承等级规则本身仍按原来的亲代技能等级逻辑计算，不把叠加后的效果等级当成新的单一技能等级。</p><p><b>升星技能封顶转换：</b>较高亲代未到 5★ 时，升星技能正常增加升星结果；已经 5★ 时，正向升星技能的 <b>50%</b> 会改成保底，减少低于较低亲代星级的结果。例如 +3.0pp 升星会变成 +1.5pp 保底。升星药水不参与 5★封顶转换；若较高亲代已经 5★，药水本次不生效也不会消耗。每只怪物最多准备 1 瓶，两位亲代最多合计 +40pp；稳血 / 乱血仍正常叠加；掉星严格指低于较低亲代星级，因此较低亲代已经是 1★ 时，稳血 / 乱血不会偷偷改变升星结果。多份掉星技能可继续叠加，最终仍受概率自然边界限制。</p><p>技能卡下方的绿色 / 红色文字就是该技能在当前等级的<b>实际效果</b>，例如「自身灵能产量 +6%」「掉星概率 +1.5%」；等级变化后这里会同步显示新的数值。</p><p>商店价格：技能药水 <span id="guide-price-skill">3,000</span> 灵能；刷技能药水 <span id="guide-price-reroll">2,000</span> 灵能。</p></section><section data-guide-panel="dispatch" hidden><h3>派遣</h3><ul><li>任务等级 1「牧场巡查」最低要求 1★；任务等级 2「林地采集」最低要求 2★；任务等级 3「河谷巡游」开始最低要求 3★。之后遗迹、晶洞、星门、天穹、裂隙会继续提高星级与牧场等级要求。</li><li>每个任务有 5 种任务限定怪物，首次从该任务带回后才会解锁图鉴。限定怪遇见基础概率现在会随难度明显提高：任务等级1约 15%，一路提高到任务等级8约 42%；追迹类技能还能继续提高，最高约 50%。高难任务带回的限定怪也更容易是高星。</li><li><b>任务等级 1「牧场巡查」只会带回 1★ 怪物</b>，不会从这个入门任务直接拿到 2★ 或更高星怪。</li><li><b>自动派遣保留配种：</b>默认开启，会留下一公一母不加入自动队伍，避免派遣完后没有怪物可以生蛋；可在派遣中心自行关闭。</li><li><b>自动选队星级：</b>「最低够用」会在派遣技能适配相近时优先使用任务最低要求星级，并只派任务最低人数；「最高配置」优先使用高星，但不会无脑塞满 3 人——只有第3只对成功率、灵能奖励、物品掉落、限定怪追迹或任务技能有明显帮助时才加入。派遣技能匹配始终优先于星级。</li><li><b>任务带回怪物：</b>成功派遣除了限定怪，也可能带回普通怪；难度越高，遇怪概率和高星概率越高。活动记录会明确标记「派遣加入 · 任务名 · 普通怪/限定怪」。</li><li><b>裂隙核心颜色掉落：</b>成功任务的基础普通颜色药水率为 15%，探索限定颜色基础率为 7.5%，队伍的道具发现加成还能提高。颜色与其他道具共用一次奖励抽取，因此单次任务最多带回 1 个道具，连续空窗仍可能由随机数造成。</li><li><b>连发模式：</b>派遣和生蛋都可以选择「智能连发」或「固定手动连发」。勾选「固定双亲连发」时，会立刻锁定你当下画面里的亲代 A / B，勾选动作本身不会触发智能换亲代；只有其中一位离开、离世或无法继续时才停止固定连发。固定派遣队同样不会自动换人。</li><li>自动派遣会优先使用标记为「自动优先」的怪物；没有标记时按任务技能、属性、星级、生命等自动选队。智能派遣只会从怪物盒里挑选没有工作的空闲怪物，不会带走生产牧场中的怪物。</li><li>自动派遣只在游戏页面打开时自动领取与重新出发；关闭页面后不会启动新任务，但已经派出的队伍仍会正常计时。</li><li>任务卡会显示限定怪物以及基础遇见概率；Log 会记录实际带回的奖励。</li></ul></section><section data-guide-panel="shop" hidden><h3>商店与存档</h3><ul><li><b>建筑系统：</b>灵能塔、孵化室、第二孵化栏、闪光祭坛、寻宝工坊、亲育休息屋、怪物宿舍扩建与生产牧场扩建全部集中在商店的同一个建筑区。</li><li><b>第二孵化栏：</b>商店一次性永久设施，价格 5,000,000 灵能。购买后可同时孵化 2 颗蛋；总蛋容量仍然固定为 11 颗，只是从「1 颗孵化 + 10 颗等候」变成最多「2 颗同时孵化，其余进入等候」。两个栏位都支持离线自动孵化。</li><li><b>音效：</b>顶部「音效 🔊」可开关并调整音量。音效由浏览器即时合成，不需要额外音频文件；闪光、5★、孵化、派遣、购买和建筑升级都有独立反馈音。</li><li>怪物盒开局容量 30；商店扩建每次容量 +5。第一次只要 600 灵能，之后价格逐步提高，前期容易扩容、后期会越来越贵。</li><li>生产牧场扩建每次生产位 +2，第一次 1,000 灵能，之后约按 1.8 倍递增。</li><li>生命药水每只怪只可使用一次，生命 +5。</li><li>牧场 Lv3 解锁时间药水：行程压缩药水 <span id="guide-price-timecut">1,000</span> 灵能，当前派遣剩余时间 -50%，每次任务限用 1 瓶。</li><li>时跃药水 <span id="guide-price-timeinstant">5,000</span> 灵能，可立即完成当前派遣计时，但不会改变任务结果。</li><li>派遣也有极低概率带回：行程压缩约 0.4%–1.2%，时跃约 0.08%–0.3%。</li><li>建议定期导出存档。</li></ul></section></div></div></dialog>
+<dialog id="guide"><div class="guide-shell"><div class="guide-head"><div><span class="eyebrow">QINSTER GUIDE</span><h2>玩法说明</h2></div><button id="close-guide-top" class="secondary">关闭</button></div><nav class="guide-tabs"><button class="secondary active" data-guide-tab="basic">基础</button><button class="secondary" data-guide-tab="breed">配种</button><button class="secondary" data-guide-tab="skills">技能</button><button class="secondary" data-guide-tab="dispatch">派遣</button><button class="secondary" data-guide-tab="shop">商店 / 存档</button></nav><div class="guide-scroll"><section data-guide-panel="basic"><h3>基础牧场</h3><p>开局固定获得 <b>1 公 + 1 母</b> 两只 1★ 伙伴，确保可以立即开始配种。怪物会在整片牧场自然分散、散步、停留和小睡，并会缓慢避开过度重叠；点击怪物只会在原地轻抖作为反馈，不会瞬移。名字标签平时收起，悬停、选中或对话时显示；正在派遣的队员会在草地底部持续行进。</p><h4>个性效果</h4><p>怪物名字旁的个性标签可悬停查看；手机上点一下标签也会弹出实际效果。</p><ul><li><b>勇敢：</b>派遣成功率 +3 个百分点，但派遣失败时事故风险 +8%。</li><li><b>谨慎：</b>派遣成功率 +1 个百分点，事故风险 -20%。</li><li><b>好奇：</b>探索道具发现率 +2 个百分点，稀有技能发现倍率 ×1.5。</li><li><b>活泼：</b>派遣属性评分 +5%，草地活动表现更活跃。</li><li><b>温顺：</b>作为亲代时，产蛋后的死亡风险 -8%。</li><li><b>坚韧：</b>派遣事故风险 -12%。</li><li><b>贪吃：</b>派遣灵能报酬 +6%，但任务时间 +5%。</li><li><b>亲人：</b>摸摸与成功派遣获得的亲密度额外 +2。</li></ul><ul><li><b>生命：</b>普通血统后代天生生命最低 5，上限为 min(20, ceil((父 maxHP + 母 maxHP) / 2) + 1)；只要双亲中<b>至少有一位闪光</b>，本胎就属于「闪光血统」，最低改为 10，上限为 min(20, ceil((父 maxHP + 母 maxHP) / 1.5 + 5))。后代本身最终是否闪光不改变这套血统生命公式。20 只限制出生天生生命，后续养成仍可超过。</li><li>怪物详情会显示双亲图片；家谱可查看更完整血缘。</li><li>怪物盒、背包、派遣和亲代选择都有搜索 / 排序。生产牧场可以手动安排，也可以勾选「自动补满空位」让系统只在有空位时补怪。</li><li><b>农场拾取道具：</b>生产牧场中的怪物会根据全队幸运、拾物技能和 Debuff 计算每分钟普通道具发现率，所有怪物效果可叠加。任务限定怪物还可凭种族技能额外找到指定道具；当前普通道具概率会直接显示在「每分钟灵能」旁边；鼠标停留可查看幸运、技能、Debuff 与限定道具明细。</li></ul></section><section data-guide-panel="breed" hidden><h3>配种与孵化</h3><ul><li><b>闪光：</b>1★–5★ 都可能成为闪光。基础闪光率依次为 0.1% / 0.2% / 0.3% / 0.4% / 0.5%，再叠加星辉血脉、闪光祭坛、闪光血统与闪光药水。每位闪光亲代额外 +1%，可叠加；闪光药水让指定怪物在存活期间每次作为亲代都 +3 个百分点，双亲可叠加到 +6%。每位闪光派遣队员也会让带回怪物成为闪光的概率 +1%。闪光怪物自动锁定，自动生蛋、自动派遣和自动补牧场不会使用，只能由玩家手动指定。</li><li><b>后代星级：</b>同星与混星配种都按当前亲代组合计算。混星时最高有机会达到较高亲代星级 +1，最高仍为 5★；星差越大，高星结果通常越少。</li><li><b>天生生命：</b>普通血统范围为 5 到 min(20, ceil((父 maxHP + 母 maxHP) / 2) + 1)。例如 6+6 → 5–7，10+10 → 5–11，11+13 → 5–13。只要双亲中<b>至少有一位是闪光</b>，这一胎就使用闪光血统生命范围：10 到 min(20, ceil((父 maxHP + 母 maxHP) / 1.5 + 5))；与后代本身最终是否闪光无关。</li><li><b>亲代生命消耗：</b>普通亲代按当前繁育效果扣生命；闪光亲代拥有「闪光血统」，繁育时固定只扣 1 生命。只要双亲中至少有一位闪光，本次蛋不会孵化失败。</li><li><b>品种与颜色：</b>普通品种以继承双亲为主，也有变异机会；普通颜色为父方 47.5%、母方 47.5%、双亲以外新颜色 5%。颜色图鉴只会由配种出生或派遣带回的怪物解锁；普通颜色药水只改外观，不解图。探索限定颜色药水是例外，使用后可以解锁限定颜色。</li><li><b>技能继承：</b>配种页只显示当前这对亲代真正可能出现的技能与概率；详细技能继承等级和家族技能规则放在「技能」说明页。</li><li>5★ 为星级上限，不会继续升星。5★ + 5★ 的基础后代分布固定为 50% 4★ / 50% 5★，再叠加稳血、乱血、返祖等实际效果。</li><li>普通品种可正常继承 / 变异。</li><li><b>任务限定品种不能凭空变异。</b>必须先从对应任务获得，之后至少有一位该限定种亲代，后代才有较低概率继承该品种。</li><li>智能自动生蛋会优先使用标记为「自动优先」的公 / 母怪物；没有标记时会自动挑选培育评分最高的组合。</li><li>智能自动生蛋只在游戏页面打开时运行，离线期间不会自己继续创建新蛋。</li><li><b>生产牧场：</b>你可以手动把喜欢的怪物放进农场。勾选「自动补满空位」后，系统只会在生产位有空缺时补上其他怪物，不会替换你已经放进去的怪物；「智能优化一次」则会主动重排整套阵容。怪物盒中的怪物产能为 0，派遣中的怪物暂停产能。</li><li><b>离线灵能：</b>关闭游戏后，生产牧场中的怪物仍会继续产出灵能，最多累计 12 小时。超过 12 小时的部分不会继续累积。</li><li><b>生产牧场扩建：</b>商店中可购买，每次生产位 +2。第一次只要 1,000 灵能，之后价格约按 1.8 倍递增，前期容易扩建、后期会越来越贵。</li><li><b>配种稀有度调整：</b>新普通颜色自然变异降至 5%。配种稀有度已改成前期更容易起步、后期更难冲顶：1→2 为 20%，2→3 为 16%，3→4 为 9%，4→5 仅 2%；跨星配种也同步调整，低中星更容易成长，但 5★ 依旧需要更强组合、技能或药水辅助。</li><li>1★ 怪物蛋基础孵化时间为 <b>15 秒</b>；孵化加速技能仍可继续缩短。</li><li><b>亲育休息屋：</b>可在商店的「建筑系统」升级；Lv1–10 每级让亲代生蛋后的休息冷却缩短 5%，Lv10 共 -50%；Lv11–20 每级再缩短 4%，Lv20 最终 -90%。基础 30 秒冷却满级后约 3 秒。Lv11–20 升级价格明显更高，属于解锁第二孵化栏后的后期建设目标。它只影响亲代再次生蛋的等待时间，不影响蛋本身的孵化时间。</li><li><b>生命消耗：</b>只要还有至少 1 点生命，就允许进行配种或其他会消耗生命的行动。即使剩余生命不足以支付完整消耗也可以执行，生命会降到 0 并离世。</li><li><b>智能生蛋不会因亲代离世而关闭：</b>智能模式会自动寻找下一组可用的一公一母继续连发。只有「固定双亲连发」在固定亲代离世时才会停止。</li><li><b>智能选亲代：</b>可选「后代提星优先」或「技能升级优先」。提星模式先看最高可出的星级，再看较低亲代星级、双亲总星级和星差，最后才比较提星概率与预期星级。因此 5★+5★ 会优先于 5★+3★，4★+4★ 会优先于 5★+2★；只有 4★ 母怪而没有 4★/5★ 公怪时，才会主动找 3★ 公怪冲 5★。技能模式优先寻找后代确实有机会突破父母当前技能等级的组合。</li><li>手动「开始生蛋」会在按钮下方直接显示成功、冷却、灵能不足、牧场已满等状态，不再无反应。</li><li><b>普通技能：</b>普通技能不会随机出 Debuff。普通技能2 / 3 新获得、重刷或派遣发现时为 Lv1–Lv10；闪光怪物额外的专属技能5为 Lv5–Lv10。Debuff 主要保留给家族技能等特殊来源。</li><li><b>计算提示：</b>配种结果页只保留关键数字。鼠标停留约 1 秒或点击带虚线下划线的结果数字，可查看星级、生命、闪光、品种与技能概率的计算方法；详细规则统一放在本教学中。</li></ul></section><section data-guide-panel="skills" hidden><h3>技能系统</h3><p><b>种族技能差异化：</b>基础怪物不再只是同效果换名字。农场、双蛋、后代生命、属性、技能精炼、Buff 继承、派遣速度、售价和颜色遗传都有独立种族技能。</p><p><b>限定怪技能也已分化：</b>40 只任务限定怪仍保留「成功 / 道具 / 护返 / 报酬 / 追迹」主职，但不同任务的限定怪现在拥有不同副效果，例如任务加速、额外报酬、额外道具率、限定怪率、闪光探索率或稀有技能发现倍率，不再只是换名字。</p><p>普通怪物最多 4 个技能：技能1 为种族技能，技能2 / 3 为普通技能，技能4 为家族技能。闪光怪物额外拥有技能5（闪光专属），该槽新获得/重刷时为 Lv5–Lv10。家族名字不再在第10代自动出现：每逢第5、10、15……代，后代都有 50% 几率建立一个新的家族名字，不论双亲原本属于同一家族、不同家族或没有家族。非创立代时，同一家族双亲会延续家族；不同家族或单一家族亲代则有机会继承，也有机会保持无家族，避免整个牧场最后全变成同一家族。家族技能现在只有 1 个：第1–9代绝不会有家族技能；第10代起可形成家族技能。旧存档原本的双家族技能会自动保留其中等级较高的一项。<b>家族技能不能用技能药水直接升级，也不会因种族「血脉精炼」或普通技能同名而直接升级。</b>只有同一家族、拥有同一个家族技能且<b>等级相同</b>的两位亲代配种，后代才有机会提升 1 级，最高 Lv10，而且等级越高越难。升级率为：Lv1→2 90%、2→3 80%、3→4 70%、4→5 60%、5→6 50%、6→7 40%、7→8 30%、8→9 20%、9→10 10%。失败时仍继承原等级；父母等级不同则继承较高等级，不会掉级，也不会额外升级。</p><p><b>普通技能继承等级：</b>如果双亲都拥有同一个可继承技能，后代继承它时等级随机为 Lv1 到「双亲该技能等级平均值向下取整 +1」。例如 Lv1+Lv1 → Lv1–2；Lv2+Lv2 → Lv1–3；Lv1+Lv2 → Lv1–2。若一边的种族技能和另一边的普通技能其实是同一个技能，也按同一个技能来源一起计算。<b>家族技能独立成长：新形成时从 Lv1 开始；已有家族技能传给后代时绝不会下降。两位同一家族亲代若家族技能同名且同等级，后代按等级对应概率尝试提升 1 级；失败仍保持原等级。等级不同则继承较高等级，不升级。</b></p><p><b>家族技能升级：</b>必须由同一家族、同一个家族技能、同等级双亲进行血统繁育才有机会 +1；等级越高越难：1+1→2 为90%、2+2→3 为80%、3+3→4 为70%、4+4→5 为60%、5+5→6 为50%、6+6→7 为40%、7+7→8 为30%、8+8→9 为20%、9+9→10 为10%。失败不会掉级；等级不同则直接继承较高等级。技能药水与技能重塑药水都不能改变家族技能等级。</p><p><b>技能全面叠加：</b>同一只怪的种族技能、普通技能、家族技能、闪光技能，以及队伍 / 农场中不同怪物的同类效果，都可以同时叠加，不再只取最高等级。例如普通「稳步 Lv4」+ 家族「稳步 Lv3」会按两份效果叠加计算。继承等级规则本身仍按原来的亲代技能等级逻辑计算，不把叠加后的效果等级当成新的单一技能等级。</p><p><b>升星技能封顶转换：</b>较高亲代未到 5★ 时，升星技能正常增加升星结果；已经 5★ 时，正向升星技能的 <b>50%</b> 会改成保底，减少低于较低亲代星级的结果。例如 +3.0pp 升星会变成 +1.5pp 保底。升星药水不参与 5★封顶转换；若较高亲代已经 5★，药水本次不生效也不会消耗。每只怪物最多准备 1 瓶，两位亲代最多合计 +40pp；稳血 / 乱血仍正常叠加；掉星严格指低于较低亲代星级，因此较低亲代已经是 1★ 时，稳血 / 乱血不会偷偷改变升星结果。多份掉星技能可继续叠加，最终仍受概率自然边界限制。</p><p>技能卡下方的绿色 / 红色文字就是该技能在当前等级的<b>实际效果</b>，例如「自身灵能产量 +6%」「掉星概率 +1.5%」；等级变化后这里会同步显示新的数值。</p><p>商店价格：技能药水 <span id="guide-price-skill">3,000</span> 灵能；技能重塑药水 <span id="guide-price-reroll">2,000</span> 灵能。</p><p><b>目标自动重塑：</b>选择普通技能2 / 3（或闪光专属技能5）后，可以指定想要的目标技能并选择「自动重塑直到获得」。系统会连续消耗技能重塑药水，刷到目标立即停止；如果药水耗尽仍未刷到，会提示「可惜没有刷到」并显示本次共花了多少瓶。</p></section><section data-guide-panel="dispatch" hidden><h3>派遣</h3><ul><li>任务等级 1「牧场巡查」最低要求 1★；任务等级 2「林地采集」最低要求 2★；任务等级 3「河谷巡游」开始最低要求 3★。之后遗迹、晶洞、星门、天穹、裂隙会继续提高星级与牧场等级要求。</li><li>每个任务有 5 种任务限定怪物，首次从该任务带回后才会解锁图鉴。限定怪遇见基础概率现在会随难度明显提高：任务等级1约 15%，一路提高到任务等级8约 42%；追迹类技能还能继续提高，最高约 50%。高难任务带回的限定怪也更容易是高星。</li><li><b>任务等级 1「牧场巡查」只会带回 1★ 怪物</b>，不会从这个入门任务直接拿到 2★ 或更高星怪。</li><li><b>自动派遣保留配种：</b>默认开启，会留下一公一母不加入自动队伍，避免派遣完后没有怪物可以生蛋；可在派遣中心自行关闭。</li><li><b>自动选队星级：</b>「最低够用」会在派遣技能适配相近时优先使用任务最低要求星级，并只派任务最低人数；「最高配置」优先使用高星，但不会无脑塞满 3 人——只有第3只对成功率、灵能奖励、物品掉落、限定怪追迹或任务技能有明显帮助时才加入。派遣技能匹配始终优先于星级。</li><li><b>任务带回怪物：</b>成功派遣除了限定怪，也可能带回普通怪；难度越高，遇怪概率和高星概率越高。活动记录会明确标记「派遣加入 · 任务名 · 普通怪/限定怪」。</li><li><b>裂隙核心颜色掉落：</b>成功任务的基础普通颜色药水率为 15%，探索限定颜色基础率为 7.5%，队伍的道具发现加成还能提高。颜色与其他道具共用一次奖励抽取，因此单次任务最多带回 1 个道具，连续空窗仍可能由随机数造成。</li><li><b>连发模式：</b>派遣和生蛋都可以选择「智能连发」或「固定手动连发」。勾选「固定双亲连发」时，会立刻锁定你当下画面里的亲代 A / B，勾选动作本身不会触发智能换亲代；只有其中一位离开、离世或无法继续时才停止固定连发。固定派遣队同样不会自动换人。</li><li>自动派遣会优先使用标记为「自动优先」的怪物；没有标记时按任务技能、属性、星级、生命等自动选队。智能派遣只会从怪物盒里挑选没有工作的空闲怪物，不会带走生产牧场中的怪物。</li><li>自动派遣只在游戏页面打开时自动领取与重新出发；关闭页面后不会启动新任务，但已经派出的队伍仍会正常计时。</li><li>任务卡会显示限定怪物以及基础遇见概率；Log 会记录实际带回的奖励。</li></ul></section><section data-guide-panel="shop" hidden><h3>商店与存档</h3><ul><li><b>建筑系统：</b>灵能塔、孵化室、第二孵化栏、闪光祭坛、寻宝工坊、亲育休息屋、怪物宿舍扩建与生产牧场扩建全部集中在商店的同一个建筑区。</li><li><b>1★基础伙伴：</b>商店可随时购买 1★ 苗芽团公 / 母各 100 灵能，用于补充基础繁育亲代；购买后进入怪物盒，不会直接替换当前亲代。</li><li><b>药水购买：</b>商店药水卡片统一显示图标、效果、持有数量与价格；每种药水可选择「购买 ×1」或「购买 ×10」；×10 会一次检查并扣除十瓶总价，灵能不足时不会扣除任何灵能。</li><li><b>第二孵化栏：</b>商店一次性永久设施，价格 5,000,000 灵能。购买后可同时孵化 2 颗蛋；总蛋容量仍然固定为 11 颗，只是从「1 颗孵化 + 10 颗等候」变成最多「2 颗同时孵化，其余进入等候」。两个栏位都支持离线自动孵化。</li><li><b>音效：</b>顶部「音效 🔊」可开关并调整音量。音效由浏览器即时合成，不需要额外音频文件；闪光、5★、孵化、派遣、购买和建筑升级都有独立反馈音。</li><li>怪物盒开局容量 30；商店扩建每次容量 +5。第一次只要 600 灵能，之后价格逐步提高，前期容易扩容、后期会越来越贵。</li><li>生产牧场扩建每次生产位 +2，第一次 1,000 灵能，之后约按 1.8 倍递增。</li><li>生命药水每只怪只可使用一次，生命 +5；商店卡片和背包都会直接显示当前持有数量。</li><li>牧场 Lv3 解锁时间药水：行程压缩药水 <span id="guide-price-timecut">1,000</span> 灵能，当前派遣剩余时间 -50%，每次任务限用 1 瓶。</li><li>时跃药水 <span id="guide-price-timeinstant">5,000</span> 灵能，可立即完成当前派遣计时，但不会改变任务结果。</li><li>派遣也有极低概率带回：行程压缩约 0.4%–1.2%，时跃约 0.08%–0.3%。</li><li>建议定期导出存档。</li></ul></section></div></div></dialog>
 <dialog id="birth"><span class="eyebrow">一位新伙伴，来到你身边</span><div id="birth-content"></div><button id="close-birth" class="primary full">欢迎回家 ♡</button></dialog>
 <dialog id="shiny-dialog" class="shiny-dialog">
   <div class="shiny-popup-title">✦ 闪光出现！ ✦</div>
@@ -1351,14 +1417,14 @@ body.modal-open{overflow:hidden}
 <script>
 (function(){
   const b=document.getElementById('boot-check');
-  window.__bootMark=function(msg){if(b){b.textContent='v170 · '+msg;b.style.background='#55461e';}};
+  window.__bootMark=function(msg){if(b){b.textContent='v189 · '+msg;b.style.background='#55461e';}};
   window.addEventListener('error',function(e){
     const msg=String(e.message||'');
     const file=String(e.filename||'');
     // Chrome/extension/file:// may emit a generic cross-origin "Script error."
     // with no useful source location. Do not present those as Qinster fatal errors.
     const generic=!file && (msg==='Script error.' || msg==='Script error' || !msg);
-    const own=!file || /(?:game-v170\.js|index-v170\.html|\/game\.js|\/index\.html)(?:$|[?#])/i.test(file);
+    const own=!file || /(?:game-v184\.js|index-v184\.html|\/game\.js|\/index\.html)(?:$|[?#])/i.test(file);
     if(generic || !own){
       console.warn('Ignored external/generic page error:',msg,file,e.lineno||'',e.colno||'');
       return;
@@ -1370,8 +1436,8 @@ body.modal-open{overflow:hidden}
       document.body.appendChild(x);
     }
     const stack=e.error&&e.error.stack?'\n'+String(e.error.stack):'';
-    x.textContent='Qinster v170 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
+    x.textContent='Qinster v189 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
   });
 })();
 </script>
-<script src="game.js"></script></body></html>
+<script src="game.js?v=189"></script></body></html>
