@@ -69,7 +69,7 @@ SPECIES.push(
 {name:"时隙狐",element:"裂隙",skill:"时隙追迹",effect:"在原生派遣任务中提高限定怪物与稀有技能发现率。",base:[32, 14, 9, 20, 22],color:'#b7a7cf',passive:"mission_hunt",exclusiveMission:"rift",spriteBase:3,spriteHue:25}
 );
 const MISSION_EXCLUSIVE_SPECIES={};for(let i=BASE_SPECIES_COUNT;i<SPECIES.length;i++){const mid=SPECIES[i].exclusiveMission;if(mid)(MISSION_EXCLUSIVE_SPECIES[mid]||(MISSION_EXCLUSIVE_SPECIES[mid]=[])).push(i);}function isMissionExclusiveSpecies(id){return !!SPECIES[id]?.exclusiveMission;}
-const stars=n=>'★'.repeat(n);const MAX_OFFLINE=12*3600*1000;
+const stars=n=>'★'.repeat(n);const MAX_OFFLINE=8*3600*1000;
 function createMonster(id,species,star=1,genes=[1,1,1,1,1],parents=[]){return {id,species,star,genes,parents,bond:0,cooldown:0,age:0,baseLife:5,life:5,maxLife:5,lifePotionUsed:false,lifeSkillApplied:0,tint:0,skillLv:star,starBoost:0,shiny:false,nickname:'',locked:false};}
 
 const FARM_START_SLOTS=4;
@@ -158,7 +158,7 @@ function income(s){
     if(sp.passive==='harvest')self+=.03*lv;
     else if(sp.passive==='farm_item_mix')self+=.01*lv;
     else if(sp.passive==='farm_energy_20')self+=.02*lv;
-    return sum+0.6*m.star*self;
+    return sum+0.3*m.star*self;
   },0)*glow*building;
 }
 function pair(s){return [s.monsters.find(m=>m.id===s.parentA),s.monsters.find(m=>m.id===s.parentB)];}
@@ -352,7 +352,7 @@ function farmAutoScore(m){
   if(species.passive==='harvest')self+=.03*lv;
   else if(species.passive==='farm_item_mix')self+=.01*lv;
   else if(species.passive==='farm_energy_20')self+=.02*lv;
-  let score=0.6*m.star*self;
+  let score=0.3*m.star*self;
   if(species.passive==='aura')score+=0.45+.12*lv;
   if(species.passive==='farm_item_energy')score+=.22+.05*lv;
   if(species.passive==='farm_item_mix')score+=.15+.03*lv;
@@ -5134,8 +5134,8 @@ setInterval(()=>{
 setInterval(()=>{if(!document.hidden)save(false);},15000);
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v189';
+window.__qinsterVersion='v190';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v189 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v190 · engine '+__n;},1000);
