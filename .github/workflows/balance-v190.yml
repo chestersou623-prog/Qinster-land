@@ -1,0 +1,75 @@
+name: Qinster balance v190
+
+on:
+  push:
+    paths:
+      - '.github/workflows/balance-v190.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-balance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply economy balance patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          game = Path('game.js')
+          text = game.read_text(encoding='utf-8')
+
+          replacements = {
+              "const stars=n=>'★'.repeat(n);const MAX_OFFLINE=12*3600*1000;":
+              "const stars=n=>'★'.repeat(n);const MAX_OFFLINE=8*3600*1000;",
+              "return sum+0.6*m.star*self;":
+              "return sum+0.3*m.star*self;",
+              "let score=0.6*m.star*self;":
+              "let score=0.3*m.star*self;",
+              "window.__qinsterVersion='v189';":
+              "window.__qinsterVersion='v190';",
+              "__eb.textContent='v189 · engine '+__n;":
+              "__eb.textContent='v190 · engine '+__n;",
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected game.js pattern not found: {old}')
+              text = text.replace(old, new, 1)
+
+          game.write_text(text, encoding='utf-8')
+
+          # Keep visible help/version text consistent if those phrases exist.
+          index = Path('index.html')
+          html = index.read_text(encoding='utf-8')
+          html = html.replace('12 小时', '8 小时').replace('12小时', '8小时')
+          index.write_text(html, encoding='utf-8')
+
+          readme = Path('README.md')
+          if readme.exists():
+              md = readme.read_text(encoding='utf-8')
+              md = md.replace('# Qinster 牧场 v189', '# Qinster 牧场 v190', 1)
+              note = '\n## v190 经济平衡\n\n- 离线灵能累计上限：12 小时 → 8 小时。\n- 生产牧场基础灵能产量：0.6 × 星级/秒 → 0.3 × 星级/秒。\n- 晨辉狮光环、灵能塔与怪物产能技能倍率保持不变。\n'
+              if '## v190 经济平衡' not in md:
+                  md += note
+              readme.write_text(md, encoding='utf-8')
+
+      - name: Sanity checks
+        run: |
+          node --check game.js
+          grep -F "MAX_OFFLINE=8*3600*1000" game.js
+          grep -F "return sum+0.3*m.star*self" game.js
+          grep -F "let score=0.3*m.star*self" game.js
+
+      - name: Commit changes
+        run: |
+          git config user.name "Qinster Balance Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add game.js index.html README.md
+          git diff --cached --quiet && exit 0
+          git commit -m "Balance energy income and offline cap (v190)"
+          git push
