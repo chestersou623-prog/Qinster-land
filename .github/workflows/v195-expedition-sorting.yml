@@ -1,0 +1,60 @@
+name: Qinster v195 expedition sorting
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v195-expedition-sorting.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch expedition sorting
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('v194-expedition.js')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace("let selected=[],selectedZone='d1';","let selected=[],selectedZone='d1',sortMode='recommended';",1)
+
+          marker="function team(z=zone()){const by=new Map(eligibleFor(z).map(m=>[m.id,m]));return selected.map(id=>by.get(id)).filter(Boolean);}\n"
+          add="""function team(z=zone()){const by=new Map(eligibleFor(z).map(m=>[m.id,m]));return selected.map(id=>by.get(id)).filter(Boolean);}\nfunction recommendationScore(m,z=zone()){\n  const v=stats(m),total=v.reduce((a,b)=>a+b,0),floor=Math.min(...v),top=[...v].sort((a,b)=>b-a).slice(0,2).reduce((a,b)=>a+b,0);\n  // General expedition value rewards both raw power and balanced stats, because routes are random.\n  return total+floor*1.35+top*.18+(m.star||1)*35+(m.shiny?12:0);\n}\nfunction sortedEligible(z=zone()){\n  const list=[...eligibleFor(z)];\n  list.sort((a,b)=>{\n    if(sortMode==='newest')return (b.createdAt||b.id||0)-(a.createdAt||a.id||0);\n    if(sortMode==='oldest')return (a.createdAt||a.id||0)-(b.createdAt||b.id||0);\n    if(sortMode==='total')return stats(b).reduce((x,y)=>x+y,0)-stats(a).reduce((x,y)=>x+y,0)||(b.id-a.id);\n    if(sortMode==='star')return (b.star||1)-(a.star||1)||stats(b).reduce((x,y)=>x+y,0)-stats(a).reduce((x,y)=>x+y,0)||(b.id-a.id);\n    if(sortMode==='luck')return (stats(b)[4]||0)-(stats(a)[4]||0)||recommendationScore(b,z)-recommendationScore(a,z);\n    return recommendationScore(b,z)-recommendationScore(a,z)||(b.createdAt||b.id||0)-(a.createdAt||a.id||0);\n  });\n  return list;\n}\nfunction recommendTeam(z=zone()){return sortedEligible(z).slice(0,3);}\n"""
+          if marker not in s: raise SystemExit('team marker not found')
+          s=s.replace(marker,add,1)
+
+          old="""function selectionHTML(z){\n  const list=eligibleFor(z);\n  const options=(slot)=>'<option value=\"\">选择队员 '+(slot+1)+'</option>'+list.map(m=>'<option value=\"'+m.id+'\" '+(selected[slot]===m.id?'selected':'')+'>'+stars(m)+(m.shiny?' ✦':'')+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');\n  return '<div class=\"exp-select-grid\">'+[0,1,2].map(i=>'<label>队员 '+(i+1)+'<select data-exp-slot=\"'+i+'\">'+options(i)+'</select></label>').join('')+'</div>';\n}\n"""
+          new="""function selectionHTML(z){\n  const list=sortedEligible(z),recommended=new Set(recommendTeam(z).map(m=>m.id));\n  const options=(slot)=>'<option value=\"\">选择队员 '+(slot+1)+'</option>'+list.map((m,idx)=>'<option value=\"'+m.id+'\" '+(selected[slot]===m.id?'selected':'')+'>'+(recommended.has(m.id)?'★推荐 '+(idx+1)+' · ':'')+stars(m)+(m.shiny?' ✦':'')+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');\n  return '<div class=\"exp-select-tools\" style=\"display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:8px 0\"><label style=\"min-width:220px\"><b>队员排序</b><select data-exp-sort style=\"display:block;width:100%;margin-top:4px\"><option value=\"recommended\" '+(sortMode==='recommended'?'selected':'')+'>最佳推荐</option><option value=\"newest\" '+(sortMode==='newest'?'selected':'')+'>加入时间 · 新 → 旧</option><option value=\"oldest\" '+(sortMode==='oldest'?'selected':'')+'>加入时间 · 旧 → 新</option><option value=\"total\" '+(sortMode==='total'?'selected':'')+'>总能力 · 高 → 低</option><option value=\"star\" '+(sortMode==='star'?'selected':'')+'>星级 · 高 → 低</option><option value=\"luck\" '+(sortMode==='luck'?'selected':'')+'>幸运 · 高 → 低</option></select></label><button type=\"button\" class=\"secondary\" data-exp-recommend>一键选择最佳推荐</button><small style=\"font-size:9px;color:#55515a\">最佳推荐会综合总能力、短板能力、最高能力与星级；随机路线更重视均衡。</small></div><div class=\"exp-select-grid\">'+[0,1,2].map(i=>'<label>队员 '+(i+1)+'<select data-exp-slot=\"'+i+'\">'+options(i)+'</select></label>').join('')+'</div>';\n}\n"""
+          if old not in s: raise SystemExit('selectionHTML block not found')
+          s=s.replace(old,new,1)
+
+          old="document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-exp-slot]');if(!sel)return;selected[Number(sel.dataset.expSlot)]=Number(sel.value)||null;render();});"
+          new="document.addEventListener('change',e=>{const sort=e.target.closest?.('[data-exp-sort]');if(sort){sortMode=sort.value||'recommended';render();return;}const sel=e.target.closest?.('[data-exp-slot]');if(!sel)return;selected[Number(sel.dataset.expSlot)]=Number(sel.value)||null;render();});"
+          if old not in s: raise SystemExit('change listener marker not found')
+          s=s.replace(old,new,1)
+
+          old="document.addEventListener('click',e=>{if(e.target.closest?.('[data-exp-start]')){start();return;}"
+          new="document.addEventListener('click',e=>{if(e.target.closest?.('[data-exp-recommend]')){const rec=recommendTeam(zone());selected=rec.map(m=>m.id);render();if(rec.length<3)rt()?.tell?.('当前难度符合条件的怪物不足 3 只。');return;}if(e.target.closest?.('[data-exp-start]')){start();return;}"
+          if old not in s: raise SystemExit('click listener marker not found')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check v194-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v195-expedition-sorting.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v194-expedition.js .github/workflows/v195-expedition-sorting.yml
+          git commit -m "Improve expedition team sorting and recommendations"
+          git push
