@@ -1,0 +1,47 @@
+name: Qinster v200 roguelike zone switch fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v200-fix-rogue-zone-switch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fix roguelike difficulty selector
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('v199-roguelike-expedition.js')
+          s=p.read_text(encoding='utf-8')
+          old="let selected=[],selectedZone='d1',sortMode='recommended';"
+          new="let selected=[],selectedZone='d1',sortMode='recommended',zoneInitialized=false;"
+          if old not in s:
+              raise SystemExit('state marker not found')
+          s=s.replace(old,new,1)
+          old2="if(!selected.length)selected=(e.lastTeamIds||[]).slice(0,3);if(e.lastZone&&ZONES.some(x=>x.id===e.lastZone))selectedZone=e.lastZone;return e}"
+          new2="if(!selected.length)selected=(e.lastTeamIds||[]).slice(0,3);if(!zoneInitialized){if(e.lastZone&&ZONES.some(x=>x.id===e.lastZone))selectedZone=e.lastZone;zoneInitialized=true}return e}"
+          if old2 not in s:
+              raise SystemExit('ensure marker not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check v199-roguelike-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v200-fix-rogue-zone-switch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v199-roguelike-expedition.js .github/workflows/v200-fix-rogue-zone-switch.yml
+          git commit -m "Fix roguelike difficulty selector switching"
+          git push
