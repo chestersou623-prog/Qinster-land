@@ -1099,10 +1099,11 @@ body.modal-open{overflow:hidden}
 #dispatch-travel-dock .mission-scene-monster small{font-size:7px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 3px}
 @keyframes dockWander{from{left:5%}to{left:calc(95% - 64px)}}
 @keyframes dockRunStep{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-4px) rotate(2deg)}}
-#dispatch-travel-dock .mission-arrived .mission-scene-monster{animation:none;left:10%}
-#dispatch-travel-dock .mission-arrived .mission-scene-monster:nth-child(2){left:40%}
-#dispatch-travel-dock .mission-arrived .mission-scene-monster:nth-child(3){left:70%}
-#dispatch-travel-dock .mission-arrived .sprite,.still #dispatch-travel-dock .sprite,.still #dispatch-travel-dock .mission-scene-monster{animation-play-state:paused}
+#dispatch-travel-dock .mission-arrived .mission-scene-monster{animation-duration:calc(var(--travel-time,7s) * 2)}
+
+
+#dispatch-travel-dock .mission-arrived .sprite{animation-duration:.8s}
+.still #dispatch-travel-dock .sprite,.still #dispatch-travel-dock .mission-scene-monster{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#dispatch-travel-dock .mission-scene-monster{animation:none;left:calc(5% + var(--travel-lane,12px)*4)}#dispatch-travel-dock .mission-scene-monster .sprite{animation:none}}
 
 /* v197: layered pixel landscapes. Decorative layers never receive input. */
