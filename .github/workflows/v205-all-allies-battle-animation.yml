@@ -1,0 +1,42 @@
+name: Qinster v205 all allies battle animation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v205-all-allies-battle-animation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Animate every living ally
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('v201-battle-theater.js')
+          s=p.read_text(encoding='utf-8')
+          old="""}else{const a=box.querySelector(`[data-bt-ally=\"${i%Math.max(1,team(run).length)}\"]`);a?.classList.add('attack');await sleep(150);const enemy=box.querySelector('[data-bt-enemy]');if(!miss){enemyHp=Math.max(0,enemyHp-Math.min(30,dmg/3));enemy?.querySelector('.rg-bt-hp i')?.style.setProperty('width',enemyHp+'%');enemy?.classList.add('hit');float(box,enemy,miss?'MISS':'-'+Math.max(1,Math.round(dmg/3)),crit,miss)}else float(box,enemy,'MISS',false,true);await sleep(220);a?.classList.remove('attack');enemy?.classList.remove('hit')}feed.innerHTML="""
+          new="""}else{const enemy=box.querySelector('[data-bt-enemy]');const allies=team(run);const liveAllies=allies.map((m,j)=>({m,j})).filter(x=>(Number(run.hp?.[x.m.id])||0)>0);const attackers=liveAllies.length?liveAllies:allies.map((m,j)=>({m,j}));const share=Math.max(1,dmg/Math.max(1,attackers.length));for(const x of attackers){if(skip)break;const a=box.querySelector(`[data-bt-ally=\"${x.j}\"]`);a?.classList.add('attack');await sleep(110);if(!miss){const dealt=Math.min(18,share/3);enemyHp=Math.max(0,enemyHp-dealt);enemy?.querySelector('.rg-bt-hp i')?.style.setProperty('width',enemyHp+'%');enemy?.classList.add('hit');float(box,enemy,'-'+Math.max(1,Math.round(dealt)),crit,miss)}else float(box,enemy,'MISS',false,true);await sleep(150);a?.classList.remove('attack');enemy?.classList.remove('hit');await sleep(70)}}feed.innerHTML="""
+          if old not in s:
+              raise SystemExit('animation target not found')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check v201-battle-theater.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v205-all-allies-battle-animation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v201-battle-theater.js .github/workflows/v205-all-allies-battle-animation.yml
+          git commit -m "Animate all expedition allies in battle replay"
+          git push
