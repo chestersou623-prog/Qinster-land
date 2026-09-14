@@ -1,0 +1,42 @@
+name: Qinster v198 expedition zone switch fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v198-expedition-zone-switch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fix expedition difficulty switching
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('v194-expedition.js')
+          s=p.read_text(encoding='utf-8')
+          old="if(z){selectedZone=z.dataset.expZone;selected=[];const ex=ensure();if(ex)ex.lastZone=selectedZone;render();return;}"
+          new="if(z){const next=z.dataset.expZone;const ex=ensure();selectedZone=next;selected=[];if(ex){ex.lastZone=selectedZone;rt()?.save?.();}render();return;}"
+          if old not in s:
+              raise SystemExit('difficulty click handler marker not found')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node --check v194-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v198-expedition-zone-switch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v194-expedition.js .github/workflows/v198-expedition-zone-switch.yml
+          git commit -m "Fix expedition difficulty selector sticking to previous zone"
+          git push
