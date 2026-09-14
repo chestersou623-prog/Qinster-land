@@ -31,12 +31,12 @@ const CHALLENGES=[
 {title:'隐秘岔路',text:'只有直觉和运气足够好的怪物能找到安全路线。',stat:4}
 ];
 const NODE_META={battle:['⚔','普通战斗','自动战斗，胜利后继续'],elite:['☠','精英战','更强敌人，必出遗物三选一'],treasure:['▣','宝箱','获得灵能与随机远征材料'],rest:['♥','营地','恢复队伍并补充补给'],challenge:['?','特殊事件','指定一只怪物进行能力判定'],boss:['★','区域首领','本局最终自动战斗']};
-let selected=[],selectedZone='d1',sortMode='recommended';
+let selected=[],selectedZone='d1',sortMode='recommended',zoneInitialized=false;
 function R(){return window.QinsterRuntime||null} function S(){return R()?.getState?.()||null}
 function z(id=selectedZone){return ZONES.find(x=>x.id===id)||ZONES[0]}
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function save(msg){const s=S(),r=R();if(!s||!r)return;s.revision=(s.revision||0)+1;r.save?.();r.render?.();if(msg)r.tell?.(msg);render()}
-function ensure(){const s=S();if(!s)return null;if(!s.expedition||typeof s.expedition!=='object')s.expedition={};const e=s.expedition;if(e.dayKey!==today()){e.dayKey=today();e.usedByZone={}}if(!e.usedByZone)e.usedByZone={};e.badges=Math.max(0,Number(e.badges)||0);if(!e.loot)e.loot={relicDust:0,starCrystal:0,eggFragment:0};if(!selected.length)selected=(e.lastTeamIds||[]).slice(0,3);if(e.lastZone&&ZONES.some(x=>x.id===e.lastZone))selectedZone=e.lastZone;return e}
+function ensure(){const s=S();if(!s)return null;if(!s.expedition||typeof s.expedition!=='object')s.expedition={};const e=s.expedition;if(e.dayKey!==today()){e.dayKey=today();e.usedByZone={}}if(!e.usedByZone)e.usedByZone={};e.badges=Math.max(0,Number(e.badges)||0);if(!e.loot)e.loot={relicDust:0,starCrystal:0,eggFragment:0};if(!selected.length)selected=(e.lastTeamIds||[]).slice(0,3);if(!zoneInitialized){if(e.lastZone&&ZONES.some(x=>x.id===e.lastZone))selectedZone=e.lastZone;zoneInitialized=true}return e}
 function monsterName(m){return R()?.name?.(m)||R()?.G?.SPECIES?.[m.species]?.name||('怪物 #'+m.id)}
 function st(m){return R()?.G?.stats?.(m)||[0,0,0,0,0]} function stars(m){return R()?.G?.stars?.(m.star)||'★'.repeat(m.star||1)}
 function eligible(zone){const s=S(),r=R();if(!s||!r)return[];return (s.monsters||[]).filter(m=>m&&m.life>0&&!r.isDispatched(m.id)&&(m.star||1)>=zone.minStar&&(!zone.shinyOnly||m.shiny))}
