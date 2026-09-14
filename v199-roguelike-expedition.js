@@ -98,64 +98,58 @@ function resolveChallenge(run,memberIndex){const t=activeTeam(run),m=t[memberInd
 function combatValue(m,pos,run){const v=st(m),mods=combatMods(run),sh=m.shiny?(mods.shiny||0):0;let atk=v[1]*(1+(mods.atk||0)+sh),def=v[2]*(1+(mods.def||0)+sh),spd=v[3]*(1+(mods.spd||0)),luck=v[4]*(1+(mods.luck||0)+sh),con=v[0];if(pos===0){def*=1+(mods.frontDef||0);atk*=1+(mods.frontAtk||0)}if(pos===2){atk*=1+(mods.backAtk||0);def*=1+(mods.backDef||0)}return{atk,def,spd,luck,con}}
 function enemyPreview(run,kind){const zone=z(run.zone),elite=kind==='elite',boss=kind==='boss',mult=zone.enemy*(1+run.stage*.085)*(elite?1.22:1)*(boss?1.48:1),speciesCount=Math.max(1,R()?.G?.SPECIES?.length||1),enemySpecies=(zone.tier*11+(run.stage||0)*7+(boss?5:elite?2:0))%speciesCount;return{kind,enemySpecies,enemyMax:Math.round(240*mult+zone.tier*70),enemyAtk:Math.round(55*mult+zone.tier*11),enemyDef:Math.round(45*mult+zone.tier*9),enemySpd:Math.round(40*mult+zone.tier*8),enemyLuck:Math.round(32*mult+zone.tier*6)}}
 function prepareBattle(run,kind){run.pendingBattle=enemyPreview(run,kind);run.phase='battlePreview';save()}
-function speedExtraChance(diff){return diff>=250?.30:diff>=150?.20:diff>=50?.10:0}
-function speedRuleText(){return '速度决定先手；比对方快 50/150/250 时，每次行动分别有 10%/20%/30% 概率追加一次行动。'}
+function atbRate(spd){return Math.max(20,60+Math.max(0,Number(spd)||0)*.45)}
+function speedRuleText(){return '速度决定行动条充能速度；所有参战单位会同时充能，行动条达到 100% 就立刻行动，攻击后清零重新累积。'}
 function battle(run,kind){
   ensureRunMeta(run);
   const zone=z(run.zone),t=activeTeam(run),elite=kind==='elite',boss=kind==='boss',ep=run.pendingBattle&&run.pendingBattle.kind===kind?run.pendingBattle:enemyPreview(run,kind),enemyMax=ep.enemyMax,enemyAtk=ep.enemyAtk,enemyDef=ep.enemyDef,enemySpd=ep.enemySpd,enemyLuck=ep.enemyLuck;
   run.pendingBattle=null;
-  const startHp={}; t.forEach(m=>startHp[m.id]=hpPct(run,m.id));
-  let enemy=enemyMax,round=0,firstGuard=true;
-  const logs=[],events=[];
-  if((elite||boss)&&Math.random()<(boss?0.70:0.38)){const pool=CURSES.filter(c=>!run.curses.includes(c.id));if(pool.length)inflictCurse(run,rand(pool).id,logs)}
+  const startHp={};t.forEach(m=>startHp[m.id]=hpPct(run,m.id));
+  let enemy=enemyMax,firstGuard=true,actions=0,elapsed=0;
+  const logs=[],events=[],gauge={enemy:0};t.forEach(m=>gauge[m.id]=0);
+  if((elite||boss)&&Math.random()<(boss?.70:.38)){const pool=CURSES.filter(c=>!run.curses.includes(c.id));if(pool.length)inflictCurse(run,rand(pool).id,logs)}
   const initialTeamPower=t.filter(m=>canReviveInRun(run,m.id)&&hpPct(run,m.id)>0).reduce((sum,m,i)=>{const p=combatValue(m,i,run);return sum+p.atk*1.1+p.def+p.spd*.65+p.luck*.35+p.con*.7},0),enemyPower=Math.round(enemyMax*.7+enemyAtk*2+enemyDef*1.3+enemySpd*.5+enemyLuck*.25);
-  while(enemy>0&&round<8&&t.some(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id))){
-    round++;
-    const aliveNow=t.map((m,orig)=>({m,orig,hp:hpPct(run,m.id)})).filter(x=>x.hp>0&&canReviveInRun(run,x.m.id));
-    const fastestAlly=Math.max(0,...aliveNow.map((x,dynPos)=>combatValue(x.m,dynPos,run).spd));
-    const allyFirst=fastestAlly>=enemySpd;
-    const allyPhase=()=>{
-      let total=0;
-      const current=t.map((m,orig)=>({m,orig,hp:hpPct(run,m.id)})).filter(x=>x.hp>0&&canReviveInRun(run,x.m.id));
-      current.forEach((x,dynPos)=>{
-        if(enemy<=0||hpPct(run,x.m.id)<=0||!canReviveInRun(run,x.m.id))return;
-        const p=combatValue(x.m,dynPos,run),crit=Math.random()<Math.min(.38,p.luck/1600),raw=(p.atk*.22+p.spd*.06+p.luck*.025)*(crit?1.65:1),hit=Math.max(7,raw-enemyDef*.07);
-        enemy=Math.max(0,enemy-hit); total+=hit;
-        events.push({type:'ally',round,actorId:x.m.id,damage:Math.round(hit),crit,enemyHp:enemy,spd:p.spd});
-        const extra=speedExtraChance(p.spd-enemySpd);
-        if(enemy>0&&extra>0&&Math.random()<extra){
-          const crit2=Math.random()<Math.min(.38,p.luck/1600),raw2=(p.atk*.22+p.spd*.06+p.luck*.025)*(crit2?1.65:1),hit2=Math.max(7,raw2-enemyDef*.07);
-          enemy=Math.max(0,enemy-hit2); total+=hit2;
-          events.push({type:'ally',round,actorId:x.m.id,damage:Math.round(hit2),crit:crit2,extra:true,enemyHp:enemy,spd:p.spd});
-          logs.push(`${monsterName(x.m)} 速度压制，追加行动造成 ${Math.round(hit2)} 伤害。`);
-        }
-      });
-      if(total>0)logs.push(`第 ${round} 回合：队伍造成 ${Math.round(total)} 伤害${enemy<=0?'，敌人倒下。':''}`);
-    };
-    const enemyPhase=()=>{
-      if(enemy<=0)return;
-      const alive=t.map((m,orig)=>({m,orig,hp:hpPct(run,m.id)})).filter(x=>x.hp>0&&canReviveInRun(run,x.m.id)).map((x,dynPos)=>({...x,dynPos}));
-      if(!alive.length)return;
-      const roll=Math.random();let target=roll<.64?alive[0]:roll<.88?(alive[1]||alive[0]):(alive[2]||alive[1]||alive[0]);
-      const p=combatValue(target.m,target.dynPos,run);
-      const strike=(extra=false)=>{
-        if(hpPct(run,target.m.id)<=0||!canReviveInRun(run,target.m.id))return;
-        let incoming=Math.max(5,enemyAtk-p.def*.08);
-        if(firstGuard&&(combatMods(run).firstGuard||0)){incoming*=1-combatMods(run).firstGuard;firstGuard=false}
-        const hpLoss=Math.min(42,incoming/(65+p.con*.22)*100),before=hpPct(run,target.m.id);
-        run.hp[target.m.id]=Math.max(0,before-hpLoss);
-        events.push({type:'enemy',round,targetId:target.m.id,hpLoss,extra,hpAfter:run.hp[target.m.id],spd:enemySpd});
-        logs.push(`${extra?'敌人速度压制追加攻击：':'敌人反击 '}${monsterName(target.m)}（${['前卫','中卫','后卫'][target.dynPos]}），远征生命 -${Math.round(hpLoss)}%。`);
-        if(before>0&&run.hp[target.m.id]<=0){expeditionKnockout(run,target.m,logs);if(target.m.life>0)logs.push(`${monsterName(target.m)} 已倒下，但之后可通过营地/恢复效果复活；若再次归0会再次扣1生命。`);logs.push('后方存活队员自动向前补位。')}
-      };
-      strike(false);
-      if(hpPct(run,target.m.id)>0&&enemy>0){const extra=speedExtraChance(enemySpd-p.spd);if(extra>0&&Math.random()<extra)strike(true)}
-    };
-    if(allyFirst){allyPhase();if(enemy>0)enemyPhase()}else{enemyPhase();if(t.some(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)))allyPhase()}
+  const gaugeSnapshot=()=>({enemy:Math.max(0,Math.min(100,gauge.enemy||0)),allies:Object.fromEntries(t.map(m=>[m.id,Math.max(0,Math.min(100,gauge[m.id]||0))]))});
+  while(enemy>0&&actions<48&&t.some(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id))){
+    const alive=t.map(m=>m).filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id));
+    const actors=[];
+    alive.forEach((m,dynPos)=>{const p=combatValue(m,dynPos,run);actors.push({type:'ally',key:m.id,m,dynPos,p,spd:p.spd,rate:atbRate(p.spd)});});
+    if(enemy>0)actors.push({type:'enemy',key:'enemy',spd:enemySpd,rate:atbRate(enemySpd)});
+    if(!actors.length)break;
+    let dt=Infinity;
+    for(const a of actors){const g=a.type==='enemy'?(gauge.enemy||0):(gauge[a.key]||0);dt=Math.min(dt,(100-g)/Math.max(1,a.rate));}
+    if(!Number.isFinite(dt)||dt<0)dt=0;
+    elapsed+=dt;
+    for(const a of actors){if(a.type==='enemy')gauge.enemy=Math.min(100,(gauge.enemy||0)+a.rate*dt);else gauge[a.key]=Math.min(100,(gauge[a.key]||0)+a.rate*dt);}
+    const ready=actors.filter(a=>(a.type==='enemy'?gauge.enemy:gauge[a.key])>=99.999).sort((a,b)=>b.spd-a.spd)[0];
+    if(!ready)break;
+    actions++;
+    const snap=gaugeSnapshot();
+    if(ready.type==='ally'){
+      const m=ready.m;if(hpPct(run,m.id)<=0||!canReviveInRun(run,m.id)){gauge[m.id]=0;continue}
+      const p=ready.p,crit=Math.random()<Math.min(.38,p.luck/1600),raw=(p.atk*.22+p.spd*.06+p.luck*.025)*(crit?1.65:1),hit=Math.max(7,raw-enemyDef*.07);
+      enemy=Math.max(0,enemy-hit);
+      events.push({type:'ally',action:actions,actorId:m.id,damage:Math.round(hit),crit,enemyHp:enemy,spd:p.spd,wait:dt,gauges:snap});
+      logs.push(`行动 ${actions}：${monsterName(m)} 造成 ${Math.round(hit)} 伤害${crit?'（暴击）':''}。`);
+      gauge[m.id]=0;
+    }else{
+      const current=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id));
+      if(!current.length)break;
+      const roll=Math.random();let target=roll<.64?current[0]:roll<.88?(current[1]||current[0]):(current[2]||current[1]||current[0]);
+      const dynPos=current.indexOf(target),p=combatValue(target,dynPos,run);
+      let incoming=Math.max(5,enemyAtk-p.def*.08);
+      if(firstGuard&&(combatMods(run).firstGuard||0)){incoming*=1-combatMods(run).firstGuard;firstGuard=false}
+      const hpLoss=Math.min(42,incoming/(65+p.con*.22)*100),before=hpPct(run,target.id);
+      run.hp[target.id]=Math.max(0,before-hpLoss);
+      events.push({type:'enemy',action:actions,targetId:target.id,hpLoss,hpAfter:run.hp[target.id],spd:enemySpd,wait:dt,gauges:snap});
+      logs.push(`行动 ${actions}：敌人攻击 ${monsterName(target)}（${['前卫','中卫','后卫'][dynPos]}），远征生命 -${Math.round(hpLoss)}%。`);
+      gauge.enemy=0;
+      if(before>0&&run.hp[target.id]<=0){gauge[target.id]=0;expeditionKnockout(run,target,logs);if(target.life>0)logs.push(`${monsterName(target)} 已倒下，之后可通过营地/恢复效果复活。`);logs.push('后方存活队员自动向前补位。')}
+    }
   }
-  const win=enemy<=0,aliveCount=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)).length,reason=win?`在第 ${round} 回合击穿敌方 ${enemyMax} HP`:(aliveCount===0?'队伍全部倒下':'8回合内未能击败敌人');
+  const win=enemy<=0,aliveCount=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)).length,reason=win?`在第 ${actions} 次行动击穿敌方 ${enemyMax} HP`:(aliveCount===0?'队伍全部倒下':'达到 48 次行动上限仍未击败敌人');
   if(win){const eliteBonus=elite?(1+(combatMods(run).eliteReward||0)):1,base=Math.round((1100+run.stage*330)*(elite?1.7:1)*(boss?2.8:1)*nodeRewardScale(zone,run.stage)*eliteBonus);run.energy+=base;if(elite)run.tempBadges+=Math.max(1,Math.round(zone.badge*.5));const heal=combatMods(run).heal||0;if(heal)t.forEach(m=>{if(canReviveInRun(run,m.id))run.hp[m.id]=Math.min(100,hpPct(run,m.id)+heal*100);else run.hp[m.id]=0});run.log.push(`${boss?'首领':elite?'精英':'战斗'}胜利：+${base} 灵能。`)}else run.log.push('战斗失败，远征被迫撤退。');
-  run.battle={kind,enemyMax,enemyHp:enemy,enemyAtk,enemyDef,enemySpd,enemyLuck,enemyPower,teamPower:Math.round(initialTeamPower),rounds:round,logs,events,startHp,win,reason,enemySpecies:ep.enemySpecies};
+  run.battle={kind,atb:true,actions,rounds:actions,elapsed,enemyMax,enemyHp:enemy,enemyAtk,enemyDef,enemySpd,enemyLuck,enemyPower,teamPower:Math.round(initialTeamPower),logs,events,startHp,win,reason,enemySpecies:ep.enemySpecies};
   run.nextBattleMods={};run.phase='battleResult';save()
 }
 function offerRelic(run){const owned=new Set(run.relics||[]),pool=RELICS.filter(x=>!owned.has(x.id));run.relicChoices=shuffle(pool.length>=3?pool:RELICS).slice(0,3).map(x=>x.id);run.phase='relic';save()}
@@ -177,7 +171,7 @@ function nodeHTML(run){return `<section class="rg-panel"><div class="rg-title"><
 function runHeader(run){const zone=z(run.zone);return `<section class="rg-panel"><div class="rg-title"><div><b>${zone.label} · ${zone.name}</b><small>目标：9层 · 预计 5–10 分钟 · 最后一层首领</small></div><button class="secondary" data-rg-abandon>撤退结算</button></div>${routeBar(run)}<div class="rg-status"><span>补给 ${run.supply}</span><span>暂存灵能 ${Math.round(run.energy)}</span><span>临时徽章 ${run.tempBadges}</span><span>遗物 ${(run.relics||[]).length}</span></div></section>`}
 function teamHTML(run){const t=activeTeam(run);return `<section class="rg-panel"><div class="rg-title"><div><b>自走棋阵型</b><small>前卫承担主要火力；倒下后中卫自动补位，再由后卫补上。部分遗物会强化站位</small></div><button class="secondary" data-rg-rotate>轮换阵型</button></div><div class="rg-team">${t.map((m,i)=>monCard(m,run,i)).join('')}</div></section>`}
 function battlePreviewHTML(run){const b=run.pendingBattle||enemyPreview(run,'battle'),t=activeTeam(run),enemyPower=Math.round(b.enemyMax*.7+b.enemyAtk*2+b.enemyDef*1.3+b.enemySpd*.5+b.enemyLuck*.25);const alive=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id));const teamPower=Math.round(alive.reduce((sum,m,i)=>{const p=combatValue(m,i,run);return sum+p.atk*1.1+p.def+p.spd*.65+p.luck*.35+p.con*.7},0));const kindName=b.kind==='boss'?'区域首领':b.kind==='elite'?'精英守卫':'野外守卫';const enemyCard=`<div class="rg-mon rg-enemy-match">${R()?.sprite?.(b.enemySpecies,0,b.kind==='boss',null)||`<div class="sprite" style="width:58px;height:58px;margin:auto;display:grid;place-items:center;font-size:28px">${b.kind==='boss'?'★':b.kind==='elite'?'☠':'⚔'}</div>`}<b>${kindName}</b><small>体质 ${b.enemyMax} · 攻击 ${b.enemyAtk} · 防御 ${b.enemyDef}</small><small>速度 ${b.enemySpd} · 幸运 ${b.enemyLuck}</small><div class="rg-hp"><i style="width:100%"></i></div><small>远征生命 100% · HP ${b.enemyMax}/${b.enemyMax}</small></div>`;return `${runHeader(run)}${runInventoryHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>战斗准备</b><small>先查看双方数值、当前HP、Debuff和道具，再决定是否进入战斗</small></div><span>${b.kind==='boss'?'BOSS':b.kind==='elite'?'精英':'普通'}</span></div><div class="rg-battle"><div class="rg-team">${t.map((m,i)=>monCard(m,run,i)).join('')}</div><div class="rg-vs">VS</div><div class="rg-team">${enemyCard}</div></div><p class="rg-note"><b>战力参考：</b>我方 ${teamPower} · 敌方 ${enemyPower}。注意：战力只是属性参考，<b>当前远征HP、站位、Debuff、暴击和8回合限制</b>都会影响输赢。<br><b>速度：</b>${speedRuleText()}</p><button class="primary rg-mainbtn" data-rg-enter-battle>进入战斗</button></section>`}
-function battleHTML(run){const b=run.battle,t=activeTeam(run);return `${runHeader(run)}<section class="rg-panel"><div class="rg-title"><div><b>${b.kind==='boss'?'首领战':b.kind==='elite'?'精英战':'自动战斗'} · ${b.win?'胜利':'失败'}</b><small>战斗自动进行；五维、站位和遗物共同决定结果</small></div><span>${b.rounds} 回合</span></div><div class="rg-battle"><div class="rg-team">${t.map((m,i)=>monCard(m,run,i)).join('')}</div><div class="rg-vs">VS</div><div class="rg-mon rg-enemy-match">${R()?.sprite?.(b.enemySpecies,0,b.kind==='boss',null)||`<div class="sprite" style="width:58px;height:58px;margin:auto;display:grid;place-items:center;font-size:28px">${b.kind==='boss'?'★':b.kind==='elite'?'☠':'⚔'}</div>`}<b>${b.kind==='boss'?'区域首领':b.kind==='elite'?'精英守卫':'野外守卫'}</b><small>体质 ${b.enemyMax} · 攻击 ${b.enemyAtk||'-'} · 防御 ${b.enemyDef||'-'}</small><small>速度 ${b.enemySpd||'-'} · 幸运 ${b.enemyLuck||'-'}</small><div class="rg-hp"><i style="width:${Math.max(0,b.enemyHp/b.enemyMax*100)}%"></i></div><small>远征生命 ${Math.round(Math.max(0,b.enemyHp/b.enemyMax*100))}% · HP ${Math.round(b.enemyHp)}/${b.enemyMax}</small><small>敌方估值 ${b.enemyPower||'-'} · 我方估值 ${b.teamPower||'-'}</small></div></div><p class="rg-note"><b>结果原因：</b>${b.reason||'根据双方属性、站位、遗物和随机暴击结算'}</p><div class="rg-log">${b.logs.map(x=>`<div>${x}</div>`).join('')}</div><button class="primary rg-mainbtn" data-rg-battle-next>${b.win?'领取结果并继续':'结束远征'}</button></section>`}
+function battleHTML(run){const b=run.battle,t=activeTeam(run);return `${runHeader(run)}<section class="rg-panel"><div class="rg-title"><div><b>${b.kind==='boss'?'首领战':b.kind==='elite'?'精英战':'自动战斗'} · ${b.win?'胜利':'失败'}</b><small>战斗自动进行；五维、站位和遗物共同决定结果</small></div><span>${b.atb?(b.actions||b.rounds)+' 次行动':b.rounds+' 回合'}</span></div><div class="rg-battle"><div class="rg-team">${t.map((m,i)=>monCard(m,run,i)).join('')}</div><div class="rg-vs">VS</div><div class="rg-mon rg-enemy-match">${R()?.sprite?.(b.enemySpecies,0,b.kind==='boss',null)||`<div class="sprite" style="width:58px;height:58px;margin:auto;display:grid;place-items:center;font-size:28px">${b.kind==='boss'?'★':b.kind==='elite'?'☠':'⚔'}</div>`}<b>${b.kind==='boss'?'区域首领':b.kind==='elite'?'精英守卫':'野外守卫'}</b><small>体质 ${b.enemyMax} · 攻击 ${b.enemyAtk||'-'} · 防御 ${b.enemyDef||'-'}</small><small>速度 ${b.enemySpd||'-'} · 幸运 ${b.enemyLuck||'-'}</small><div class="rg-hp"><i style="width:${Math.max(0,b.enemyHp/b.enemyMax*100)}%"></i></div><small>远征生命 ${Math.round(Math.max(0,b.enemyHp/b.enemyMax*100))}% · HP ${Math.round(b.enemyHp)}/${b.enemyMax}</small><small>敌方估值 ${b.enemyPower||'-'} · 我方估值 ${b.teamPower||'-'}</small></div></div><p class="rg-note"><b>结果原因：</b>${b.reason||'根据双方属性、站位、遗物和随机暴击结算'}</p><div class="rg-log">${b.logs.map(x=>`<div>${x}</div>`).join('')}</div><button class="primary rg-mainbtn" data-rg-battle-next>${b.win?'领取结果并继续':'结束远征'}</button></section>`}
 function challengeHTML(run){const c=run.challenge,t=activeTeam(run),zone=z(run.zone),target=70+zone.tier*58+run.stage*12;return `${runHeader(run)}${runInventoryHTML(run)}${teamHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>${c.title}</b><small>${c.text}</small></div><span>判定：${STAT[c.stat]} · 目标约 ${target}</span></div><p class="rg-note">选择一只怪物处理这个事件。这里不再使用三只怪的平均值，因此培育专门擅长某项能力的怪物会有价值。</p><div class="rg-event-picks">${t.map((m,i)=>`<button class="secondary" data-rg-event-member="${i}"><b>${monsterName(m)}</b><small>${STAT[c.stat]} ${st(m)[c.stat]}</small></button>`).join('')}</div></section>`}
 function relicHTML(run){const owned=(run.relics||[]).map(id=>RELICS.find(x=>x.id===id)?.name).filter(Boolean);return `${runHeader(run)}${runInventoryHTML(run)}${teamHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>遗物三选一</b><small>先看上方队伍当前HP、站位、数值和Debuff，再决定补哪一块短板</small></div><span>${owned.length?'已有：'+owned.join(' · '):'当前无遗物'}</span></div><div class="rg-relics">${run.relicChoices.map(id=>{const r=RELICS.find(x=>x.id===id);return `<button class="secondary rg-relic" data-rg-relic="${id}"><b>${r.name}</b><span>${r.text}</span></button>`}).join('')}</div></section>`}
 function finalHTML(run){return `${runHeader(run)}${runInventoryHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>首领宝库 · 永久奖励三选一</b><small>这个奖励会真正带回牧场；远征材料之后用于远征兑换所</small></div></div><div class="rg-final">${run.finalChoices.map((c,i)=>`<button class="primary rg-relic" data-rg-final="${i}"><b>${c.title}</b><span>${c.text}</span></button>`).join('')}</div></section>`}
