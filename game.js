@@ -3544,6 +3544,7 @@ function dispatchMissionSceneHTML(mission,team){
   ).join('');
   return '<div class="dispatch-mission-scene mission-'+mission.id+'">'
     +'<div class="mission-scene-label">'+mission.name+' · 任务等级 '+(mission.taskLevel||1)+'</div>'
+    +'<div class="mission-scenery" aria-hidden="true"><i class="sky-light"></i><i class="sky-cloud"></i><i class="distant-grove"></i></div>'
     +'<div class="mission-scene-team">'+teamHTML+'</div>'
     +'</div>';
 }
@@ -4850,16 +4851,6 @@ function pet(id){
   dirty=true;
   render();
 }
-function renderDispatchWalkway(){
-  const box=$('dispatch-walkway');if(!box)return;
-  const team=dispatchedMonsters();
-  box.innerHTML=team.map((m,i)=>
-    '<div class="dispatch-walker" style="--walk-time:'+(8+i*1.4)+'s;--walk-delay:'+(-i*1.7)+'s">'
-    +sprite(m.species,m.tint,m.shiny,m.specialColor)
-    +'<small>派遣中 · '+name(m)+'</small></div>'
-  ).join('');
-  box.hidden=!team.length;
-}
 const RANCH_BOUNDS={minX:9,maxX:91,minY:56,maxY:83};
 function clampRanchActor(a){
   if(!a)return;
@@ -4957,7 +4948,7 @@ function syncActors(){
     a.el.style.top=a.y+'%';
   }
 
-  renderDispatchWalkway();
+
 }
 function frame(now){const dt=Math.min(.06,(now-lastFrame)/1000||0);lastFrame=now;if(!document.hidden){for(const [id,a] of actors){if(a.talkUntil&&now>a.talkUntil){a.el.classList.remove('talk');a.talkUntil=0;}if(!s.paused&&!(a.lockUntil&&now<a.lockUntil)){if(now>a.until){const roll=Math.random();a.state=roll<.63?'walk':roll<.90?'idle':'sleep';a.until=now+(a.state==='walk'?2600+Math.random()*4200:1700+Math.random()*4200);if(a.state==='walk'){a.tx=RANCH_BOUNDS.minX+2+Math.random()*(RANCH_BOUNDS.maxX-RANCH_BOUNDS.minX-4);a.ty=RANCH_BOUNDS.minY+1+Math.random()*(RANCH_BOUNDS.maxY-RANCH_BOUNDS.minY-2);}else if(a.state==='sleep')talk(id,'Zzz…');else if(Math.random()<.20)talk(id,['这里好舒服～','晒晒太阳～','今天也很悠闲。'][Math.floor(Math.random()*3)]);}if(a.state==='walk'){const dx=a.tx-a.x,dy=a.ty-a.y,d=Math.hypot(dx,dy);if(d<.7){a.state='idle';a.until=now+1200+Math.random()*1600;}else{const targetV=4.2,desiredX=dx/d*targetV,desiredY=dy/d*targetV*.68,blend=Math.min(1,dt*4.5);a.vx+=(desiredX-a.vx)*blend;a.vy+=(desiredY-a.vy)*blend;a.x+=a.vx*dt;a.y+=a.vy*dt;a.el.style.setProperty('--face',a.vx<-.05?-1:1);}}else{const damp=Math.max(0,1-dt*5);a.vx*=damp;a.vy*=damp;}}}
   if(!s.paused)nudgeApartActors();
@@ -5213,7 +5204,7 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v196';
+window.__qinsterVersion='v197';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';

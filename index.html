@@ -1104,6 +1104,78 @@ body.modal-open{overflow:hidden}
 #dispatch-travel-dock .mission-arrived .mission-scene-monster:nth-child(3){left:70%}
 #dispatch-travel-dock .mission-arrived .sprite,.still #dispatch-travel-dock .sprite,.still #dispatch-travel-dock .mission-scene-monster{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#dispatch-travel-dock .mission-scene-monster{animation:none;left:calc(5% + var(--travel-lane,12px)*4)}#dispatch-travel-dock .mission-scene-monster .sprite{animation:none}}
+
+/* v197: layered pixel landscapes. Decorative layers never receive input. */
+.scene{
+  isolation:isolate;border-color:#394b42;background-color:#91b66b;
+  background-image:linear-gradient(#acd6d4 0 25%,#d6e6ba 25% 31%,#7fa875 31% 39%,#a4c77c 39% 100%);
+  box-shadow:inset 0 0 0 3px #e1e5b7,0 3px 0 #333d36;
+}
+.scene::before{
+  inset:35% 0 0;background:#739954;opacity:.35;
+  clip-path:polygon(0 0,16% 0,16% 8%,33% 8%,33% 0,58% 0,58% 12%,80% 12%,80% 4%,100% 4%,100% 100%,0 100%);
+}
+.scene::after{
+  inset:43% 0 0;background:
+    linear-gradient(90deg,#8cb269 3px,transparent 3px) 12px 20px/73px 53px,
+    linear-gradient(#bdd48b 2px,transparent 2px) 0 0/89px 67px;
+  opacity:.45;
+}
+.scene .landscape{display:block;position:absolute;inset:0;pointer-events:none;z-index:0}
+.landscape>*{position:absolute;display:block}
+.ranch-cloud{top:16%;left:20%;width:54px;height:10px;background:#f3efcf;box-shadow:8px -8px #f3efcf,22px -14px 0 -2px #f3efcf,32px -6px #f3efcf,210px 8px #e4efda,228px 0 #e4efda}
+.ranch-sun{right:16%;top:11%;width:26px;height:26px;background:#f4dda0;clip-path:polygon(20% 0,80% 0,80% 20%,100% 20%,100% 80%,80% 80%,80% 100%,20% 100%,20% 80%,0 80%,0 20%,20% 20%)}
+.ranch-hills{inset:22% 0 auto;height:19%;background:#729e81;clip-path:polygon(0 55%,7% 55%,7% 35%,15% 35%,15% 15%,23% 15%,23% 35%,31% 35%,31% 65%,47% 65%,47% 45%,59% 45%,59% 0,72% 0,72% 25%,83% 25%,83% 50%,100% 50%,100% 100%,0 100%)}
+.ranch-hills::after{content:"";position:absolute;inset:25% 0 0;background:#568366;clip-path:polygon(0 70%,20% 70%,20% 40%,37% 40%,37% 65%,62% 65%,62% 40%,78% 40%,78% 60%,100% 60%,100% 100%,0 100%)}
+.ranch-fence{left:0;right:0;top:40%;height:23px;background:repeating-linear-gradient(90deg,#796d4e 0 4px,#c6b787 4px 10px,transparent 10px 43px),linear-gradient(transparent 5px,#dfc999 5px 10px,#827652 10px 13px,transparent 13px 18px,#b5a778 18px 22px,transparent 22px)}
+.ranch-path{left:0;right:0;top:61%;height:25%;background:#d1c18b;clip-path:polygon(0 36%,19% 36%,19% 22%,39% 22%,39% 6%,63% 6%,63% 22%,82% 22%,82% 34%,100% 34%,100% 68%,79% 68%,79% 56%,60% 56%,60% 42%,42% 42%,42% 57%,21% 57%,21% 70%,0 70%);opacity:.66}
+.ranch-tree{top:30%;left:2%;width:55px;height:58px;background:#4d794d;border-bottom:6px solid #426743;clip-path:polygon(28% 0,72% 0,72% 10%,90% 10%,90% 28%,100% 28%,100% 76%,68% 76%,68% 100%,42% 100%,42% 76%,0 76%,0 28%,10% 28%,10% 10%,28% 10%)}
+.ranch-tree::before{content:"";position:absolute;inset:4px 9px 24px 4px;background:#80ab5e;box-shadow:5px 5px #65964f}
+.ranch-tree::after{content:"";position:absolute;left:42%;bottom:0;width:26%;height:21%;background:#827052}
+.ranch-tree.tree-right{left:auto;right:2%;transform:scale(1.15)}
+.ranch-flowers{left:8%;bottom:7%;width:4px;height:4px;background:#f0d491;box-shadow:4px 0 #e9ad8b,2px 4px #577b49,28px -9px #f1e4b1,30px -5px #577b49,65px 2px #ece5bd,67px 6px #577b49,140px -3px #dba398,142px 1px #577b49,217px -8px #f1d78d,219px -4px #577b49,298px 1px #e6ae99,300px 5px #577b49,378px -4px #efe5b1,380px 0 #577b49}
+#creatures{z-index:2}
+.scene-top span{background:#eee6c8;color:#344839;border-color:#627359;box-shadow:2px 2px #41503d}
+.scene-note{background:#354c3e;color:#f1edce;border-color:#83956a}
+/* Shared dispatch scenery, sized proportionally for both panel and mini window. */
+.dispatch-mission-scene{
+  --sky:#aed5d6;--far:#83af91;--near:#5f8d69;--ground:#9bbd77;--soil:#71965d;--trail:#c9bd8e;--light:#fae5ad;
+  background:var(--sky);isolation:isolate;border-color:#414d46;
+}
+.dispatch-mission-scene[class*="mission-"]::before{
+  inset:25% 0 30%;background:var(--far);
+  clip-path:polygon(0 45%,8% 45%,8% 25%,19% 25%,19% 0,31% 0,31% 25%,40% 25%,40% 55%,53% 55%,53% 30%,63% 30%,63% 10%,76% 10%,76% 35%,88% 35%,88% 20%,100% 20%,100% 100%,0 100%);
+}
+.dispatch-mission-scene[class*="mission-"]::after{
+  height:42%;background:
+    linear-gradient(90deg,var(--soil) 2px,transparent 2px) 9px 8px/51px 29px,
+    linear-gradient(transparent 0 34%,var(--trail) 34% 67%,transparent 67%),
+    linear-gradient(var(--ground) 0 9%,var(--soil) 9% 14%,var(--ground) 14%);
+}
+.mission-scenery{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.mission-scenery .distant-grove{position:absolute;inset:42% 0 35%;background:var(--near);clip-path:polygon(0 40%,7% 40%,7% 0,14% 0,14% 30%,22% 30%,22% 60%,67% 60%,67% 25%,76% 25%,76% 0,84% 0,84% 30%,94% 30%,94% 10%,100% 10%,100% 100%,0 100%)}
+.mission-scenery .sky-light{position:absolute;right:17%;top:18%;width:20px;height:20px;background:var(--light);clip-path:polygon(20% 0,80% 0,80% 20%,100% 20%,100% 80%,80% 80%,80% 100%,20% 100%,20% 80%,0 80%,0 20%,20% 20%)}
+.mission-scenery .sky-cloud{position:absolute;left:25%;top:29%;width:30px;height:5px;background:#eef0d6;box-shadow:7px -5px #eef0d6,14px -8px 0 -1px #eef0d6;opacity:.7}
+.dispatch-mission-scene.mission-forage{--sky:#b9c6a0;--far:#69896a;--near:#3d6653;--ground:#729662;--soil:#547850;--trail:#a7a47c}
+.dispatch-mission-scene.mission-river{--sky:#bbdfe4;--far:#8bb7a2;--near:#68a6ad;--ground:#9dbd88;--soil:#6d9e89;--trail:#d5c69b}
+.dispatch-mission-scene.mission-river .distant-grove{inset:46% 0 34%;clip-path:none;background:repeating-linear-gradient(0deg,#7ab9c5 0 7px,#a4d6d4 7px 9px,#7ab9c5 9px 16px)}
+.dispatch-mission-scene.mission-ruins{--sky:#d7cdae;--far:#a5a48e;--near:#777e6a;--ground:#b6b18b;--soil:#8e9674;--trail:#d2c6a1}
+.dispatch-mission-scene.mission-ruins .distant-grove{inset:26% 0 34%;clip-path:polygon(8% 100%,8% 15%,6% 15%,6% 0,20% 0,20% 15%,18% 15%,18% 100%,73% 100%,73% 30%,71% 30%,71% 15%,85% 15%,85% 30%,83% 30%,83% 100%)}
+.dispatch-mission-scene.mission-cavern{--sky:#33364e;--far:#4c4867;--near:#696085;--ground:#67637e;--soil:#48495e;--trail:#858199;--light:#a4e0d1}
+.dispatch-mission-scene.mission-cavern .sky-cloud,.dispatch-mission-scene.mission-rift .sky-cloud{display:none}
+.dispatch-mission-scene.mission-cavern .distant-grove{background:#8e91bd;clip-path:polygon(6% 100%,9% 25%,13% 0,18% 40%,17% 100%,77% 100%,78% 30%,84% 10%,90% 55%,91% 100%)}
+.dispatch-mission-scene.mission-astral{--sky:#303b5b;--far:#595677;--near:#777096;--ground:#8d88a7;--soil:#625e80;--trail:#aaa5bf;--light:#f4edc7}
+.dispatch-mission-scene.mission-astral .sky-cloud{width:3px;height:3px;box-shadow:24px -12px #eef0d6,73px 4px #eef0d6,116px -17px #eef0d6,-30px 16px #eef0d6}
+.dispatch-mission-scene.mission-summit{--sky:#b1cedc;--far:#eceddf;--near:#a7bdc3;--ground:#e0e5d9;--soil:#a9bec1;--trail:#c6d6d1}
+.dispatch-mission-scene.mission-rift{--sky:#493d52;--far:#785163;--near:#533e54;--ground:#84636c;--soil:#574756;--trail:#b5807a;--light:#e7b08c}
+#dispatch-travel-dock{border-color:#414d46;background:#e1d8b9;box-shadow:3px 3px #9a967d}
+#dispatch-travel-dock summary{background:#414d46;color:#f4e9c6}
+@media(max-width:700px){.ranch-cloud{left:13%;transform:scale(.75)}.ranch-tree{transform:scale(.8);transform-origin:left bottom}.ranch-tree.tree-right{transform:scale(.85);transform-origin:right bottom}}
+
+
+.dispatch-dock-tools{padding:4px 6px;display:flex;align-items:center;gap:6px;background:#e1d8b9}
+#dispatch-pip-button{font-size:10px;padding:3px 7px;background:#f1e9cc;color:#354b3d;border:1px solid #657256;white-space:nowrap}
+#dispatch-pip-status{font-size:9px;line-height:1.4;color:#354b3d}
 </style>
 <style id="v184-family-skill-note-css">
 .family-potion-note{margin-top:8px;padding:8px 10px;border:1px dashed #9b7f65;border-radius:8px;background:#fff8e9;display:flex;flex-direction:column;gap:3px}.family-potion-note small{line-height:1.45;color:#6c5544}
@@ -1128,7 +1200,7 @@ body.modal-open{overflow:hidden}
 #expedition-page{background:#77737e;padding:10px;border:4px solid #242229}.expedition-head{margin-bottom:10px}.expedition-content{display:grid;gap:10px}.exp-overview{display:grid;grid-template-columns:1fr 1fr;gap:8px}.exp-overview>div{background:#d2d2d6;border:3px solid #77727f;padding:10px}.exp-overview b,.exp-overview small{display:block}.exp-overview small{margin-top:4px;font-size:9px;color:#59545e}.exp-intro{margin:0;padding:9px 10px;background:#c9c8cd;border:2px solid #85818b;font-size:10px;line-height:1.6}.exp-select-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.exp-select-grid label{font-size:10px;font-weight:900}.exp-select-grid select{display:block;width:100%;margin-top:4px}.exp-team-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.exp-team-card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:7px;align-items:center;background:#d5d4d8;border:2px solid #89858f;padding:7px}.exp-team-card .sprite{width:54px!important}.exp-team-card b,.exp-team-card small{display:block}.exp-team-card small{margin-top:4px;font-size:8px;line-height:1.45;color:#55515a}.exp-start{width:100%;padding:11px}.exp-progress{display:flex;gap:7px;justify-content:center;padding:7px}.exp-progress span{width:28px;height:28px;display:grid;place-items:center;border:2px solid #77727f;background:#bab9bf;font-size:10px;font-weight:900}.exp-progress span.current{background:#f0d26d;border-color:#80681e}.exp-progress span.done{background:#9fc093;border-color:#57764e}.exp-status{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;background:#302d36;color:#fff4bd;border:3px solid #77727f;padding:8px 10px;font-size:10px}.exp-event{background:#d2d2d6;border:4px solid #55515c;padding:12px}.exp-event>span{font-size:9px;color:#69636d}.exp-event h3{margin:4px 0 7px}.exp-event p{font-size:11px;line-height:1.55}.exp-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}.exp-choice{min-height:92px;text-align:left;background:#c6c5ca;border:3px solid #76717d;padding:9px;color:#242229}.exp-choice:hover{background:#ded8bc}.exp-choice b,.exp-choice small,.exp-choice em{display:block}.exp-choice small{margin-top:6px;font-size:9px;line-height:1.45}.exp-choice em{margin-top:5px;font-size:9px;color:#6a4b13;font-style:normal;font-weight:900}.exp-log{display:grid;gap:4px;padding:8px;background:#b9b8bd;border:2px solid #7d7982;font-size:9px;line-height:1.4}.exp-last{padding:8px;background:#c5c4c9;border:2px solid #88848e;font-size:10px}@media(max-width:760px){.exp-overview,.exp-select-grid,.exp-team-strip,.exp-choices{grid-template-columns:1fr}.exp-status{display:grid}}
 
 </style>
-<body><details id="dispatch-travel-dock" open hidden><summary>✦ 派遣旅伴 <span id="dispatch-dock-clock"></span><span class="dock-collapse">展开 / 收起</span></summary><div id="dispatch-dock-view" aria-label="派遣赶路小屏幕"></div></details><div id="boot-check" style="position:fixed;left:6px;bottom:6px;z-index:999999;background:#27242d;color:#ffe36f;border:2px solid #77717f;padding:4px 7px;font:700 10px monospace">v189 · 等待</div><div id="engine-heartbeat">v189 · engine</div><div class="shell"><header><a href="#" class="brand"><span>✦</span><div>Qinster 牧场<small>QINSTER RANCH</small></div></a><div class="wallet"><span>灵能</span><strong id="energy">200</strong><b>◆</b></div><div class="wallet ranch-wallet"><span>牧场</span><strong id="ranch-level">Lv1</strong><small id="ranch-xp">0 / 100 XP</small></div><button class="subtle" id="dispatch-btn">派遣</button><button class="subtle" id="expedition-btn">远征</button><button class="subtle" id="shop-btn">商店</button><button class="subtle" id="bag-btn">背包</button><button class="subtle" id="dex-btn">图鉴</button><button class="subtle" id="skill-btn">技能图鉴</button><button class="subtle" id="export-save">导出存档</button><button class="subtle" id="import-save">导入存档</button><input id="import-save-file" type="file" accept=".json,application/json" hidden><button class="subtle" id="sound-btn" aria-label="音效设置">音效 🔊</button><button class="subtle" id="help">玩法说明 ?</button></header><div id="dispatch-top-status" class="dispatch-top-status" hidden></div>
+<body><details id="dispatch-travel-dock" open hidden><summary>✦ 派遣旅伴 <span id="dispatch-dock-clock"></span><span class="dock-collapse">展开 / 收起</span></summary><div class="dispatch-dock-tools"><button type="button" id="dispatch-pip-button">桌面悬浮</button><span id="dispatch-pip-status" role="status"></span></div><div id="dispatch-dock-view" aria-label="派遣赶路小屏幕"></div></details><div id="boot-check" style="position:fixed;left:6px;bottom:6px;z-index:999999;background:#27242d;color:#ffe36f;border:2px solid #77717f;padding:4px 7px;font:700 10px monospace">v189 · 等待</div><div id="engine-heartbeat">v189 · engine</div><div class="shell"><header><a href="#" class="brand"><span>✦</span><div>Qinster 牧场<small>QINSTER RANCH</small></div></a><div class="wallet"><span>灵能</span><strong id="energy">200</strong><b>◆</b></div><div class="wallet ranch-wallet"><span>牧场</span><strong id="ranch-level">Lv1</strong><small id="ranch-xp">0 / 100 XP</small></div><button class="subtle" id="dispatch-btn">派遣</button><button class="subtle" id="expedition-btn">远征</button><button class="subtle" id="shop-btn">商店</button><button class="subtle" id="bag-btn">背包</button><button class="subtle" id="dex-btn">图鉴</button><button class="subtle" id="skill-btn">技能图鉴</button><button class="subtle" id="export-save">导出存档</button><button class="subtle" id="import-save">导入存档</button><input id="import-save-file" type="file" accept=".json,application/json" hidden><button class="subtle" id="sound-btn" aria-label="音效设置">音效 🔊</button><button class="subtle" id="help">玩法说明 ?</button></header><div id="dispatch-top-status" class="dispatch-top-status" hidden></div>
 <main><button id="motion" class="motion" aria-pressed="false" hidden>暂停走动</button>
 <section id="expedition-page" style="display:none" hidden>
   <div class="shop-head expedition-head">
@@ -1286,7 +1358,7 @@ body.modal-open{overflow:hidden}
   </section>
 </section>
 
-<div class="workspace"><section class="habitat"><div class="scene" id="scene"><div class="landscape" aria-hidden="true"></div><div class="scene-top"><span>☀ 林间栖息地</span><span id="scene-count">2 位伙伴</span></div><div id="creatures" aria-label="在草地上活动的怪物"></div><div id="dispatch-walkway" aria-label="正在派遣中的怪物"></div><div class="scene-note" id="scene-note">点击小怪物可以查看它的资料。</div></div><div class="farm-stats"><div><small>最高星级</small><strong id="best">★</strong></div><div><small>每分钟灵能</small><strong id="income">0</strong><i id="farm-item-rate">🎁 0.00% / 分</i></div><div><small>生产牧场</small><strong id="farm-active">0 / 4</strong></div><div><small>成功孵化</small><strong id="hatched">0 <i>枚</i></strong></div></div><div class="farm-production-note">只有放进「生产牧场」的怪物才会产出灵能；上方灵能会每秒实时增加。怪物盒中的怪物产能为 0，派遣中的怪物也会暂时停止产能。</div><div class="farm-tool-row"><button id="smart-fill-farm" class="secondary">智能优化一次</button><label class="toggle farm-auto-toggle"><input id="auto-fill-farm" type="checkbox"> 自动补满空位</label><small>勾选后只在有空位时自动补怪，不会替换你已经手动放在农场里的怪物。关闭后完全手动安排。</small></div><div class="companion" id="companion"></div></section>
+<div class="workspace"><section class="habitat"><div class="scene" id="scene"><div class="landscape" aria-hidden="true"><i class="ranch-sun"></i><i class="ranch-cloud"></i><i class="ranch-hills"></i><i class="ranch-fence"></i><i class="ranch-path"></i><i class="ranch-tree"></i><i class="ranch-tree tree-right"></i><i class="ranch-flowers"></i></div><div class="scene-top"><span>☀ 林间栖息地</span><span id="scene-count">2 位伙伴</span></div><div id="creatures" aria-label="在草地上活动的怪物"></div><div class="scene-note" id="scene-note">点击小怪物可以查看它的资料。</div></div><div class="farm-stats"><div><small>最高星级</small><strong id="best">★</strong></div><div><small>每分钟灵能</small><strong id="income">0</strong><i id="farm-item-rate">🎁 0.00% / 分</i></div><div><small>生产牧场</small><strong id="farm-active">0 / 4</strong></div><div><small>成功孵化</small><strong id="hatched">0 <i>枚</i></strong></div></div><div class="farm-production-note">只有放进「生产牧场」的怪物才会产出灵能；上方灵能会每秒实时增加。怪物盒中的怪物产能为 0，派遣中的怪物也会暂时停止产能。</div><div class="farm-tool-row"><button id="smart-fill-farm" class="secondary">智能优化一次</button><label class="toggle farm-auto-toggle"><input id="auto-fill-farm" type="checkbox"> 自动补满空位</label><small>勾选后只在有空位时自动补怪，不会替换你已经手动放在农场里的怪物。关闭后完全手动安排。</small></div><div class="companion" id="companion"></div></section>
 <aside class="panel"><div class="panel-title"><h2>配种小屋</h2><div><span class="badge">最高 5 星</span><span id="egg-queue-summary" class="egg-queue-summary-badge">🥚 0 / 11</span></div></div><p class="hint">两位伙伴，一颗未知的怪物蛋。</p><div class="pair"><div><label for="parent-a">亲代 A</label><div id="portrait-a" class="parent-portrait"></div>
 <select id="parent-a" hidden></select>
 <button type="button" class="parent-select-btn" id="parent-a-btn" aria-expanded="false"></button>
@@ -1473,4 +1545,4 @@ body.modal-open{overflow:hidden}
   });
 })();
 </script>
-<script src="game.js?v=196"></script><script src="v193-race-stats.js"></script><script src="v194-expedition.js"></script></body></html>
+<script src="game.js?v=197"></script><script src="v193-race-stats.js"></script><script src="v194-expedition.js"></script><script src="dispatch-pip.js?v=197"></script></body></html>
