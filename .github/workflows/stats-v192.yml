@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor == github.repository_owner
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +50,6 @@ function stats(m){
     const speciesBias=Math.max(0,Math.min(1,(v-src[0])/srcSpan));
     const gene=Number(m.genes?.[i]);
     const geneBias=Math.max(0,Math.min(1,((Number.isFinite(gene)?gene:1)-.65)/.85));
-    // Species keeps the monster's identity; genes keep breeding quality meaningful.
     const quality=speciesBias*.62+geneBias*.38;
     let value=lo+span*quality;
     if(sp.passive==='guard'&&i===2)value*=1+.04*lv;
@@ -66,48 +64,41 @@ function statGrade(m){
   return {total,grade,pct,band};
 }
 """
-          if old_stats not in s:
-              raise SystemExit('stats marker not found')
+          if old_stats not in s: raise SystemExit('stats marker not found')
           s=s.replace(old_stats,new_stats,1)
 
           old_export="root.MonsterGame={SPECIES,COLORS,deathChance,migrate,adopt,salePrice,sell,stars,createMonster,fresh,stats,income,pair,odds,breedCost,blocked,startBreed,hatch,advance,valid,skillLevel,MAX_OFFLINE,BASE_SPECIES_COUNT,MISSION_EXCLUSIVE_SPECIES,isMissionExclusiveSpecies,FARM_START_SLOTS,normalizeFarmState,isInFarmState,producingMonstersState};"
           new_export="root.MonsterGame={SPECIES,COLORS,deathChance,migrate,adopt,salePrice,sell,stars,createMonster,fresh,stats,statBand,statGrade,STAT_BANDS,income,pair,odds,breedCost,blocked,startBreed,hatch,advance,valid,skillLevel,MAX_OFFLINE,BASE_SPECIES_COUNT,MISSION_EXCLUSIVE_SPECIES,isMissionExclusiveSpecies,FARM_START_SLOTS,normalizeFarmState,isInFarmState,producingMonstersState};"
-          if old_export not in s:
-              raise SystemExit('export marker not found')
+          if old_export not in s: raise SystemExit('export marker not found')
           s=s.replace(old_export,new_export,1)
 
           old_luck="const luck=mons.reduce((sum,m)=>sum+Math.min(.006,(G.stats(m)[4]||0)*.00004),0);"
           new_luck="const luck=mons.reduce((sum,m)=>sum+Math.min(.006,(G.stats(m)[4]||0)*.000012),0);"
-          if old_luck not in s:
-              raise SystemExit('farm luck marker not found')
+          if old_luck not in s: raise SystemExit('farm luck marker not found')
           s=s.replace(old_luck,new_luck,1)
 
           old_mission="function missionState(m,mission){const [hp,atk,def,spd,luck]=G.stats(m);let score=0;if(['forage','river'].includes(mission.id))score=spd*.5+luck*.4+def*.1;else if(['ruins','cavern'].includes(mission.id))score=def*.4+atk*.35+luck*.25;else score=atk*.25+def*.25+spd*.25+luck*.25;score*=traitMods(m).state;const expected=['forage','river'].includes(mission.id)?260:['ruins','cavern'].includes(mission.id)?470:760;const bonus=Math.max(-.08,Math.min(.14,(score-expected)/expected*.12));return {score:Math.round(score),bonus};}"
           new_mission="function missionState(m,mission){const [hp,atk,def,spd,luck]=G.stats(m);let score=0;if(['forage','river'].includes(mission.id))score=spd*.5+luck*.4+def*.1;else if(['ruins','cavern'].includes(mission.id))score=def*.4+atk*.35+luck*.25;else score=atk*.25+def*.25+spd*.25+luck*.25;score*=traitMods(m).state;const expectedByMission={meadow:52,forage:95,river:190,ruins:285,cavern:315,astral:385,summit:410,rift:435};const expected=expectedByMission[mission.id]||250;const bonus=Math.max(-.08,Math.min(.14,(score-expected)/expected*.12));return {score:Math.round(score),bonus};}"
-          if old_mission not in s:
-              raise SystemExit('missionState marker not found')
+          if old_mission not in s: raise SystemExit('missionState marker not found')
           s=s.replace(old_mission,new_mission,1)
 
           companion_marker="function companionParentsHTML(m){"
           summary_fn="""function statSummaryHTML(m){const r=G.statGrade(m);return '<div class=\"stat-balance-summary\" style=\"grid-column:1/-1;padding:6px 8px;background:#c9c8cd;border:2px solid #85818b;font-size:10px\"><b>总能力 '+fmt(r.total)+' · 评价 '+r.grade+'</b><span style=\"margin-left:8px\">'+G.stars(m.star)+' 单项范围 '+r.band[0]+'–'+r.band[1]+'</span></div>';}
 """
-          if companion_marker not in s:
-              raise SystemExit('companion marker not found')
+          if companion_marker not in s: raise SystemExit('companion marker not found')
           s=s.replace(companion_marker,summary_fn+companion_marker,1)
 
           old_ui="+'</div>'+skillListHTML(m)+'<div class=\"auto-priority-note\">"
           new_ui="+'</div>'+statSummaryHTML(m)+skillListHTML(m)+'<div class=\"auto-priority-note\">"
-          if old_ui not in s:
-              raise SystemExit('companion stat UI marker not found')
+          if old_ui not in s: raise SystemExit('companion stat UI marker not found')
           s=s.replace(old_ui,new_ui,1)
 
           s=s.replace("window.__qinsterVersion='v191';","window.__qinsterVersion='v192';")
           s=s.replace("__eb.textContent='v191 · engine '+__n","__eb.textContent='v192 · engine '+__n")
-
           p.write_text(s,encoding='utf-8')
           PY
           node --check game.js
-          npm test -- --runInBand || npm test
+          npm test
       - name: Remove one-time workflow and commit
         run: |
           rm .github/workflows/stats-v192.yml
