@@ -21,7 +21,7 @@ const EVENTS={
   core:{title:'远征核心',text:'远征最后的核心发出微弱光芒，这是本次最困难的考验。',choices:[{label:'集中力量启动核心',stat:1,diff:120,reward:650},{label:'寻找最安全的启动顺序',stat:4,diff:122,reward:700}]}
 };
 const EVENT_POOL=['fallen','bridge','mist','beast','ravine','cache','runes','chase'];
-let selected=[],selectedZone='d1';
+let selected=[],selectedZone='d1',sortMode='recommended';
 function rt(){return window.QinsterRuntime||null;}
 function state(){return rt()?.getState?.()||null;}
 function zone(id=selectedZone){return ZONES.find(z=>z.id===id)||ZONES[0];}
@@ -45,6 +45,23 @@ function n(m){return rt()?.name?.(m)||rt()?.G?.SPECIES?.[m.species]?.name||('怪
 function stats(m){return rt()?.G?.stats?.(m)||[0,0,0,0,0];}
 function stars(m){return rt()?.G?.stars?.(m.star)||'★'.repeat(m.star||1);}
 function team(z=zone()){const by=new Map(eligibleFor(z).map(m=>[m.id,m]));return selected.map(id=>by.get(id)).filter(Boolean);}
+function recommendationScore(m,z=zone()){
+  const v=stats(m),total=v.reduce((a,b)=>a+b,0),floor=Math.min(...v),top=[...v].sort((a,b)=>b-a).slice(0,2).reduce((a,b)=>a+b,0);
+  return total+floor*1.35+top*.18+(m.star||1)*35+(m.shiny?12:0);
+}
+function sortedEligible(z=zone()){
+  const list=[...eligibleFor(z)];
+  list.sort((a,b)=>{
+    if(sortMode==='newest')return (b.createdAt||b.id||0)-(a.createdAt||a.id||0);
+    if(sortMode==='oldest')return (a.createdAt||a.id||0)-(b.createdAt||b.id||0);
+    if(sortMode==='total')return stats(b).reduce((x,y)=>x+y,0)-stats(a).reduce((x,y)=>x+y,0)||(b.id-a.id);
+    if(sortMode==='star')return (b.star||1)-(a.star||1)||stats(b).reduce((x,y)=>x+y,0)-stats(a).reduce((x,y)=>x+y,0)||(b.id-a.id);
+    if(sortMode==='luck')return (stats(b)[4]||0)-(stats(a)[4]||0)||recommendationScore(b,z)-recommendationScore(a,z);
+    return recommendationScore(b,z)-recommendationScore(a,z)||(b.createdAt||b.id||0)-(a.createdAt||a.id||0);
+  });
+  return list;
+}
+function recommendTeam(z=zone()){return sortedEligible(z).slice(0,3);}
 function eventScore(team,stat){
   const vals=team.map(m=>stats(m)[stat]||0).sort((a,b)=>b-a);
   const avg=vals.reduce((a,b)=>a+b,0)/Math.max(1,vals.length);
@@ -95,9 +112,9 @@ function abandon(){const e=ensure();if(!e?.active)return;if(!confirm('确定结�
 function teamCard(m){const v=stats(m);return '<div class="exp-team-card">'+(rt()?.sprite?.(m.species,m.tint,m.shiny,m.specialColor)||'')+'<div><b>'+n(m)+' '+stars(m)+(m.shiny?' ✦':'')+'</b><small>'+STAT_NAMES.map((x,i)=>x+' '+v[i]).join(' · ')+'</small></div></div>';}
 function zoneTabs(e){return '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class="'+(z.id===selectedZone?'primary':'secondary')+'" data-exp-zone="'+z.id+'"><b>'+z.label+'</b><small style="display:block;margin-top:3px">'+z.name+' · 剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>';}
 function selectionHTML(z){
-  const list=eligibleFor(z);
-  const options=(slot)=>'<option value="">选择队员 '+(slot+1)+'</option>'+list.map(m=>'<option value="'+m.id+'" '+(selected[slot]===m.id?'selected':'')+'>'+stars(m)+(m.shiny?' ✦':'')+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');
-  return '<div class="exp-select-grid">'+[0,1,2].map(i=>'<label>队员 '+(i+1)+'<select data-exp-slot="'+i+'">'+options(i)+'</select></label>').join('')+'</div>';
+  const list=sortedEligible(z),recommended=new Set(recommendTeam(z).map(m=>m.id));
+  const options=(slot)=>'<option value="">选择队员 '+(slot+1)+'</option>'+list.map((m,idx)=>'<option value="'+m.id+'" '+(selected[slot]===m.id?'selected':'')+'>'+(recommended.has(m.id)?'★推荐 '+(idx+1)+' · ':'')+stars(m)+(m.shiny?' ✦':'')+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');
+  return '<div class="exp-select-tools" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:8px 0"><label style="min-width:220px"><b>队员排序</b><select data-exp-sort style="display:block;width:100%;margin-top:4px"><option value="recommended" '+(sortMode==='recommended'?'selected':'')+'>最佳推荐</option><option value="newest" '+(sortMode==='newest'?'selected':'')+'>加入时间 · 新 → 旧</option><option value="oldest" '+(sortMode==='oldest'?'selected':'')+'>加入时间 · 旧 → 新</option><option value="total" '+(sortMode==='total'?'selected':'')+'>总能力 · 高 → 低</option><option value="star" '+(sortMode==='star'?'selected':'')+'>星级 · 高 → 低</option><option value="luck" '+(sortMode==='luck'?'selected':'')+'>幸运 · 高 → 低</option></select></label><button type="button" class="secondary" data-exp-recommend>一键选择最佳推荐</button><small style="font-size:9px;color:#55515a">最佳推荐会综合总能力、短板能力、最高能力与星级；随机路线更重视均衡。</small></div><div class="exp-select-grid">'+[0,1,2].map(i=>'<label>队员 '+(i+1)+'<select data-exp-slot="'+i+'">'+options(i)+'</select></label>').join('')+'</div>';
 }
 function activeHTML(a){
   const z=zone(a.zone),t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
@@ -114,7 +131,7 @@ function render(){
   const requirement=z.shinyOnly?'只允许 5★闪光怪物':'最低 '+z.minStar+'★';
   box.innerHTML=zoneTabs(e)+'<div class="exp-overview"><div><b>'+z.label+' · '+z.name+'</b><small>'+z.desc+'</small></div><div><b>今日剩余 '+remain+' / '+z.attempts+'</b><small>远征徽章 '+e.badges+' · 通关基础 '+z.badge+' 枚</small></div></div><p class="exp-intro"><b>准入：'+requirement+'</b>。选择 3 只怪物后连续处理 6 个事件。星级只决定能否进入；真正的成功率由体质 / 攻击 / 防御 / 速度 / 幸运决定。失败只消耗本次远征行动力，不直接扣怪物生命。</p>'+selectionHTML(z)+'<div class="exp-team-strip">'+t.map(teamCard).join('')+'</div><button class="primary exp-start" data-exp-start '+(t.length===3&&remain>0?'':'disabled')+'>开始 '+z.label+' · '+z.name+'</button>'+(e.lastResult?'<div class="exp-last">上次：'+(e.lastResult.zoneName||'远征')+' · '+(e.lastResult.defeated?'提前结束':'完成')+' · '+e.lastResult.success+' 成功 / '+e.lastResult.fail+' 失败 · '+e.lastResult.payout+' 灵能'+(e.lastResult.badge?' · 徽章 ×'+e.lastResult.badge:'')+'</div>':'');
 }
-document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-exp-slot]');if(!sel)return;selected[Number(sel.dataset.expSlot)]=Number(sel.value)||null;render();});
-document.addEventListener('click',e=>{const z=e.target.closest?.('[data-exp-zone]');if(z){selectedZone=z.dataset.expZone;selected=[];const ex=ensure();if(ex)ex.lastZone=selectedZone;render();return;}if(e.target.closest?.('[data-exp-start]')){start();return;}const c=e.target.closest?.('[data-exp-choice]');if(c){choose(Number(c.dataset.expChoice));return;}if(e.target.closest?.('[data-exp-abandon]'))abandon();});
+document.addEventListener('change',e=>{const sort=e.target.closest?.('[data-exp-sort]');if(sort){sortMode=sort.value||'recommended';render();return;}const sel=e.target.closest?.('[data-exp-slot]');if(!sel)return;selected[Number(sel.dataset.expSlot)]=Number(sel.value)||null;render();});
+document.addEventListener('click',e=>{const z=e.target.closest?.('[data-exp-zone]');if(z){selectedZone=z.dataset.expZone;selected=[];const ex=ensure();if(ex)ex.lastZone=selectedZone;render();return;}if(e.target.closest?.('[data-exp-recommend]')){const rec=recommendTeam(zone());selected=rec.map(m=>m.id);render();if(rec.length<3)rt()?.tell?.('当前难度符合条件的怪物不足 3 只。');return;}if(e.target.closest?.('[data-exp-start]')){start();return;}const c=e.target.closest?.('[data-exp-choice]');if(c){choose(Number(c.dataset.expChoice));return;}if(e.target.closest?.('[data-exp-abandon]'))abandon();});
 window.QinsterExpedition={render,zones:ZONES};
 })();
