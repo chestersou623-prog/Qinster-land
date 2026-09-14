@@ -1,0 +1,34 @@
+name: Qinster v214 action gauge
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v214-action-gauge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply v214 patch
+        run: python scripts/patch-v214-action-gauge.py
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          npm test
+      - name: Commit patch
+        run: |
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f .github/workflows/v214-action-gauge.yml .github/workflows/v213-speed-ko-replay.yml
+          git add v199-roguelike-expedition.js v201-battle-theater.js .github/workflows/v214-action-gauge.yml .github/workflows/v213-speed-ko-replay.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Add speed action gauges and fix KO replay"
+          git push
