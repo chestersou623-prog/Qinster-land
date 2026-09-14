@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'scripts/patch_v191.py'
       - '.github/workflows/tutorial-v191.yml'
 
 permissions:
@@ -11,193 +12,21 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor == github.repository_owner
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Patch v191 tutorial and ranch name
+      - name: Apply v191 patch
+        run: python3 scripts/patch_v191.py
+      - name: Validate JavaScript
+        run: node --check game.js
+      - name: Commit v191
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('game.js')
-          s=p.read_text(encoding='utf-8')
-          if "window.__qinsterVersion='v191'" in s:
-              print('v191 already applied')
-              raise SystemExit(0)
-
-          # Save defaults for new games.
-          old="return {version:9,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS"
-          new="return {version:9,memorial:[],deaths:0,revision:0,energy:200,ranchXp:0,ranchName:'Qinster 牧场',tutorialCompleted:false,tutorialStep:0,tutorialActive:false,monsters:[starterA,starterB],farmSlots:FARM_START_SLOTS"
-          if old not in s:
-              raise SystemExit('fresh() marker not found')
-          s=s.replace(old,new,1)
-
-          # Ensure old saves gain safe defaults without changing the localStorage key.
-          marker="function ensureMonsterSystemsState(state){\n"
-          inject="""function ensureMonsterSystemsState(state){
-  if(typeof state.ranchName!=='string'||!state.ranchName.trim())state.ranchName='Qinster 牧场';
-  state.ranchName=state.ranchName.trim().slice(0,16)||'Qinster 牧场';
-  if(typeof state.tutorialCompleted!=='boolean')state.tutorialCompleted=false;
-  if(!Number.isInteger(state.tutorialStep))state.tutorialStep=0;
-  if(typeof state.tutorialActive!=='boolean')state.tutorialActive=false;
-"""
-          if marker not in s:
-              raise SystemExit('ensureMonsterSystemsState marker not found')
-          s=s.replace(marker,inject,1)
-
-          # Tutorial breeding cannot fail.
-          old_fail="const failChance=state.egg.shinyLineage?0:Math.max(0,Math.min(.12,Number.isFinite(rawFail)?rawFail:.01));"
-          new_fail="const failChance=state.tutorialActive?0:(state.egg.shinyLineage?0:Math.max(0,Math.min(.12,Number.isFinite(rawFail)?rawFail:.01)));"
-          if old_fail in s:
-              s=s.replace(old_fail,new_fail,1)
-
-          # Tutorial dispatch is shortened to 10 sec, normal missions remain unchanged.
-          old_end="end:now+Math.round(ms.duration*tm.duration)*1000,successChance:teamDispatchSuccessChance(team,ms)"
-          new_end="end:now+Math.round((s.tutorialActive&&s.tutorialStep===6?10:ms.duration*tm.duration))*1000,successChance:teamDispatchSuccessChance(team,ms)"
-          if old_end in s:
-              s=s.replace(old_end,new_end,1)
-
-          # Keep the ranch name visible in the main heading.
-          render_marker="function render(){bindBagTargetControls();"
-          render_new="function render(){renderRanchIdentity();bindBagTargetControls();"
-          if render_marker not in s:
-              raise SystemExit('render marker not found')
-          s=s.replace(render_marker,render_new,1)
-
-          # Add the onboarding module before final boot calls.
-          boot_marker="safeFamilyRegistry(s);window.__bootMark&&__bootMark('09 家族完成');"
-          module=r'''// ===== v191 onboarding + ranch identity =====
-function ranchDisplayName(){
-  ensureMonsterSystemsState(s);
-  return (s.ranchName||'Qinster 牧场').trim().slice(0,16)||'Qinster 牧场';
-}
-function setRanchName(value,announce=true){
-  const next=String(value??'').trim().slice(0,16);
-  if(!next){if(announce)tell('牧场名称不能为空。');return false;}
-  s.ranchName=next;s.revision++;dirty=true;save();renderRanchIdentity();
-  if(announce)tell('牧场名称已改为「'+next+'」。');
-  return true;
-}
-function renderRanchIdentity(){
-  const h=document.querySelector('.topline h1');
-  if(h)h.textContent=ranchDisplayName()+' · Lv'+ranchLevel();
-  let tools=document.getElementById('ranch-identity-tools');
-  const header=document.querySelector('header');
-  if(header&&!tools){
-    tools=document.createElement('div');tools.id='ranch-identity-tools';tools.className='ranch-identity-tools';
-    tools.innerHTML='<button type="button" class="subtle" id="rename-ranch">牧场名 ✎</button><button type="button" class="subtle" id="replay-tutorial">新手教学</button>';
-    const wallet=header.querySelector('.wallet');header.insertBefore(tools,wallet||null);
-    tools.querySelector('#rename-ranch').onclick=()=>{
-      const next=prompt('修改牧场名称（1–16 个字符）',ranchDisplayName());
-      if(next!==null)setRanchName(next,true);
-    };
-    tools.querySelector('#replay-tutorial').onclick=()=>startTutorial(true);
-  }
-}
-const TUTORIAL_STEPS=[
-  {title:'欢迎来到你的牧场',body:'先给牧场取一个属于你的名字。以后可以随时修改。',target:'.topline'},
-  {title:'灵能与生产牧场',body:'生产牧场里的怪物会持续产生灵能。灵能用于配种、扩建、建筑和药水。',target:'.wallet'},
-  {title:'第一次配种',body:'选择一公一母作为亲代，然后点击「开始生蛋」。教学期间第一次蛋保证不会孵化失败。',target:'#breed'},
-  {title:'孵化怪物蛋',body:'蛋会显示品种、星级和颜色。等待完成后点击破壳；教学会在你孵出第一只新伙伴后继续。',target:'#nest'},
-  {title:'认识你的新伙伴',body:'怪物有星级、生命、种族技能、普通技能、颜色与血统。先不用记住所有高级规则，培养过程中会慢慢遇到。',target:'#companion'},
-  {title:'怪物盒与收藏',body:'怪物盒可以搜索、筛选、锁定、设为最爱，也能查看家谱和图鉴。',target:'.collection'},
-  {title:'第一次派遣',body:'进入派遣，选择「牧场巡查」并使用系统推荐队伍。教学中的第一次任务会缩短到约 10 秒。',target:'#dispatch-btn'},
-  {title:'商店、建筑与背包',body:'灵能可以扩建牧场、升级建筑和购买药水；道具会进入背包。',target:'#shop-btn'},
-  {title:'开始自由培育',body:'接下来由你决定路线：培育更高星血统、收集颜色和闪光、发展家族技能，并挑战更高级派遣。',target:null}
-];
-let tutorialBox=null,tutorialHighlight=null;
-function clearTutorialHighlight(){if(tutorialHighlight){tutorialHighlight.classList.remove('tutorial-highlight');tutorialHighlight=null;}}
-function ensureTutorialUI(){
-  if(document.getElementById('tutorial-v191-style'))return;
-  const st=document.createElement('style');st.id='tutorial-v191-style';st.textContent=`
-    .ranch-identity-tools{display:flex;gap:6px;margin-left:auto}.ranch-identity-tools+.wallet{margin-left:0}
-    .tutorial-highlight{position:relative!important;z-index:10001!important;outline:4px solid #f2c451!important;outline-offset:4px!important;box-shadow:0 0 0 9999px rgba(20,18,24,.38)!important}
-    #tutorial-v191{position:fixed;z-index:20000;right:18px;bottom:18px;width:min(390px,calc(100vw - 24px));background:#d7d7da;color:#202126;border:4px solid #242229;box-shadow:6px 6px 0 rgba(0,0,0,.45);padding:12px}
-    #tutorial-v191 h3{margin:0 0 7px;background:#2c2933;color:#fff;padding:8px;border-bottom:3px solid #e33b34;font-size:16px}
-    #tutorial-v191 p{font-size:11px;line-height:1.55;margin:8px 0}.tutorial-step{font-size:9px;color:#625f68}
-    .tutorial-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.tutorial-actions button{flex:1 1 100px}
-    .tutorial-name-row{display:flex;gap:6px;margin-top:8px}.tutorial-name-row input{min-width:0;flex:1}
-    @media(max-width:760px){.ranch-identity-tools{display:none}#tutorial-v191{left:12px;right:12px;bottom:12px;width:auto}.tutorial-highlight{outline-offset:1px!important}}
-  `;document.head.appendChild(st);
-}
-function tutorialFreshEnough(){return (s.hatched||0)===0&&(s.monsters||[]).length<=2&&(s.ranchXp||0)<20;}
-function tutorialTargetForStep(step){
-  if(step===6&&page!=='farm')return null;
-  return TUTORIAL_STEPS[step]?.target||null;
-}
-function renderTutorial(){
-  ensureTutorialUI();clearTutorialHighlight();
-  if(!s.tutorialActive){document.getElementById('tutorial-v191')?.remove();tutorialBox=null;return;}
-  const step=Math.max(0,Math.min(TUTORIAL_STEPS.length-1,s.tutorialStep||0)),cfg=TUTORIAL_STEPS[step];
-  if(!tutorialBox){tutorialBox=document.createElement('aside');tutorialBox.id='tutorial-v191';document.body.appendChild(tutorialBox);}
-  const isName=step===0,isLast=step===TUTORIAL_STEPS.length-1;
-  tutorialBox.innerHTML='<div class="tutorial-step">新手教学 '+(step+1)+' / '+TUTORIAL_STEPS.length+'</div><h3>'+cfg.title+'</h3><p>'+cfg.body+'</p>'
-    +(isName?'<div class="tutorial-name-row"><input id="tutorial-ranch-name" maxlength="16" value="'+escapeActivity(ranchDisplayName())+'"><button class="primary" id="tutorial-save-name">确定</button></div>':'')
-    +'<div class="tutorial-actions"><button class="secondary" id="tutorial-skip">跳过教学</button>'
-    +(step>0?'<button class="secondary" id="tutorial-prev">上一步</button>':'')
-    +(!isName?'<button class="primary" id="tutorial-next">'+(isLast?'开始自由培育':'下一步')+'</button>':'')+'</div>';
-  const sel=tutorialTargetForStep(step),target=sel?document.querySelector(sel):null;
-  if(target){target.classList.add('tutorial-highlight');tutorialHighlight=target;try{target.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){}}
-  tutorialBox.querySelector('#tutorial-skip').onclick=()=>finishTutorial('新手教学已跳过。你可以随时点击「新手教学」重新观看。');
-  tutorialBox.querySelector('#tutorial-prev')?.addEventListener('click',()=>{s.tutorialStep=Math.max(0,step-1);save();renderTutorial();});
-  tutorialBox.querySelector('#tutorial-next')?.addEventListener('click',()=>{
-    if(isLast){finishTutorial('教学完成！欢迎来到「'+ranchDisplayName()+'」。');return;}
-    s.tutorialStep=Math.min(TUTORIAL_STEPS.length-1,step+1);save();renderTutorial();
-  });
-  tutorialBox.querySelector('#tutorial-save-name')?.addEventListener('click',()=>{
-    const input=tutorialBox.querySelector('#tutorial-ranch-name');
-    if(setRanchName(input.value,false)){s.tutorialStep=1;save();render();renderTutorial();tell('欢迎来到「'+ranchDisplayName()+'」！');}
-  });
-}
-function startTutorial(force=false){
-  if(force){s.tutorialCompleted=false;s.tutorialStep=0;}
-  s.tutorialActive=true;s.tutorialStep=Math.max(0,Math.min(TUTORIAL_STEPS.length-1,s.tutorialStep||0));s.revision++;save();setPage('farm');renderTutorial();
-}
-function finishTutorial(message='教学完成！'){
-  s.tutorialCompleted=true;s.tutorialActive=false;s.tutorialStep=0;s.revision++;clearTutorialHighlight();document.getElementById('tutorial-v191')?.remove();tutorialBox=null;save();render();tell(message);
-}
-function tutorialHeartbeat(){
-  if(!s.tutorialActive)return;
-  const step=s.tutorialStep||0;
-  if(step===2&&totalQueuedEggs(s)>0){s.tutorialStep=3;save();renderTutorial();}
-  else if(step===3&&(s.hatched||0)>0){s.tutorialStep=4;save();renderTutorial();}
-  else if(step===6&&s.dispatch){s.tutorialStep=7;save();renderTutorial();}
-}
-function initV191Tutorial(){
-  renderRanchIdentity();ensureTutorialUI();
-  if(!s.tutorialCompleted&&!s.tutorialActive&&tutorialFreshEnough())startTutorial(false);
-  else if(s.tutorialActive)renderTutorial();
-  setInterval(tutorialHeartbeat,500);
-}
-
-'''
-          if boot_marker not in s:
-              raise SystemExit('boot marker not found')
-          s=s.replace(boot_marker,module+boot_marker,1)
-
-          # Initialize after the main page exists.
-          init_marker="render();window.__bootMark&&__bootMark('13 首次渲染完成');"
-          if init_marker not in s:
-              raise SystemExit('initial render marker not found')
-          s=s.replace(init_marker,"render();initV191Tutorial();window.__bootMark&&__bootMark('13 首次渲染完成');",1)
-
-          # Version bump.
-          s=s.replace("window.__qinsterVersion='v190';","window.__qinsterVersion='v191';")
-          s=s.replace("window.__qinsterVersion='v189';","window.__qinsterVersion='v191';")
-          s=s.replace("__eb.textContent='v190 · engine '+__n","__eb.textContent='v191 · engine '+__n")
-          s=s.replace("__eb.textContent='v189 · engine '+__n","__eb.textContent='v191 · engine '+__n")
-
-          p.write_text(s,encoding='utf-8')
-          PY
-          node --check game.js
-      - name: Remove one-time workflow and commit
-        run: |
-          rm .github/workflows/tutorial-v191.yml
+          rm -f scripts/patch_v191.py .github/workflows/tutorial-v191.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add game.js .github/workflows/tutorial-v191.yml
+          git add game.js scripts/patch_v191.py .github/workflows/tutorial-v191.yml
           git commit -m "Add v191 onboarding tutorial and ranch naming"
           git push
