@@ -19,7 +19,7 @@ jobs:
           node-version: '22'
       - name: Apply v206 patch
         run: |
-          python3 scripts/patch-v206.py
+          python3 scripts/patch-v206b.py
           node --check v199-roguelike-expedition.js
           node --check v201-battle-theater.js
           npm test
