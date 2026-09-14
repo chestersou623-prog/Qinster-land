@@ -1,0 +1,198 @@
+name: Qinster v193 race stats and roster UI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v193-race-stats-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch v193
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # ---------- index.html ----------
+          ip=Path('index.html')
+          html=ip.read_text(encoding='utf-8')
+
+          if 'id="roster-filter-toggle"' not in html:
+              marker='<div class="sort-bar sort-bar-advanced">'
+              replacement='''<div class="roster-filter-toggle-row"><button type="button" id="roster-filter-toggle" class="secondary" aria-expanded="false">筛选 / 排序 ▼</button><span>需要时再展开，减少怪物盒上方占用空间。</span></div><div class="sort-bar sort-bar-advanced roster-filter-panel is-collapsed">'''
+              if marker not in html:
+                  raise SystemExit('roster sort marker not found')
+              html=html.replace(marker,replacement,1)
+
+          if 'id="species-stat-table"' not in html:
+              marker='  <div id="dex-content"></div>\n</section>'
+              replacement='''  <details id="species-stat-details" class="species-stat-panel" open>
+    <summary><b>58 种怪物完整种族值表</b><span>体质 / 攻击 / 防御 / 速度 / 幸运 · 每项 1–100</span></summary>
+    <p class="species-stat-note">这里显示的是品种天生的「种族倾向」，不是某一只怪物当前的最终能力。最终能力还会受到星级范围、个体基因与部分种族技能影响。</p>
+    <div id="species-stat-table" class="species-stat-table-wrap"></div>
+  </details>
+  <div id="dex-content"></div>
+</section>'''
+              if marker not in html:
+                  raise SystemExit('dex marker not found')
+              html=html.replace(marker,replacement,1)
+
+          css_marker='</style>\n<body>'
+          if '/* ===== v193 compact roster filters + species race table ===== */' not in html:
+              css='''
+/* ===== v193 compact roster filters + species race table ===== */
+.roster-filter-toggle-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#504c58;border-top:2px solid #74707a;border-bottom:2px solid #403c46;color:#eee}
+.roster-filter-toggle-row button{min-width:150px}.roster-filter-toggle-row span{font-size:9px;color:#d6d2db}
+.roster-filter-panel.is-collapsed{display:none!important}
+.species-stat-panel{margin:10px 0 14px;background:#aaa9ae;border:4px solid #242229;box-shadow:inset 0 0 0 2px #77737d}
+.species-stat-panel>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#302d36;color:#fff;border-bottom:3px solid #e33b34;list-style:none}
+.species-stat-panel>summary::-webkit-details-marker{display:none}.species-stat-panel>summary b{font-size:14px}.species-stat-panel>summary span{font-size:9px;color:#e7dda9}
+.species-stat-panel>summary::after{content:'▼';font-size:11px;color:#f2c451}.species-stat-panel:not([open])>summary::after{content:'▶'}
+.species-stat-note{margin:9px 12px;font-size:10px;line-height:1.55;color:#48444e}
+.species-stat-table-wrap{margin:0 10px 10px;overflow:auto;max-height:540px;border:2px solid #706c76;background:#d1d0d5}
+.species-stat-table{width:100%;border-collapse:collapse;min-width:760px;font-size:10px}.species-stat-table th{position:sticky;top:0;z-index:2;background:#3a3642;color:#fff;padding:7px 6px;border:1px solid #69646f}.species-stat-table td{padding:6px;border:1px solid #aaa6af;text-align:center}.species-stat-table td:nth-child(2){text-align:left;font-weight:900}.species-stat-table tbody tr:nth-child(even){background:#c5c4c9}.species-stat-table tbody tr:hover{background:#eee5bd}.species-stat-total{font-weight:900;color:#5c4313}.species-stat-role{font-size:9px;color:#51475d}
+@media(max-width:720px){.roster-filter-toggle-row span{display:none}.roster-filter-toggle-row button{width:100%}.species-stat-panel>summary{align-items:flex-start;flex-direction:column}.species-stat-table-wrap{max-height:430px}}
+'''
+              if css_marker not in html:
+                  raise SystemExit('style end marker not found')
+              html=html.replace(css_marker,css+'\n</style>\n<body>',1)
+
+          ip.write_text(html,encoding='utf-8')
+
+          # ---------- game.js ----------
+          gp=Path('game.js')
+          s=gp.read_text(encoding='utf-8')
+          if "window.__qinsterVersion='v193'" in s:
+              print('v193 already applied')
+              raise SystemExit(0)
+
+          old='''const STAT_SOURCE_RANGES=Array.from({length:5},(_,i)=>{
+  const vals=SPECIES.map(sp=>Number(sp.base?.[i])||0);
+  return [Math.min(...vals),Math.max(...vals)];
+});
+function statBand(star){return STAT_BANDS[Math.max(1,Math.min(5,Number(star)||1))]||STAT_BANDS[1];}
+function stats(m){
+  const sp=SPECIES[m.species],lv=skillLevel(m),band=statBand(m.star),lo=band[0],hi=band[1],span=Math.max(1,hi-lo);
+  return sp.base.map((v,i)=>{
+    const src=STAT_SOURCE_RANGES[i],srcSpan=Math.max(1,src[1]-src[0]);
+    const speciesBias=Math.max(0,Math.min(1,(v-src[0])/srcSpan));
+    const gene=Number(m.genes?.[i]);
+    const geneBias=Math.max(0,Math.min(1,((Number.isFinite(gene)?gene:1)-.65)/.85));
+    const quality=speciesBias*.62+geneBias*.38;
+    let value=lo+span*quality;
+    if(sp.passive==='guard'&&i===2)value*=1+.04*lv;
+    if(sp.passive==='self_speed'&&i===3)value*=1+.025*lv;
+    return Math.max(lo,Math.min(hi,Math.round(value)));
+  });
+}
+'''
+          new='''const STAT_SOURCE_RANGES=Array.from({length:5},(_,i)=>{
+  const vals=SPECIES.map(sp=>Number(sp.base?.[i])||0);
+  return [Math.min(...vals),Math.max(...vals)];
+});
+function raceRoleBonus(sp,i){
+  const p=sp?.passive;
+  if(p==='guard'&&i===2)return 10;
+  if(p==='self_speed'&&i===3)return 10;
+  if(p==='fortune'&&i===4)return 8;
+  if(p==='mission_success'&&(i===2||i===3))return i===3?8:4;
+  if(p==='mission_item'&&i===4)return 12;
+  if(p==='mission_guard'&&(i===0||i===2))return i===2?12:6;
+  if(p==='mission_reward'&&i===1)return 10;
+  if(p==='mission_hunt'&&(i===3||i===4))return i===4?10:6;
+  return 0;
+}
+const RACE_STATS=SPECIES.map(sp=>sp.base.map((v,i)=>{
+  const src=STAT_SOURCE_RANGES[i],span=Math.max(1,src[1]-src[0]);
+  const normalized=Math.max(0,Math.min(1,(Number(v)-src[0])/span));
+  return Math.max(1,Math.min(100,Math.round(1+normalized*99+raceRoleBonus(sp,i))));
+}));
+function statBand(star){return STAT_BANDS[Math.max(1,Math.min(5,Number(star)||1))]||STAT_BANDS[1];}
+function stats(m){
+  const sp=SPECIES[m.species],lv=skillLevel(m),band=statBand(m.star),lo=band[0],hi=band[1],span=Math.max(1,hi-lo);
+  return sp.base.map((v,i)=>{
+    const race=RACE_STATS[m.species]?.[i]??50;
+    const speciesBias=Math.max(0,Math.min(1,(race-1)/99));
+    const gene=Number(m.genes?.[i]);
+    const geneBias=Math.max(0,Math.min(1,((Number.isFinite(gene)?gene:1)-.65)/.85));
+    const quality=speciesBias*.62+geneBias*.38;
+    let value=lo+span*quality;
+    if(sp.passive==='guard'&&i===2)value*=1+.04*lv;
+    if(sp.passive==='self_speed'&&i===3)value*=1+.025*lv;
+    return Math.max(lo,Math.min(hi,Math.round(value)));
+  });
+}
+'''
+          if old not in s:
+              raise SystemExit('v192 stats block not found')
+          s=s.replace(old,new,1)
+
+          export_old='stats,statBand,statGrade,STAT_BANDS,income'
+          export_new='stats,statBand,statGrade,STAT_BANDS,RACE_STATS,income'
+          if export_old not in s:
+              raise SystemExit('MonsterGame export marker not found')
+          s=s.replace(export_old,export_new,1)
+
+          render_marker='function renderDex(){\n'
+          render_helper='''function speciesRaceRole(vals){
+  const names=['体质','攻击','防御','速度','幸运'];
+  const max=Math.max(...vals),idx=vals.indexOf(max);
+  const sorted=[...vals].sort((a,b)=>b-a);
+  if(sorted[0]-sorted[1]<=5){const second=vals.findIndex((v,i)=>i!==idx&&v===sorted[1]);return names[idx]+' / '+names[second]+'型';}
+  return names[idx]+'型';
+}
+function renderSpeciesStatTable(){
+  const box=$('species-stat-table');if(!box)return;
+  const rows=G.SPECIES.map((sp,i)=>{
+    const v=G.RACE_STATS?.[i]||[50,50,50,50,50],total=v.reduce((a,b)=>a+b,0);
+    return '<tr><td>'+(i+1)+'</td><td>'+sp.name+'</td><td>'+sp.element+'</td>'+v.map(n=>'<td>'+n+'</td>').join('')+'<td class="species-stat-total">'+total+'</td><td class="species-stat-role">'+speciesRaceRole(v)+'</td></tr>';
+  }).join('');
+  box.innerHTML='<table class="species-stat-table"><thead><tr><th>#</th><th>品种</th><th>系别</th><th>体质</th><th>攻击</th><th>防御</th><th>速度</th><th>幸运</th><th>总和</th><th>倾向</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderDex(){
+  renderSpeciesStatTable();
+'''
+          if render_marker not in s:
+              raise SystemExit('renderDex marker not found')
+          s=s.replace(render_marker,render_helper,1)
+
+          boot_marker="setTimeout(()=>runIntegrityAudit(),0);"
+          boot_add='''function initRosterFilterCollapse(){
+  const btn=$('roster-filter-toggle'),panel=document.querySelector('.roster-filter-panel');
+  if(!btn||!panel)return;
+  const storageKey='qinster-roster-filter-collapsed';
+  let collapsed=true;
+  try{const saved=localStorage.getItem(storageKey);if(saved!==null)collapsed=saved!=='0';}catch(_){}
+  const apply=()=>{panel.classList.toggle('is-collapsed',collapsed);btn.setAttribute('aria-expanded',String(!collapsed));btn.textContent=collapsed?'筛选 / 排序 ▼':'收起筛选 / 排序 ▲';};
+  apply();
+  btn.addEventListener('click',()=>{collapsed=!collapsed;try{localStorage.setItem(storageKey,collapsed?'1':'0');}catch(_){}apply();});
+}
+setTimeout(()=>initRosterFilterCollapse(),0);
+setTimeout(()=>runIntegrityAudit(),0);'''
+          if boot_marker not in s:
+              raise SystemExit('boot audit marker not found')
+          s=s.replace(boot_marker,boot_add,1)
+
+          s=s.replace("window.__qinsterVersion='v192';","window.__qinsterVersion='v193';")
+          s=s.replace("__eb.textContent='v192 · engine '+__n","__eb.textContent='v193 · engine '+__n")
+          gp.write_text(s,encoding='utf-8')
+          PY
+          node --check game.js
+          npm test
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/v193-race-stats-ui.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game.js index.html .github/workflows/v193-race-stats-ui.yml
+          git commit -m "Add v193 race stats table and compact roster filters"
+          git push
