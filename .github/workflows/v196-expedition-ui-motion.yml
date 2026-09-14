@@ -1,0 +1,171 @@
+name: Qinster v196 expedition UI motion
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v196-expedition-ui-motion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch expedition interaction and UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('v194-expedition.js')
+          s=p.read_text(encoding='utf-8')
+
+          # State for click locking / movement animation.
+          s=s.replace("let selected=[],selectedZone='d1',sortMode='recommended';","let selected=[],selectedZone='d1',sortMode='recommended',resolving=false;",1)
+
+          old="function saveRender(msg){const R=rt();if(!R)return;const s=state();if(s)s.revision=(s.revision||0)+1;R.save?.();R.render?.();if(msg)R.tell?.(msg);render();}"
+          new="""function syncExpeditionMotion(){
+  const marker=document.querySelector('[data-exp-party]');if(!marker)return;
+  const from=Math.max(0,Math.min(5,Number(marker.dataset.from)||0));
+  const to=Math.max(0,Math.min(5,Number(marker.dataset.step)||0));
+  const pos=n=>8+(84*n/5);
+  marker.style.left=pos(from)+'%';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{marker.style.left=pos(to)+'%';marker.classList.toggle('moving',from!==to);}));
+  if(from!==to)setTimeout(()=>marker.classList.remove('moving'),520);
+}
+function saveRender(msg){const R=rt();if(!R)return;const s=state();if(s)s.revision=(s.revision||0)+1;R.save?.();R.render?.();if(msg)R.tell?.(msg);render();requestAnimationFrame(syncExpeditionMotion);}"
+          if old not in s: raise SystemExit('saveRender marker not found')
+          s=s.replace(old,new,1)
+
+          # Give a newly started run a stable initial visual position.
+          s=s.replace("e.active={zone:z.id,teamIds:[...selected],route:makeRoute(),step:0,stamina:3,reward:0,success:0,fail:0,log:[]};","e.active={zone:z.id,teamIds:[...selected],route:makeRoute(),step:0,visualFrom:0,stamina:3,reward:0,success:0,fail:0,log:[]};",1)
+
+          # Unlock if the run ends.
+          s=s.replace("function finish(defeated=false){\n  const s=state(),e=ensure(),a=e?.active;if(!s||!e||!a)return;","function finish(defeated=false){\n  resolving=false;\n  const s=state(),e=ensure(),a=e?.active;if(!s||!e||!a)return;",1)
+
+          old_choose="""function choose(idx){
+  const e=ensure(),a=e?.active;if(!a)return;const z=zone(a.zone);
+  const event=EVENTS[a.route[a.step]],choice=event?.choices?.[idx];if(!choice)return;
+  const t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
+  if(t.length!==3){e.active=null;saveRender('远征队伍资料异常，本次远征已安全结束。');return;}
+  const sc=eventScore(t,choice.stat),target=choice.diff+z.diffAdd,p=chance(sc,target),ok=Math.random()<p;
+  const reward=Math.round(choice.reward*z.rewardMul);
+  if(ok){a.reward+=reward;a.success++;a.log.push('✓ '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' / '+target+' · 成功 +'+reward+' 灵能');}
+  else{a.stamina--;a.fail++;a.log.push('× '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' / '+target+' · 失败，行动力 -1');}
+  a.step++;
+  if(a.stamina<=0){finish(true);return;}
+  if(a.step>=a.route.length){finish(false);return;}
+  saveRender(ok?'挑战成功。继续深入'+z.name+'。':'挑战失败，但队伍还能继续前进。');
+}
+"""
+          new_choose="""function choose(idx){
+  if(resolving)return;
+  const e=ensure(),a=e?.active;if(!a)return;const z=zone(a.zone);
+  const event=EVENTS[a.route[a.step]],choice=event?.choices?.[idx];if(!choice)return;
+  resolving=true;
+  const fromStep=a.step;
+  const t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
+  if(t.length!==3){resolving=false;e.active=null;saveRender('远征队伍资料异常，本次远征已安全结束。');return;}
+  const sc=eventScore(t,choice.stat),target=choice.diff+z.diffAdd,p=chance(sc,target),ok=Math.random()<p;
+  const reward=Math.round(choice.reward*z.rewardMul);
+  if(ok){a.reward+=reward;a.success++;a.log.push('✓ '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' / '+target+' · 成功 +'+reward+' 灵能');}
+  else{a.stamina--;a.fail++;a.log.push('× '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' / '+target+' · 失败，行动力 -1');}
+  a.visualFrom=fromStep;
+  a.step++;
+  if(a.stamina<=0){finish(true);return;}
+  if(a.step>=a.route.length){finish(false);return;}
+  saveRender(ok?'挑战成功。继续深入'+z.name+'。':'挑战失败，但队伍还能继续前进。');
+  setTimeout(()=>{resolving=false;},480);
+}
+"""
+          if old_choose not in s: raise SystemExit('choose block not found')
+          s=s.replace(old_choose,new_choose,1)
+
+          # Structured zone tabs.
+          old_zone="function zoneTabs(e){return '<div style=\"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px\">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class=\"'+(z.id===selectedZone?'primary':'secondary')+'\" data-exp-zone=\"'+z.id+'\"><b>'+z.label+'</b><small style=\"display:block;margin-top:3px\">'+z.name+' · 剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>'; }"
+          if old_zone not in s:
+              old_zone="function zoneTabs(e){return '<div style=\"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px\">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class=\"'+(z.id===selectedZone?'primary':'secondary')+'\" data-exp-zone=\"'+z.id+'\"><b>'+z.label+'</b><small style=\"display:block;margin-top:3px\">'+z.name+' · 剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>'; }".replace('; }',';}')
+          # exact source has no whitespace before closing brace
+          exact="function zoneTabs(e){return '<div style=\"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px\">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class=\"'+(z.id===selectedZone?'primary':'secondary')+'\" data-exp-zone=\"'+z.id+'\"><b>'+z.label+'</b><small style=\"display:block;margin-top:3px\">'+z.name+' · 剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>'; }"
+          exact2="function zoneTabs(e){return '<div style=\"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px\">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class=\"'+(z.id===selectedZone?'primary':'secondary')+'\" data-exp-zone=\"'+z.id+'\"><b>'+z.label+'</b><small style=\"display:block;margin-top:3px\">'+z.name+' · 剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>'; }".replace("; }",";}")
+          target=exact2 if exact2 in s else None
+          if target:
+              s=s.replace(target,"function zoneTabs(e){return '<div class=\"exp-zone-tabs\">'+ZONES.map(z=>{const remain=Math.max(0,z.attempts-used(e,z));return '<button class=\"exp-zone-tab '+(z.id===selectedZone?'active':'')+'\" data-exp-zone=\"'+z.id+'\"><b>'+z.label+'</b><span>'+z.name+'</span><small>剩 '+remain+'/'+z.attempts+'</small></button>';}).join('')+'</div>';}",1)
+          else:
+              # tolerant simple replacement for the opening wrapper only
+              s=s.replace("function zoneTabs(e){return '<div style=\"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px\">'","function zoneTabs(e){return '<div class=\"exp-zone-tabs\">'",1)
+
+          # Cleaner selection block.
+          start_sel=s.index('function selectionHTML(z){')
+          end_sel=s.index('\nfunction activeHTML(a){',start_sel)
+          sel_new="""function selectionHTML(z){
+  const list=sortedEligible(z),recommended=new Set(recommendTeam(z).map(m=>m.id));
+  const options=(slot)=>'<option value="">选择队员 '+(slot+1)+'</option>'+list.map((m,idx)=>'<option value="'+m.id+'" '+(selected[slot]===m.id?'selected':'')+'>'+(recommended.has(m.id)?'★推荐 '+(idx+1)+' · ':'')+stars(m)+(m.shiny?' ✦':'')+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');
+  const sort='<label class="exp-sort-label"><span>排序</span><select data-exp-sort><option value="recommended" '+(sortMode==='recommended'?'selected':'')+'>最佳推荐</option><option value="newest" '+(sortMode==='newest'?'selected':'')+'>加入时间 · 新 → 旧</option><option value="oldest" '+(sortMode==='oldest'?'selected':'')+'>加入时间 · 旧 → 新</option><option value="total" '+(sortMode==='total'?'selected':'')+'>总能力 · 高 → 低</option><option value="star" '+(sortMode==='star'?'selected':'')+'>星级 · 高 → 低</option><option value="luck" '+(sortMode==='luck'?'selected':'')+'>幸运 · 高 → 低</option></select></label>';
+  return '<section class="exp-team-builder"><div class="exp-section-title"><div><b>① 选择远征队伍</b><small>推荐优先考虑随机路线下的整体稳定性</small></div><div class="exp-select-actions">'+sort+'<button type="button" class="secondary" data-exp-recommend>一键最佳推荐</button></div></div><div class="exp-select-grid">'+[0,1,2].map(i=>'<label><span>队员 '+(i+1)+'</span><select data-exp-slot="'+i+'">'+options(i)+'</select></label>').join('')+'</div></section>';
+}
+"""
+          s=s[:start_sel]+sel_new+s[end_sel:]
+
+          # Rebuild active view with a moving route strip and clearer hierarchy.
+          start_active=s.index('function activeHTML(a){')
+          end_active=s.index('\nfunction render(){',start_active)
+          active_new="""function activeHTML(a){
+  const z=zone(a.zone),t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
+  const event=EVENTS[a.route[a.step]];
+  if(!event){return '<div class="exp-panel"><b>远征进度正在恢复…</b><p>请返回牧场后重新进入远征。</p></div>';}
+  const nodes=a.route.map((id,i)=>'<span class="exp-route-node '+(i<a.step?'done':i===a.step?'current':'')+'"><b>'+(i+1)+'</b><small>'+(i===5?'核心':'事件')+'</small></span>').join('');
+  const from=Number.isFinite(Number(a.visualFrom))?Number(a.visualFrom):Math.max(0,a.step-1);
+  const party=t.map(m=>'<span class="exp-walker">'+(rt()?.sprite?.(m.species,m.tint,m.shiny,m.specialColor)||'')+'</span>').join('');
+  const choices=event.choices.map((c,i)=>{const sc=eventScore(t,c.stat),target=c.diff+z.diffAdd,p=chance(sc,target),reward=Math.round(c.reward*z.rewardMul);return '<button class="exp-choice" data-exp-choice="'+i+'"><b>'+c.label+'</b><span>'+STAT_NAMES[c.stat]+' '+sc+' / '+target+'</span><small>成功率约 '+fmtPct(p)+'</small><em>成功 +'+reward+' 灵能</em></button>';}).join('');
+  return '<div class="exp-active">'
+    +'<section class="exp-panel exp-active-head"><div><span class="exp-kicker">'+z.label+'</span><h3>'+z.name+'</h3><small>'+z.desc+'</small></div><div class="exp-run-stats"><b>行动力 '+('♥'.repeat(a.stamina))+('♡'.repeat(Math.max(0,3-a.stamina)))+'</b><span>暂存 '+a.reward+' 灵能</span><span>成功 '+a.success+' · 失败 '+a.fail+'</span></div></section>'
+    +'<section class="exp-panel exp-route-panel"><div class="exp-section-title"><div><b>② 远征路线</b><small>队伍会随事件推进，不会停在同一个位置</small></div><span>节点 '+(a.step+1)+' / '+a.route.length+'</span></div><div class="exp-route-stage"><div class="exp-route-line"></div><div class="exp-route-nodes">'+nodes+'</div><div class="exp-party-marker" data-exp-party data-from="'+from+'" data-step="'+a.step+'">'+party+'</div></div></section>'
+    +'<section class="exp-panel"><div class="exp-section-title"><div><b>当前队伍</b><small>能力值会直接影响下面的事件判定</small></div></div><div class="exp-team-strip">'+t.map(teamCard).join('')+'</div></section>'
+    +'<section class="exp-panel exp-event"><span class="exp-kicker">③ 当前事件</span><h3>'+event.title+'</h3><p>'+event.text+'</p><div class="exp-choices">'+choices+'</div></section>'
+    +'<details class="exp-panel exp-log"><summary>远征记录（最近 '+Math.min(4,a.log.length)+' 条）</summary>'+(a.log.length?a.log.slice(-4).reverse().map(x=>'<div>'+x+'</div>').join(''):'<div>队伍刚刚进入'+z.name+'。</div>')+'</details>'
+    +'<button class="secondary exp-abandon" data-exp-abandon>结束本次远征</button></div>';
+}
+"""
+          s=s[:start_active]+active_new+s[end_active:]
+
+          # Rebuild idle screen into distinct sections instead of one long stack.
+          old_render_line="box.innerHTML=zoneTabs(e)+'<div class=\"exp-overview\"><div><b>'+z.label+' · '+z.name+'</b><small>'+z.desc+'</small></div><div><b>今日剩余 '+remain+' / '+z.attempts+'</b><small>远征徽章 '+e.badges+' · 通关基础 '+z.badge+' 枚</small></div></div><p class=\"exp-intro\"><b>准入：'+requirement+'</b>。选择 3 只怪物后连续处理 6 个事件。星级只决定能否进入；真正的成功率由体质 / 攻击 / 防御 / 速度 / 幸运决定。失败只消耗本次远征行动力，不直接扣怪物生命。</p>'+selectionHTML(z)+'<div class=\"exp-team-strip\">'+t.map(teamCard).join('')+'</div><button class=\"primary exp-start\" data-exp-start '+(t.length===3&&remain>0?'':'disabled')+'>开始 '+z.label+' · '+z.name+'</button>'+(e.lastResult?'<div class=\"exp-last\">上次：'+(e.lastResult.zoneName||'远征')+' · '+(e.lastResult.defeated?'提前结束':'完成')+' · '+e.lastResult.success+' 成功 / '+e.lastResult.fail+' 失败 · '+e.lastResult.payout+' 灵能'+(e.lastResult.badge?' · 徽章 ×'+e.lastResult.badge:'')+'</div>':'');"
+          new_render_line="box.innerHTML='<section class=\"exp-panel\"><div class=\"exp-section-title\"><div><b>选择难度</b><small>六档远征，每档每天独立计算次数</small></div><strong class=\"exp-badge-count\">徽章 '+e.badges+'</strong></div>'+zoneTabs(e)+'</section><section class=\"exp-panel exp-overview\"><div><span class=\"exp-kicker\">'+z.label+'</span><b>'+z.name+'</b><small>'+z.desc+'</small></div><div><b>今日剩余 '+remain+' / '+z.attempts+'</b><small>通关基础 '+z.badge+' 枚徽章</small></div><div><b>准入：'+requirement+'</b><small>星级只决定准入，五项能力决定成功率</small></div></section>'+selectionHTML(z)+'<section class=\"exp-panel\"><div class=\"exp-section-title\"><div><b>当前选择</b><small>'+(t.length?('已选 '+t.length+' / 3'):'还没有选择队员')+'</small></div></div><div class=\"exp-team-strip\">'+t.map(teamCard).join('')+'</div><button class=\"primary exp-start\" data-exp-start '+(t.length===3&&remain>0?'':'disabled')+'>开始 '+z.label+' · '+z.name+'</button></section>'+(e.lastResult?'<div class=\"exp-last exp-panel\">上次：'+(e.lastResult.zoneName||'远征')+' · '+(e.lastResult.defeated?'提前结束':'完成')+' · '+e.lastResult.success+' 成功 / '+e.lastResult.fail+' 失败 · '+e.lastResult.payout+' 灵能'+(e.lastResult.badge?' · 徽章 ×'+e.lastResult.badge:'')+'</div>':'');"
+          if old_render_line not in s: raise SystemExit('idle render line not found')
+          s=s.replace(old_render_line,new_render_line,1)
+
+          # After ordinary renders (opening page / sort / team changes), sync walker if relevant.
+          s=s.replace("window.QinsterExpedition={render,zones:ZONES};","window.QinsterExpedition={render:()=>{render();requestAnimationFrame(syncExpeditionMotion);},zones:ZONES};",1)
+
+          p.write_text(s,encoding='utf-8')
+
+          # CSS polish in index.html.
+          p=Path('index.html')
+          h=p.read_text(encoding='utf-8')
+          if '/* ===== v196 expedition hierarchy + moving route ===== */' not in h:
+              css=r'''
+/* ===== v196 expedition hierarchy + moving route ===== */
+#expedition-page{max-width:1220px;margin:0 auto}.expedition-content{display:grid;gap:12px}.exp-panel{background:#c8c7cc;border:3px solid #57535e;box-shadow:inset 0 0 0 2px #aaa7af;padding:11px}.exp-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.exp-section-title b{font-size:13px}.exp-section-title small{display:block;margin-top:3px;font-size:9px;color:#625d68}.exp-kicker{display:block;font-size:9px;font-weight:900;color:#8b2e29;letter-spacing:1px}.exp-badge-count{background:#302d36;color:#f2c451;padding:6px 9px;border:2px solid #706b76;font-size:11px}.exp-zone-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.exp-zone-tab{min-height:62px;text-align:left;background:#b5b4b9;border:3px solid #77727d;padding:8px;color:#25232a;box-shadow:inset 2px 2px #dedde1,inset -2px -2px #8d8993}.exp-zone-tab b,.exp-zone-tab span,.exp-zone-tab small{display:block}.exp-zone-tab b{font-size:11px}.exp-zone-tab span{margin-top:3px;font-size:10px}.exp-zone-tab small{margin-top:4px;font-size:8px;color:#5b5660}.exp-zone-tab.active{background:#3d3944;color:#fff;border-color:#e33b34;box-shadow:inset 0 -3px #e33b34}.exp-zone-tab.active small{color:#f1df9d}.exp-overview{display:grid;grid-template-columns:1.25fr .8fr 1fr;gap:8px}.exp-overview>div{background:#d8d7da;border:2px solid #8a8690;padding:9px}.exp-overview b,.exp-overview small{display:block}.exp-overview small{margin-top:4px;font-size:9px;color:#5d5962}.exp-team-builder{background:#c8c7cc;border:3px solid #57535e;box-shadow:inset 0 0 0 2px #aaa7af;padding:11px}.exp-select-actions{display:flex;align-items:end;gap:7px;flex-wrap:wrap}.exp-sort-label{min-width:220px}.exp-sort-label span,.exp-select-grid label>span{display:block;margin-bottom:4px;font-size:9px;font-weight:900;color:#56515b}.exp-sort-label select{width:100%}.exp-select-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.exp-select-grid select{width:100%;min-height:38px}.exp-team-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.exp-team-card{min-width:0}.exp-start{width:100%;margin-top:10px;padding:12px}.exp-active-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.exp-active-head h3{margin:2px 0 3px}.exp-run-stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.exp-run-stats>*{background:#302d36;color:#fff1b5;border:2px solid #716d77;padding:6px 8px;font-size:9px}.exp-route-panel{overflow:hidden}.exp-route-stage{position:relative;height:118px;margin-top:4px;padding:0 18px}.exp-route-line{position:absolute;left:8%;right:8%;top:55px;height:5px;background:#85808a;border:1px solid #5c5761}.exp-route-nodes{position:absolute;left:8%;right:8%;top:34px;display:flex;justify-content:space-between;align-items:center}.exp-route-node{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;align-content:center;background:#aaa8ae;border:3px solid #6e6974;z-index:2}.exp-route-node b{font-size:11px}.exp-route-node small{font-size:7px}.exp-route-node.done{background:#93b68a;border-color:#4e7149}.exp-route-node.current{background:#f2cf62;border-color:#7f651d;box-shadow:0 0 0 4px rgba(242,196,81,.24)}.exp-party-marker{position:absolute;top:72px;left:8%;transform:translateX(-50%);display:flex;gap:0;align-items:flex-end;transition:left .46s steps(5,end);z-index:4;pointer-events:none}.exp-party-marker.moving{animation:expBob .18s steps(2,end) infinite}.exp-walker{display:block;width:33px;margin-left:-7px}.exp-walker:first-child{margin-left:0}.exp-walker .sprite{width:33px!important;filter:var(--sprite-filter,none) drop-shadow(1px 2px 0 rgba(0,0,0,.35))}.exp-event{background:#dedde0}.exp-event h3{margin:4px 0 7px;font-size:17px}.exp-event p{margin:0 0 10px;line-height:1.55}.exp-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}.exp-choice{display:grid;grid-template-columns:1fr auto;gap:4px;text-align:left;min-height:88px}.exp-choice b{grid-column:1/-1;font-size:12px}.exp-choice span,.exp-choice small,.exp-choice em{font-size:9px}.exp-choice em{grid-column:1/-1;color:#6a4b13;font-style:normal;font-weight:900}.exp-log{font-size:9px}.exp-log summary{cursor:pointer;font-weight:900;margin-bottom:6px}.exp-log div{padding:3px 0;border-top:1px dashed #96919b}.exp-abandon{width:100%}.exp-last{font-size:10px}@keyframes expBob{50%{transform:translateX(-50%) translateY(-3px)}}
+@media(max-width:760px){.exp-zone-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.exp-overview,.exp-select-grid,.exp-team-strip,.exp-choices{grid-template-columns:1fr}.exp-active-head{display:grid}.exp-run-stats{justify-content:flex-start}.exp-section-title{align-items:flex-start;flex-direction:column}.exp-select-actions{width:100%}.exp-sort-label{min-width:0;flex:1}.exp-route-stage{height:106px;padding:0 8px}.exp-route-node{width:34px;height:34px}.exp-route-line{top:49px}.exp-route-nodes{top:32px}.exp-party-marker{top:66px}.exp-walker{width:28px}.exp-walker .sprite{width:28px!important}}
+'''
+              marker='</style>\n<body>'
+              if marker not in h: raise SystemExit('style close marker not found')
+              h=h.replace(marker,css+'\n</style>\n<body>',1)
+          p.write_text(h,encoding='utf-8')
+          PY
+          node --check v194-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v196-expedition-ui-motion.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v194-expedition.js index.html .github/workflows/v196-expedition-ui-motion.yml
+          git commit -m "Fix expedition progression motion and reorganize UI"
+          git push
