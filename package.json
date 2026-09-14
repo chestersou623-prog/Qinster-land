@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "art": "node art/sprites.mjs && python3 scripts/build-atlas.py",
+    "art": "python3 scripts/build-atlas.py",
     "test": "node scripts/check-game.mjs"
   },
   "devDependencies": {"vite": "8.3.0"}

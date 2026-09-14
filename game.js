@@ -635,13 +635,13 @@ function normalizeMonsterFields(state){
 let s=G.fresh(),selected=1,timer,petTime=0,lastFrame=0,dirty=true,sellTarget=null,page='farm',dispatchSelected=null,pendingBulkSaleIds=[],dispatchTeamSelected=[];
 const actors=new Map(),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MONSTER_SPRITES=[];
-const SPECIAL_COLORS=[{name:'极光',hue:175},{name:'琉璃',hue:235},{name:'夜曜',hue:320}];
-const DEX_COLORS=[...G.COLORS.map((name,i)=>({name,kind:'normal',index:i,hue:[0,65,140,205,265,315][i]})),...SPECIAL_COLORS.map((c,i)=>({name:c.name+'（探索限定）',kind:'special',index:i,hue:c.hue}))];
+const SPECIAL_COLORS=[{name:'极光',hue:175},{name:'琉璃',hue:235},{name:'夜曜',hue:270}];
+const DEX_COLORS=[...G.COLORS.map((name,i)=>({name,kind:'normal',index:i,hue:[0,155,349,212,274,40][i]})),...SPECIAL_COLORS.map((c,i)=>({name:c.name+'（探索限定）',kind:'special',index:i,hue:c.hue}))];
 function dexColorIndex(m){return Number.isInteger(m?.specialColor)?G.COLORS.length+m.specialColor:m.tint;}
 function dexSprite(species,ci,shiny=false){return ci<G.COLORS.length?sprite(species,ci,shiny,null):sprite(species,0,shiny,ci-G.COLORS.length);}
 // v189: indexed artwork compiled to nine atlases. No runtime colour filters/masks.
 const MONSTER_ATLAS_COLS=8,MONSTER_ATLAS_ROWS=8;
-const MONSTER_ATLASES=['monster-atlas.png',...Array.from({length:8},(_,i)=>'assets/monster-atlas-'+(i+1)+'.png')].map(path=>path+'?v=189');
+const MONSTER_ATLASES=['monster-atlas.png',...Array.from({length:8},(_,i)=>'assets/monster-atlas-'+(i+1)+'.png')].map(path=>path+'?v=196');
 function sprite(type,tint=0,shiny=false,specialColor=null){
   const numeric=Number(type);
   const idx=Number.isFinite(numeric)?Math.max(0,Math.min(G.SPECIES.length-1,Math.floor(numeric))):0;
@@ -3547,6 +3547,28 @@ function dispatchMissionSceneHTML(mission,team){
     +'<div class="mission-scene-team">'+teamHTML+'</div>'
     +'</div>';
 }
+
+function renderDispatchDock(){
+  const dock=$('dispatch-travel-dock'),view=$('dispatch-dock-view'),clock=$('dispatch-dock-clock');
+  if(!dock||!view)return;
+  const mission=dispatchMission(),team=dispatchedMonsters();
+  if(!s.dispatch||!mission||!team.length){dock.hidden=true;return;}
+  dock.hidden=false;
+  const ready=s.dispatch.end<=Date.now();
+  const key=JSON.stringify([s.dispatch.start,mission.id,ready,team.map(m=>[m.id,m.species,m.tint,m.specialColor,m.shiny,m.star,m.nickname])]);
+  if(view._key!==key){
+    view.innerHTML=dispatchMissionSceneHTML(mission,team);
+    view.querySelector('.dispatch-mission-scene').classList.toggle('mission-arrived',ready);
+    view.querySelectorAll('.mission-scene-monster').forEach((el,i)=>{
+      el.style.setProperty('--travel-time',(6+i*2.3)+'s');
+      el.style.setProperty('--travel-delay',(-i*3.1)+'s');
+      el.style.setProperty('--travel-lane',(12+i*8)+'px');
+    });
+    view._key=key;
+  }
+  clock.textContent=ready?'已抵达 · 等待领取':dispatchCountdownText();
+}
+
 function renderDispatch(){
   const sel=$('dispatch-target');if(!sel)return;
   dispatchTeamSelected=dispatchTeamSelected.filter(id=>s.monsters.some(m=>m.id===id)&&!isDispatched(id));
@@ -4687,7 +4709,7 @@ function runIntegrityAudit(){
   else console.info('[Qinster integrity audit] OK');
   return issues;
 }
-function render(){renderRanchIdentity();bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';document.querySelectorAll('[data-buy-potion="timeCut"],[data-buy-potion="timeInstant"]').forEach(b=>b.disabled=rl.level<3);document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('shiny-potion-price'))$('shiny-potion-price').textContent=fmt(SHOP_PRICES.shiny)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg||!!s.egg2;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
+function render(){renderDispatchDock();renderRanchIdentity();bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';document.querySelectorAll('[data-buy-potion="timeCut"],[data-buy-potion="timeInstant"]').forEach(b=>b.disabled=rl.level<3);document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('shiny-potion-price'))$('shiny-potion-price').textContent=fmt(SHOP_PRICES.shiny)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg||!!s.egg2;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
 const totalEggs=totalQueuedEggs(s),totalMax=eggTotalMax(s);
 function renderIncubatorSlot(slot){
   const egg=slot===2?s.egg2:s.egg;
@@ -5191,8 +5213,8 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v194';
+window.__qinsterVersion='v196';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v194 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v196 · engine '+__n;},1000);

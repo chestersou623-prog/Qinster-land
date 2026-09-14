@@ -1,9 +1,8 @@
 {
-  "version": 189,
+  "version": 190,
   "columns": 8,
   "rows": 8,
-  "cellSize": 80,
-  "sourceSize": 40,
+  "cellSize": 128,
   "speciesCount": 58,
   "colors": [
     "原色",
@@ -16,6 +15,8 @@
     "琉璃",
     "夜曜"
   ],
+  "source": "art/source/monsters-original.png",
+  "roleMap": "art/source/variable-regions.png",
   "files": [
     "monster-atlas.png",
     "assets/monster-atlas-1.png",
@@ -28,14 +29,14 @@
     "assets/monster-atlas-8.png"
   ],
   "sha256": {
-    "monster-atlas.png": "1c5d6585fd2f0d5122195f3f83ee6fc14423becf6c9859200a3d553317bd8cf8",
-    "assets/monster-atlas-1.png": "d8d1e708154c6a6276cb00dd47f21f3c8a8da71915d8bbb7d7575ab461e5b718",
-    "assets/monster-atlas-2.png": "851554647e8445090d2ecec7e34c818a10284990ab7ada7b8134bf0eda2cc593",
-    "assets/monster-atlas-3.png": "15ca5f47ddd89d06e233d3e7a2842e00dbe2d2559088a5b1f06eb9185edded3e",
-    "assets/monster-atlas-4.png": "a6c95016a564576c3e4841a25dd228da35966538131bcd26e62a218464e02c53",
-    "assets/monster-atlas-5.png": "9a7687b1be9ae301ccd289f1d0f3eb38255a0fb76c2361d544b18c9b6f6424a0",
-    "assets/monster-atlas-6.png": "9b96520f7893d1d8784d14220a549d46e57cd37ee88b03a96cde8739024b84f5",
-    "assets/monster-atlas-7.png": "8d16b0720896a8eeb33b2a810a9790d7b14ae587705b7d7b019de62be6e3303a",
-    "assets/monster-atlas-8.png": "6ed0a2aa1a8b36fa6a408bc0ca42014591d7bbe072e8282a87fba84a060535a6"
+    "monster-atlas.png": "3b2a8d54d5c5dd9d3dc4aac00ee72fedcc122aa0c2afb9d7541b3da7eb6475c2",
+    "assets/monster-atlas-1.png": "1ae281fb0de0e4856c12eccbf27cc345d3bfe2239025cc48d510c950366b3df1",
+    "assets/monster-atlas-2.png": "7d3e007afc9d4d04ece6cbce8c6739b089390fd9a4927c1ca11c4a759d224462",
+    "assets/monster-atlas-3.png": "69a367ecaf4808387cc86c683a9da229c33388978ef2ed2198c71defe6a38441",
+    "assets/monster-atlas-4.png": "daad4c7cce5d2e5564d2969cbefbc02aa2014b0460679cbcd4e8a0cec806cbd6",
+    "assets/monster-atlas-5.png": "3c0f89fef35d17fa1c9ccee6b0f48f88a16d313024660979ccc08b25f5950bfe",
+    "assets/monster-atlas-6.png": "c7c2d3b754b0c6c6d836181aa038e2c6975ac1afa1ca593efa9cfc47419b5556",
+    "assets/monster-atlas-7.png": "7c0297c5194ed94cb34942216ba4ef6d5531ab8c8d7464a385a219cfec04102b",
+    "assets/monster-atlas-8.png": "580471bf04be04d6421408734557c935ab610efa95c28b34fe2617a6ccf23665"
   }
 }
