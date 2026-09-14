@@ -5000,18 +5000,22 @@ $('sort-roster').onchange=()=>renderRoster();$('sort-direction').onchange=()=>re
 
   const dp=$('dispatch-page');
   if(dp){dp.hidden=next!=='dispatch';dp.style.display=next==='dispatch'?'block':'none';}
+  const ep=$('expedition-page');
+  if(ep){ep.hidden=next!=='expedition';ep.style.display=next==='expedition'?'block':'none';}
   $('shop-page').style.display=next==='shop'?'block':'none';
   $('bag-page').style.display=next==='bag'?'block':'none';
   $('dex-page').style.display=next==='dex'?'block':'none';
   $('skill-page').style.display=next==='skills'?'block':'none';
 
   $('dispatch-btn').setAttribute('aria-pressed',String(next==='dispatch'));
+  if($('expedition-btn'))$('expedition-btn').setAttribute('aria-pressed',String(next==='expedition'));
   $('shop-btn').setAttribute('aria-pressed',String(next==='shop'));
   $('bag-btn').setAttribute('aria-pressed',String(next==='bag'));
   $('dex-btn').setAttribute('aria-pressed',String(next==='dex'));
   $('skill-btn').setAttribute('aria-pressed',String(next==='skills'));
 
   if(next==='dispatch')renderDispatch();
+  if(next==='expedition'&&window.QinsterExpedition?.render)window.QinsterExpedition.render();
   if(next==='dex')renderDex();
   if(next==='bag'){renderShopTarget();renderBag();}
   if(next==='shop'){renderColorPotionShop();renderShopOwnedCounts();}
@@ -5019,10 +5023,10 @@ $('sort-roster').onchange=()=>renderRoster();$('sort-direction').onchange=()=>re
   if(next==='farm'){dirty=true;render();}
   window.scrollTo(0,0);
 }
-$('dispatch-btn').onclick=()=>{setPage('dispatch');};$('shop-btn').onclick=()=>{setPage('shop');};$('bag-btn').onclick=()=>{setPage('bag');};
+$('dispatch-btn').onclick=()=>{setPage('dispatch');};if($('expedition-btn'))$('expedition-btn').onclick=()=>{setPage('expedition');};$('shop-btn').onclick=()=>{setPage('shop');};$('bag-btn').onclick=()=>{setPage('bag');};
 $('dex-btn').onclick=()=>{setPage('dex');};
 $('skill-btn').onclick=()=>{setPage('skills');};document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};
-$('back-farm').onclick=()=>{setPage('farm');};$('back-from-bag').onclick=()=>{setPage('farm');};$('back-from-dispatch').onclick=()=>{setPage('farm');};
+$('back-farm').onclick=()=>{setPage('farm');};$('back-from-bag').onclick=()=>{setPage('farm');};$('back-from-dispatch').onclick=()=>{setPage('farm');};if($('back-from-expedition'))$('back-from-expedition').onclick=()=>{setPage('farm');};
 $('back-from-dex').onclick=()=>{setPage('farm');};
 $('back-from-skills').onclick=()=>{setPage('farm');};
 document.querySelector('.brand').onclick=e=>{e.preventDefault();setPage('farm');};
@@ -5184,10 +5188,11 @@ setInterval(()=>{
   }
 },1000);
 setInterval(()=>{if(!document.hidden)save(false);},15000);
+window.QinsterRuntime={getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v192';
+window.__qinsterVersion='v194';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v192 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v194 · engine '+__n;},1000);
