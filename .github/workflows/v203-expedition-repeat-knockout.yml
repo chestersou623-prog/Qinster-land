@@ -1,0 +1,33 @@
+name: Qinster v203 repeated expedition knockout life
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v203-expedition-repeat-knockout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply v203 patch
+        run: |
+          python3 scripts/patch-v203.py
+          node --check v199-roguelike-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          rm .github/workflows/v203-expedition-repeat-knockout.yml
+          rm scripts/patch-v203.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v199-roguelike-expedition.js .github/workflows/v203-expedition-repeat-knockout.yml scripts/patch-v203.py
+          git commit -m "Deduct life on every expedition knockout"
+          git push
