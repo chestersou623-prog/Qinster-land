@@ -181,7 +181,7 @@ function income(s){
 function pair(s){return [s.monsters.find(m=>m.id===s.parentA),s.monsters.find(m=>m.id===s.parentB)];}
 function odds(a,b){if(!a||!b||a.id===b.id)return null;const base=Math.min(a.star,b.star),fortune=Math.max(0,...[a,b].filter(m=>SPECIES[m.species].passive==='fortune').map(m=>skillLevel(m)*.003)),potion=(a.starBoost||0)+(b.starBoost||0);const raw=base===5?0:(a.star===b.star?[0,.10,.06,.04,.01][base]:[0,.04,.025,.015,.005][base])+fortune+potion;const chance=base===5?0:Math.min(.95,raw),down=base===1?0:[0,0,.15,.30,.50,.75][base];return {base,up:Math.min(5,base+1),chance,down,lower:Math.max(1,base-1),stay:Math.max(0,1-chance-down-.01),fortune,potion};}
 function breedCost(s){const [a,b]=pair(s);return a&&b?20*Math.pow(Math.min(a.star,b.star),2):20;}
-function blocked(s,now){const [a,b]=pair(s);if(!a||!b||a.id===b.id)return '请选择两只不同的怪物';if(s.dispatch&&[a.id,b.id].includes(s.dispatch.monsterId))return '亲代正在派遣中';if(s.egg)return '孵化巢正在使用中';if(s.monsters.length>=s.capacity)return '家园满员，请先扩建';if(a.cooldown>now||b.cooldown>now)return '亲代休息中 · '+Math.ceil((Math.max(a.cooldown,b.cooldown)-now)/1000)+' 秒';if(s.energy+1e-8<breedCost(s))return '灵能不足，伙伴正在积累';return '';}
+function blocked(s,now){const [a,b]=pair(s);if(!a||!b||a.id===b.id)return '请选择两只不同的怪物';const expeditionIds=s.expedition?.rogueActive?.teamIds||[];if(expeditionIds.includes(a.id)||expeditionIds.includes(b.id))return '亲代正在远征中';if(s.dispatch&&[a.id,b.id].includes(s.dispatch.monsterId))return '亲代正在派遣中';if(s.egg)return '孵化巢正在使用中';if(s.monsters.length>=s.capacity)return '家园满员，请先扩建';if(a.cooldown>now||b.cooldown>now)return '亲代休息中 · '+Math.ceil((Math.max(a.cooldown,b.cooldown)-now)/1000)+' 秒';if(s.energy+1e-8<breedCost(s))return '灵能不足，伙伴正在积累';return '';}
 function startBreed(s,now,rng=Math.random){if(blocked(s,now))return false;const [a,b]=pair(s),o=odds(a,b);const starRoll=rng();const star=starRoll<o.chance?o.up:starRoll<o.chance+o.down?o.lower:o.base;let type;const roll=rng();if(roll<.45)type=a.species;else if(roll<.90)type=b.species;else{const pool=SPECIES.map((_,i)=>i).filter(i=>i!==a.species&&i!==b.species);type=pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];}
 const genes=a.genes.map((v,i)=>Math.max(.65,Math.min(1.5,(v+b.genes[i])/2*(.9+rng()*.2))));const incubateLv=Math.max(0,...[a,b].filter(m=>SPECIES[m.species].passive==='incubate').map(skillLevel));const baseIncubateSeconds=star===1?15:(22+star*12);const duration=Math.round(baseIncubateSeconds*(1-incubateLv*.025)*1000);
 s.energy=Math.max(0,s.energy-breedCost(s));s.egg={child:createMonster(s.nextId++,type,star,genes,[a.id,b.id]),start:now,ready:now+duration,base:o.base,chance:o.chance};if(rng()<Math.max(1,Math.min(5,star))*.001){s.egg.child.shiny=true;s.egg.child.locked=true;s.egg.child.shinyAutoLockDone=true;}a.starBoost=0;b.starBoost=0;const colorRoll=rng();s.egg.child.tint=colorRoll<.475?a.tint:colorRoll<.95?b.tint:(()=>{const pool=[0,1,2,3,4,5].filter(c=>c!==a.tint&&c!==b.tint);return pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];})();
@@ -2830,8 +2830,9 @@ const DISPATCH_MISSIONS=[
 function dispatchedMonsters(){if(!s.dispatch)return [];const ids=Array.isArray(s.dispatch.monsterIds)?s.dispatch.monsterIds:(s.dispatch.monsterId?[s.dispatch.monsterId]:[]);return ids.map(id=>s.monsters.find(m=>m.id===id)).filter(Boolean);}
 function dispatchedMonster(){return dispatchedMonsters()[0]||null;}
 function isDispatched(id){return dispatchedMonsters().some(m=>m.id===id);}
+function isInActiveExpedition(id){return !!(s.expedition?.rogueActive?.teamIds||[]).includes(id);}
 function dispatchMission(){return s.dispatch?DISPATCH_MISSIONS.find(x=>x.id===s.dispatch.mission)||null:null;}
-function canDispatchMonster(m){return !!(m&&!isDispatched(m.id)&&!isEggParent(m.id)&&m.life>0);}
+function canDispatchMonster(m){return !!(m&&!isDispatched(m.id)&&!isInActiveExpedition(m.id)&&!isEggParent(m.id)&&m.life>0);}
 function canAutoDispatchMonster(m){return !!(canDispatchMonster(m)&&!m.locked);} // locked = manual-only
 function missionState(m,mission){const [hp,atk,def,spd,luck]=G.stats(m);let score=0;if(['forage','river'].includes(mission.id))score=spd*.5+luck*.4+def*.1;else if(['ruins','cavern'].includes(mission.id))score=def*.4+atk*.35+luck*.25;else score=atk*.25+def*.25+spd*.25+luck*.25;score*=traitMods(m).state;const expectedByMission={meadow:52,forage:95,river:190,ruins:285,cavern:315,astral:385,summit:410,rift:435};const expected=expectedByMission[mission.id]||250;const bonus=Math.max(-.08,Math.min(.14,(score-expected)/expected*.12));return {score:Math.round(score),bonus};}
 function teamDispatchMods(team,mission=null){
@@ -3229,10 +3230,10 @@ function chooseSmartBreedPair(force=false){
   if(!force&&smartBreedCache.key===key&&Array.isArray(smartBreedCache.ids)){
     const a=s.monsters.find(m=>m.id===smartBreedCache.ids[0]);
     const b=s.monsters.find(m=>m.id===smartBreedCache.ids[1]);
-    if(a&&b&&!a.locked&&!b.locked&&a.life>0&&b.life>0&&!isDispatched(a.id)&&!isDispatched(b.id)&&a.gender!==b.gender)return [a,b];
+    if(a&&b&&!a.locked&&!b.locked&&a.life>0&&b.life>0&&!isDispatched(a.id)&&!isDispatched(b.id)&&!isInActiveExpedition(a.id)&&!isInActiveExpedition(b.id)&&a.gender!==b.gender)return [a,b];
   }
 
-  const eligible=s.monsters.filter(m=>!m.locked&&!isDispatched(m.id)&&m.life>0);
+  const eligible=s.monsters.filter(m=>!m.locked&&!isDispatched(m.id)&&!isInActiveExpedition(m.id)&&m.life>0);
   const mode=s.autoBreedPriority||'star';
   const males=smartBreedShortlist(eligible.filter(m=>m.gender==='公'),mode);
   const females=smartBreedShortlist(eligible.filter(m=>m.gender==='母'),mode);
@@ -4391,7 +4392,7 @@ function breedingSkillPreview(a,b,o){
 function bestSmartCounterpart(anchor,pool){
   if(!anchor)return null;
   const candidates=(pool||s.monsters).filter(m=>
-    m&&m.id!==anchor.id&&m.life>0&&!isDispatched(m.id)&&m.gender!==anchor.gender
+    m&&m.id!==anchor.id&&m.life>0&&!isDispatched(m.id)&&!isInActiveExpedition(m.id)&&m.gender!==anchor.gender
   );
   let best=null,bestScore=-Infinity;
   for(const m of candidates){
@@ -4432,8 +4433,8 @@ function ensureBreedingPair(){
 function smartBreedDecisionNote(){
   if(s.manualBreedRepeat)return '固定双亲模式：不会自动换人。';
 
-  const a=s.monsters.find(m=>m.id===s.parentA&&m.life>0&&!isDispatched(m.id))||null;
-  const b=s.monsters.find(m=>m.id===s.parentB&&m.life>0&&!isDispatched(m.id))||null;
+  const a=s.monsters.find(m=>m.id===s.parentA&&m.life>0&&!isDispatched(m.id)&&!isInActiveExpedition(m.id))||null;
+  const b=s.monsters.find(m=>m.id===s.parentB&&m.life>0&&!isDispatched(m.id)&&!isInActiveExpedition(m.id))||null;
   const mode=(s.autoBreedPriority||'star')==='skill'?'技能升级优先':'后代提星优先';
 
   // If a valid pair is already selected, do NOT rescan every possible pair just
@@ -4958,8 +4959,8 @@ $('parent-a').onchange=e=>{chooseParent('a',Number(e.target.value)||null);};
 $('parent-b').onchange=e=>{chooseParent('b',Number(e.target.value)||null);};
 $('parent-a-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('a');};
 $('parent-b-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('b');};
-$('parent-a-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('a',id);};
-$('parent-b-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('b',id);};
+$('parent-a-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(isInActiveExpedition(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在远征中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('a',id);};
+$('parent-b-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(isInActiveExpedition(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在远征中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('b',id);};
 document.addEventListener('input',e=>{const q=e.target.closest?.('[data-parent-search]');if(!q)return;const which=q.dataset.parentSearch;parentSearch[which]=q.value;renderParentPicker(which);const next=$('parent-'+which+'-picker').querySelector('[data-parent-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-parent-sort]'),skillSel=e.target.closest?.('[data-parent-skill]'),starSel=e.target.closest?.('[data-parent-star]'),speciesSel=e.target.closest?.('[data-parent-species]');if(sel){const which=sel.dataset.parentSort;parentSort[which]=sel.value;renderParentPicker(which);return;}if(skillSel){const which=skillSel.dataset.parentSkill;parentSkillFilter[which]=skillSel.value;renderParentPicker(which);return;}if(starSel){const which=starSel.dataset.parentStar;parentStarFilter[which]=starSel.value;renderParentPicker(which);return;}if(speciesSel){const which=speciesSel.dataset.parentSpecies;parentSpeciesFilter[which]=speciesSel.value;renderParentPicker(which);}});document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
 $('breed').onclick=()=>{manualBreedAttempt();};
 $('auto-breed').onchange=e=>{settle();s.autoBreed=e.target.checked;if(s.autoBreed){s.manualBreedRepeat=false;s.manualBreedPairIds=[];runOnlineAutomation(true);}tell(s.autoBreed?'智能生蛋连发已开启：每轮都会重新选择双亲。':'智能生蛋连发已关闭。');dirty=true;render();save();};$('auto-breed-priority').onchange=e=>{s.autoBreedPriority=e.target.value==='skill'?'skill':'star';s.revision++;dirty=true;save();render();if(s.autoBreed)runOnlineAutomation(true);tell('智能生蛋已切换为「'+(s.autoBreedPriority==='star'?'高星优先':'配种技能优先')+'」。');};
