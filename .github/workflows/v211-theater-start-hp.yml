@@ -1,0 +1,32 @@
+name: Qinster v211 theater start HP
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v211-theater-start-hp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply v211 patch
+        run: python scripts/patch-v211-theater-start-hp.py
+      - name: Checks
+        run: |
+          node --check v201-battle-theater.js
+          npm test
+      - name: Commit patch
+        run: |
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add v201-battle-theater.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Show actual expedition HP at battle start"
+          git push
