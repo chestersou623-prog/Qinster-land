@@ -1,0 +1,33 @@
+name: Qinster v215 egg fragment workshop
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v215-egg-fragment-workshop.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply v215 patch
+        run: python scripts/patch-v215-egg-fragment-workshop.py
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f .github/workflows/v215-egg-fragment-workshop.yml
+          git add v199-roguelike-expedition.js .github/workflows/v215-egg-fragment-workshop.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Add egg fragment crafting workshop"
+          git push
