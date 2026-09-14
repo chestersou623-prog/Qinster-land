@@ -34,8 +34,8 @@ if name_anchor not in s:
 s=s.replace(name_anchor,name_new,1)
 
 # Add the visible gauges between controls and battlefield.
-field_anchor='<div class=\\"rg-bt-field\\"><div class=\\"rg-bt-banner\\">ROUND 1</div>'
-gauges='''<div class=\\"rg-bt-gauges\\"><div class=\\"rg-bt-gauge-allies\\">${t.map((m,i)=>`<div class=\\"rg-bt-gauge ${Math.max(0,Number(b.startHp?.[m.id] ?? run.hp?.[m.id])||0)<=0?'dead':''}\\" data-bt-gauge-ally=\\"${i}\\"><small>${esc(name(m))} · 速 ${statSpeed(m)}</small><div class=\\"rg-bt-charge\\"><i></i></div></div>`).join('')}</div><div class=\\"rg-bt-gauge rg-bt-gauge-enemy\\" data-bt-gauge-enemy><small>敌方 · 速 ${Math.round(Number(b.enemySpd)||0)}</small><div class=\\"rg-bt-charge\\"><i></i></div></div></div>'''
+field_anchor='<div class=\"rg-bt-field\"><div class=\"rg-bt-banner\">ROUND 1</div>'
+gauges='''<div class=\"rg-bt-gauges\"><div class=\"rg-bt-gauge-allies\">${t.map((m,i)=>`<div class=\"rg-bt-gauge ${Math.max(0,Number(b.startHp?.[m.id] ?? run.hp?.[m.id])||0)<=0?'dead':''}\" data-bt-gauge-ally=\"${i}\"><small>${esc(name(m))} · 速 ${statSpeed(m)}</small><div class=\"rg-bt-charge\"><i></i></div></div>`).join('')}</div><div class=\"rg-bt-gauge rg-bt-gauge-enemy\" data-bt-gauge-enemy><small>敌方 · 速 ${Math.round(Number(b.enemySpd)||0)}</small><div class=\"rg-bt-charge\"><i></i></div></div></div>'''
 if field_anchor not in s:
     raise SystemExit('battle field html anchor not found')
 s=s.replace(field_anchor,gauges+field_anchor,1)
