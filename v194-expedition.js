@@ -1,0 +1,100 @@
+(()=>{
+'use strict';
+const STAT_NAMES=['体质','攻击','防御','速度','幸运'];
+const ZONE={id:'meadow_ruins',name:'草原遗迹',recommended:'推荐 1★–2★',attempts:5};
+const EVENTS={
+  fallen:{title:'倒木封路',text:'巨大的枯木横在旧路中央。',choices:[{label:'合力推开',stat:1,diff:72,reward:260},{label:'从树缝快速穿过',stat:3,diff:68,reward:220}]},
+  bridge:{title:'断裂木桥',text:'桥面已经塌了一半，下面是湍急的溪流。',choices:[{label:'快速跃过断口',stat:3,diff:82,reward:300},{label:'稳住桥板慢慢通过',stat:2,diff:78,reward:270}]},
+  mist:{title:'低地迷雾',text:'白雾盖住了草径，远处只能看到模糊的石柱。',choices:[{label:'凭直觉寻找旧路',stat:4,diff:86,reward:330},{label:'硬撑着穿过湿雾',stat:0,diff:80,reward:280}]},
+  beast:{title:'遗迹守兽',text:'一只陌生野兽挡住入口，正在观察你的队伍。',choices:[{label:'正面震慑',stat:1,diff:94,reward:380},{label:'顶住冲击慢慢逼退',stat:2,diff:90,reward:350}]},
+  ravine:{title:'狭窄裂谷',text:'旧路被裂谷切开，只剩一条危险的边缘通道。',choices:[{label:'沿边缘快速通过',stat:3,diff:98,reward:390},{label:'依靠体力稳步前进',stat:0,diff:92,reward:350}]},
+  cache:{title:'隐蔽补给箱',text:'石墙后似乎藏着一个很久没人开启的箱子。',choices:[{label:'寻找机关',stat:4,diff:100,reward:460},{label:'直接破开外壳',stat:1,diff:106,reward:430}]},
+  runes:{title:'风化符文门',text:'石门上残留着几处仍会发光的符文。',choices:[{label:'观察规律',stat:4,diff:108,reward:500},{label:'撑住石门强行开启',stat:0,diff:112,reward:470}]},
+  chase:{title:'闪过的影子',text:'草丛里有稀有生物一闪而过。',choices:[{label:'立刻追上去',stat:3,diff:112,reward:520},{label:'预测它的路线',stat:4,diff:116,reward:560}]},
+  core:{title:'遗迹核心',text:'远征最后的石台发出微弱光芒，这是本次最困难的考验。',choices:[{label:'集中力量启动核心',stat:1,diff:120,reward:650},{label:'寻找最安全的启动顺序',stat:4,diff:122,reward:700}]}
+};
+const EVENT_POOL=['fallen','bridge','mist','beast','ravine','cache','runes','chase'];
+let selected=[];
+function rt(){return window.QinsterRuntime||null;}
+function state(){return rt()?.getState?.()||null;}
+function dayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ensure(){
+  const s=state();if(!s)return null;
+  if(!s.expedition||typeof s.expedition!=='object')s.expedition={};
+  const e=s.expedition;
+  if(e.dayKey!==dayKey()){e.dayKey=dayKey();e.used=0;}
+  e.used=Math.max(0,Number(e.used)||0);e.badges=Math.max(0,Number(e.badges)||0);
+  if(!Array.isArray(selected)||!selected.length)selected=(e.lastTeamIds||[]).slice(0,3);
+  return e;
+}
+function eligible(){const s=state(),R=rt();if(!s||!R)return[];return (s.monsters||[]).filter(m=>m&&m.life>0&&!R.isDispatched(m.id));}
+function n(m){return rt()?.name?.(m)||rt()?.G?.SPECIES?.[m.species]?.name||('怪物 #'+m.id);}
+function stats(m){return rt()?.G?.stats?.(m)||[0,0,0,0,0];}
+function stars(m){return rt()?.G?.stars?.(m.star)||'★'.repeat(m.star||1);}
+function team(){const by=new Map(eligible().map(m=>[m.id,m]));return selected.map(id=>by.get(id)).filter(Boolean);}
+function eventScore(team,stat){
+  const vals=team.map(m=>stats(m)[stat]||0).sort((a,b)=>b-a);
+  const avg=vals.reduce((a,b)=>a+b,0)/Math.max(1,vals.length);
+  const best=vals[0]||0;
+  const luck=stat===4?0:team.reduce((a,m)=>a+(stats(m)[4]||0),0)/Math.max(1,team.length)*.06;
+  return Math.round(avg*.72+best*.28+luck);
+}
+function chance(score,diff){return Math.max(.12,Math.min(.95,.5+(score-diff)/Math.max(85,diff)*.48));}
+function fmtPct(v){return Math.round(v*100)+'%';}
+function makeRoute(){const pool=[...EVENT_POOL];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,5).concat('core');}
+function saveRender(msg){const R=rt();if(!R)return;const s=state();if(s)s.revision=(s.revision||0)+1;R.save?.();R.render?.();if(msg)R.tell?.(msg);render();}
+function start(){
+  const s=state(),e=ensure(),t=team();if(!s||!e)return;
+  if(t.length!==3){rt()?.tell?.('远征需要选择 3 只怪物。');return;}
+  if(new Set(t.map(m=>m.id)).size!==3){rt()?.tell?.('远征队伍不能重复选择同一只怪物。');return;}
+  if(e.used>=ZONE.attempts){rt()?.tell?.('今天的远征次数已经用完。');return;}
+  e.used++;e.lastTeamIds=t.map(m=>m.id);selected=[...e.lastTeamIds];
+  e.active={zone:ZONE.id,teamIds:[...selected],route:makeRoute(),step:0,stamina:3,reward:0,success:0,fail:0,log:[]};
+  saveRender('远征开始：'+t.map(n).join('、')+' 前往草原遗迹。');
+}
+function finish(defeated=false){
+  const s=state(),e=ensure(),a=e?.active;if(!s||!e||!a)return;
+  const payout=Math.round(a.reward*(defeated?.35:1)+(defeated?0:1200));
+  s.energy=(Number(s.energy)||0)+payout;
+  let badge=0;if(!defeated){badge=1+(a.success>=6?1:0);e.badges+=badge;}
+  e.lastResult={time:Date.now(),payout,badge,success:a.success,fail:a.fail,defeated};e.active=null;
+  saveRender(defeated?'远征提前结束，带回 '+payout+' 灵能。':'远征完成！获得 '+payout+' 灵能'+(badge?'、远征徽章 ×'+badge:'')+'。');
+}
+function choose(idx){
+  const e=ensure(),a=e?.active;if(!a)return;
+  const event=EVENTS[a.route[a.step]],choice=event?.choices?.[idx];if(!choice)return;
+  const t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
+  if(t.length!==3){e.active=null;saveRender('远征队伍资料异常，本次远征已安全结束。');return;}
+  const sc=eventScore(t,choice.stat),p=chance(sc,choice.diff),ok=Math.random()<p;
+  if(ok){a.reward+=choice.reward;a.success++;a.log.push('✓ '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' · 成功 +'+choice.reward+' 灵能');}
+  else{a.stamina--;a.fail++;a.log.push('× '+event.title+' · '+STAT_NAMES[choice.stat]+' '+sc+' · 失败，行动力 -1');}
+  a.step++;
+  if(a.stamina<=0){finish(true);return;}
+  if(a.step>=a.route.length){finish(false);return;}
+  saveRender(ok?'挑战成功。继续深入遗迹。':'挑战失败，但队伍还能继续前进。');
+}
+function abandon(){const e=ensure();if(!e?.active)return;if(!confirm('确定结束这次远征吗？本次未结算奖励会失去。'))return;e.active=null;saveRender('本次远征已结束。');}
+function teamCard(m){const v=stats(m);return '<div class="exp-team-card">'+(rt()?.sprite?.(m.species,m.tint,m.shiny,m.specialColor)||'')+'<div><b>'+n(m)+' '+stars(m)+'</b><small>'+STAT_NAMES.map((x,i)=>x+' '+v[i]).join(' · ')+'</small></div></div>';}
+function selectionHTML(){
+  const list=eligible();
+  const options=(slot)=>'<option value="">选择队员 '+(slot+1)+'</option>'+list.map(m=>'<option value="'+m.id+'" '+(selected[slot]===m.id?'selected':'')+'>'+stars(m)+' '+n(m)+' · 总能力 '+stats(m).reduce((a,b)=>a+b,0)+'</option>').join('');
+  return '<div class="exp-select-grid">'+[0,1,2].map(i=>'<label>队员 '+(i+1)+'<select data-exp-slot="'+i+'">'+options(i)+'</select></label>').join('')+'</div>';
+}
+function activeHTML(a){
+  const t=a.teamIds.map(id=>(state().monsters||[]).find(m=>m.id===id)).filter(Boolean);
+  const event=EVENTS[a.route[a.step]];
+  const progress=a.route.map((id,i)=>'<span class="'+(i<a.step?'done':i===a.step?'current':'')+'">'+(i+1)+'</span>').join('');
+  const choices=event.choices.map((c,i)=>{const sc=eventScore(t,c.stat),p=chance(sc,c.diff);return '<button class="exp-choice" data-exp-choice="'+i+'"><b>'+c.label+'</b><small>使用 '+STAT_NAMES[c.stat]+' · 队伍评分 '+sc+' · 成功率约 '+fmtPct(p)+'</small><em>成功奖励 +'+c.reward+' 灵能</em></button>';}).join('');
+  return '<div class="exp-active"><div class="exp-progress">'+progress+'</div><div class="exp-status"><b>行动力 '+('♥'.repeat(a.stamina))+('♡'.repeat(Math.max(0,3-a.stamina)))+'</b><span>暂存奖励 '+a.reward+' 灵能</span><span>成功 '+a.success+' / 失败 '+a.fail+'</span></div><div class="exp-team-strip">'+t.map(teamCard).join('')+'</div><article class="exp-event"><span>节点 '+(a.step+1)+' / '+a.route.length+'</span><h3>'+event.title+'</h3><p>'+event.text+'</p><div class="exp-choices">'+choices+'</div></article><div class="exp-log">'+(a.log.length?a.log.slice(-4).reverse().map(x=>'<div>'+x+'</div>').join(''):'<div>队伍刚刚进入草原遗迹。</div>')+'</div><button class="secondary" data-exp-abandon>结束本次远征</button></div>';
+}
+function render(){
+  const box=document.getElementById('expedition-content');if(!box)return;
+  const s=state(),e=ensure();if(!s||!e){box.innerHTML='<p>远征系统正在等待游戏资料。</p>';return;}
+  if(e.active){box.innerHTML=activeHTML(e.active);return;}
+  const t=team();
+  box.innerHTML='<div class="exp-overview"><div><b>'+ZONE.name+'</b><small>'+ZONE.recommended+' · 每日 '+ZONE.attempts+' 次</small></div><div><b>今日剩余 '+Math.max(0,ZONE.attempts-e.used)+' / '+ZONE.attempts+'</b><small>远征徽章 '+e.badges+'</small></div></div><p class="exp-intro">远征不是挂机派遣。选择 3 只怪物后连续处理 6 个事件，每个事件会直接检查体质 / 攻击 / 防御 / 速度 / 幸运。失败只消耗本次远征的行动力，不会直接扣怪物生命。</p>'+selectionHTML()+'<div class="exp-team-strip">'+t.map(teamCard).join('')+'</div><button class="primary exp-start" data-exp-start '+(t.length===3&&e.used<ZONE.attempts?'':'disabled')+'>开始草原遗迹远征</button>'+(e.lastResult?'<div class="exp-last">上次：'+(e.lastResult.defeated?'提前结束':'完成')+' · '+e.lastResult.success+' 成功 / '+e.lastResult.fail+' 失败 · '+e.lastResult.payout+' 灵能'+(e.lastResult.badge?' · 徽章 ×'+e.lastResult.badge:'')+'</div>':'');
+}
+document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-exp-slot]');if(!sel)return;selected[Number(sel.dataset.expSlot)]=Number(sel.value)||null;render();});
+document.addEventListener('click',e=>{if(e.target.closest?.('[data-exp-start]')){start();return;}const c=e.target.closest?.('[data-exp-choice]');if(c){choose(Number(c.dataset.expChoice));return;}if(e.target.closest?.('[data-exp-abandon]'))abandon();});
+window.QinsterExpedition={render};
+})();
