@@ -28,7 +28,7 @@ const RELICS=[
 {id:'shell',name:'古壳',text:'全队防御 +20%',mods:{def:.20}},
 {id:'boots',name:'风行靴',text:'全队速度 +22%',mods:{spd:.22}},
 {id:'clover',name:'四叶结晶',text:'全队幸运 +24%',mods:{luck:.24}},
-{id:'heart',name:'生命核心',text:'战后全队恢复 12% 远征生命',mods:{heal:.12}},
+{id:'heart',name:'生命核心',text:'战后全队恢复 2% 远征生命',mods:{heal:.02}},
 {id:'guard',name:'先祖护符',text:'每场战斗第一次受伤降低 45%',mods:{firstGuard:.45}},
 {id:'blade',name:'玻璃刃',text:'后排攻击 +32%，防御 -10%',mods:{backAtk:.32,backDef:-.10}},
 {id:'wall',name:'守门石',text:'前排防御 +35%，攻击 -8%',mods:{frontDef:.35,frontAtk:-.08}},
