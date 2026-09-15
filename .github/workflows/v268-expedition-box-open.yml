@@ -1,0 +1,60 @@
+name: Qinster v268 expedition box open fix
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/patch-v268-expedition-box-open.py'
+      - '.github/workflows/v268-expedition-box-open.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply patch
+        run: python3 scripts/patch-v268-expedition-box-open.py
+      - name: Syntax checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          node --check game.js
+      - name: Tests
+        run: |
+          npm test
+          npm run test:pickers
+      - name: Verify v268
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          e=Path('v199-roguelike-expedition.js').read_text()
+          g=Path('game.js').read_text()
+          i=Path('index.html').read_text()
+          p=Path('package.json').read_text()
+          c=Path('scripts/check-picker.mjs').read_text()
+          checks=[
+            ('roster esc','function expeditionBoxRosterHTML(e){const esc=window.QinsterPicker.esc' in e),
+            ('transfer esc','function expeditionTransferPickerHTML(e){const esc=window.QinsterPicker.esc' in e),
+            ('box click regression','data-rg-idle-tab=\\\"box\\\"' in c and '/远征Box/' in c),
+            ('expedition version',"version:'v268'" in e),
+            ('visible version',"__qinsterVersion='v268'" in g),
+            ('cache version','v199-roguelike-expedition.js?v=268' in i),
+            ('package version','"version": "268.0.0"' in p),
+          ]
+          bad=[n for n,ok in checks if not ok]
+          if bad: raise SystemExit('verification failed: '+', '.join(bad))
+          print('v268 verification ok')
+          PY
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/patch-v268-expedition-box-open.py .github/workflows/v268-expedition-box-open.yml
+          git add -A
+          git commit -m 'Fix expedition box tab render v268'
+          git push
