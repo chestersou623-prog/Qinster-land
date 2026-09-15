@@ -42,7 +42,12 @@ const RELICS=[
 {id:'boneDice',name:'幸运骨骰',text:'全队幸运 +15%',mods:{luck:.15}},
 {id:'hunterHorn',name:'猎人号角',text:'精英奖励 +20%；全队攻击 +5%',mods:{eliteReward:.20,atk:.05}},
 {id:'treasureCompass',name:'寻宝罗盘',text:'宝箱灵能 +30%；全队幸运 +5%',mods:{chest:.30,luck:.05}},
-{id:'rationBelt',name:'补给腰包',text:'营地恢复效果 +12%',mods:{rest:.12}}
+{id:'rationBelt',name:'补给腰包',text:'营地恢复效果 +12%',mods:{rest:.12}},
+{id:'fateWeight',name:'命运砝码',text:'随机 Buff 最低值 +2个百分点；随机 Debuff 最大值 -4个百分点（可叠加）',mods:{buffFloor:2,debuffCap:4}},
+{id:'bloodCrown',name:'血战王冠',text:'全队攻击 +28%，防御 -14%',mods:{atk:.28,def:-.14}},
+{id:'galeGamble',name:'疾风赌注',text:'全队速度 +30%，防御 -12%',mods:{spd:.30,def:-.12}},
+{id:'fortunePact',name:'豪赌契约',text:'全队幸运 +32%，攻击 -10%',mods:{luck:.32,atk:-.10}},
+{id:'glassHeart',name:'玻璃心核',text:'全队攻击 +20%、速度 +16%，防御 -18%',mods:{atk:.20,spd:.16,def:-.18}}
 ];
 const RUN_ITEMS=[
 {id:'stim',name:'战斗兴奋剂',text:'下一场战斗：全队攻击 +25%',mods:{atk:.25},kind:'boost'},
@@ -130,12 +135,12 @@ function battleSkillFor(m){
 function dodgeChance(defLuck,atkLuck){return Math.max(.03,Math.min(.35,.08+(Number(defLuck||0)-Number(atkLuck||0))/1400))}
 
 const CURSES=[
-{id:'weaken',name:'虚弱',text:'攻击 -15%',mods:{atk:-.15}},
-{id:'breakArmor',name:'破甲',text:'防御 -15%',mods:{def:-.15}},
-{id:'slow',name:'迟缓',text:'速度 -18%',mods:{spd:-.18}},
-{id:'badLuck',name:'厄运',text:'幸运 -20%',mods:{luck:-.20}},
-{id:'routeErosion',name:'侵蚀',text:'每前进到一个新地点，全队仍站立成员失去最大远征HP的 2%（地图伤害最低保留 1% HP）',mods:{}},
-{id:'trainingFatigue',name:'倦怠',text:'训练营获得量随机降低 1%～40%',mods:{}}
+{id:'weaken',name:'虚弱',text:'攻击随机降低 5%～25%',roll:{atk:[.05,.25]}},
+{id:'breakArmor',name:'破甲',text:'防御随机降低 5%～25%',roll:{def:[.05,.25]}},
+{id:'slow',name:'迟缓',text:'速度随机降低 5%～30%',roll:{spd:[.05,.30]}},
+{id:'badLuck',name:'厄运',text:'幸运随机降低 5%～35%',roll:{luck:[.05,.35]}},
+{id:'routeErosion',name:'侵蚀',text:'每到新地点随机失去 1%～4% 最大远征HP（最低保留 1%）',roll:{routeLoss:[1,4]}},
+{id:'trainingFatigue',name:'倦怠',text:'训练营获得量随机降低 1%～40%',roll:{trainingGain:[.01,.40]}}
 ];
 const CHALLENGES=[
 {title:'断桥残索',text:'桥只剩几根绳索，选一只怪物先过去固定绳索。',stat:3},
@@ -197,22 +202,48 @@ function totalRemain(e,zone,d=selectedDifficulty){return freeRemain(e,zone,d)+bo
 function buyAttemptPotion(){const s=S(),e=ensure();if(!s||!e)return;const price=100000;if((Number(s.energy)||0)<price)return R()?.tell?.('灵能不足，需要 100,000。');s.energy-=price;e.attemptPotions=(e.attemptPotions||0)+1;save('购买远征次数回复药水 ×1。')}
 function useAttemptPotion(){const e=ensure(),zone=z(),k=attemptKey(zone);if(!e)return;if((e.attemptPotions||0)<=0)return R()?.tell?.('没有远征次数回复药水。');e.attemptPotions--;e.extraAttempts[k]=bonusAttempts(e,zone)+1;save(`${zone.label} · ${diff().label} 可用远征次数 +1。`) }
 function rand(a){return a[Math.floor(Math.random()*a.length)]} function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function rngControl(run){
+  const m=relicMods(run);return{buffFloor:Math.max(0,Number(m.buffFloor)||0),debuffCap:Math.max(0,Number(m.debuffCap)||0)};
+}
+function rollBetween(a,b){return Number(a)+(Number(b)-Number(a))*Math.random()}
+function rollBuffPct(run,min,max){
+  const c=rngControl(run),lo=Math.min(Number(max),Number(min)+c.buffFloor/100),hi=Math.max(lo,Number(max));
+  return Math.round(rollBetween(lo,hi)*1000)/1000;
+}
+function rollDebuffPct(run,min,max){
+  const c=rngControl(run),lo=Math.max(0,Number(min)),hi=Math.max(lo,Number(max)-c.debuffCap/100);
+  return Math.round(rollBetween(lo,hi)*1000)/1000;
+}
+function rolledCurse(run,id){ensureRunMeta(run);return run.curseValues?.[id]||{};}
 function relicMods(run){const out={};for(const id of run.relics||[]){const x=RELICS.find(r=>r.id===id);for(const [k,v] of Object.entries(x?.mods||{}))out[k]=(out[k]||0)+v}return out}
 function ensureRunMeta(run){if(!run.items)run.items={};if(!run.curses)run.curses=[];if(!run.curseValues)run.curseValues={};if(!run.nextBattleMods)run.nextBattleMods={};if(!run.templeMods)run.templeMods={};if(!run.trainingMods)run.trainingMods={};return run}
-function combatMods(run){ensureRunMeta(run);const out=relicMods(run);for(const [k,v] of Object.entries(run.templeMods||{}))out[k]=(out[k]||0)+v;for(const [k,v] of Object.entries(run.nextBattleMods||{}))out[k]=(out[k]||0)+v;for(const id of run.curses||[]){const c=CURSES.find(x=>x.id===id);for(const [k,v] of Object.entries(c?.mods||{}))out[k]=(out[k]||0)+v}return out}
+function combatMods(run){ensureRunMeta(run);const out=relicMods(run);for(const [k,v] of Object.entries(run.templeMods||{}))out[k]=(out[k]||0)+v;for(const [k,v] of Object.entries(run.nextBattleMods||{}))out[k]=(out[k]||0)+v;for(const id of run.curses||[]){const rv=rolledCurse(run,id);for(const k of ['atk','def','spd','luck']){const v=Number(rv[k]||0);if(v)out[k]=(out[k]||0)-v}}return out}
 function grantRunItem(run,id){ensureRunMeta(run);run.items[id]=(run.items[id]||0)+1;return RUN_ITEMS.find(x=>x.id===id)}
 function curseText(run,c){
   if(!c)return '';
-  if(c.id==='trainingFatigue')return `训练营获得量 -${Math.round((run.curseValues?.trainingFatigue||.01)*100)}%`;
+  const v=rolledCurse(run,c.id);
+  if(c.id==='weaken')return `攻击 -${Math.round((v.atk||.05)*1000)/10}%`;
+  if(c.id==='breakArmor')return `防御 -${Math.round((v.def||.05)*1000)/10}%`;
+  if(c.id==='slow')return `速度 -${Math.round((v.spd||.05)*1000)/10}%`;
+  if(c.id==='badLuck')return `幸运 -${Math.round((v.luck||.05)*1000)/10}%`;
+  if(c.id==='routeErosion')return `每个新地点 -${Math.round(v.routeLoss||1)}% 最大远征HP`;
+  if(c.id==='trainingFatigue')return `训练营获得量 -${Math.round((v.trainingGain||.01)*1000)/10}%`;
   return c.text;
 }
 function inflictCurse(run,id,logs=[]){
   ensureRunMeta(run);if(run.curses.includes(id))return null;
-  run.curses.push(id);const c=CURSES.find(x=>x.id===id);
-  if(id==='trainingFatigue')run.curseValues.trainingFatigue=(1+Math.floor(Math.random()*40))/100;
-  if(c)logs.push(`遭受 Debuff：${c.name}（${curseText(run,c)}）。`);return c
+  const c=CURSES.find(x=>x.id===id);if(!c)return null;
+  const out={};
+  for(const [k,range] of Object.entries(c.roll||{})){
+    if(k==='routeLoss'){
+      const ctrl=rngControl(run),hi=Math.max(Number(range[0]),Number(range[1])-Math.floor(ctrl.debuffCap/4));
+      out[k]=Math.max(1,Math.round(rollBetween(Number(range[0]),hi)));
+    }else out[k]=rollDebuffPct(run,range[0],range[1]);
+  }
+  run.curseValues[id]=out;run.curses.push(id);
+  logs.push(`遭受 Debuff：${c.name}（${curseText(run,c)}）。`);return c;
 }
-function useRunItem(id){const run=ensure()?.rogueActive;if(!run)return;ensureRunMeta(run);if((run.items[id]||0)<=0)return R()?.tell?.('这个道具已经没有了。');if(run.phase==='battleResult')return R()?.tell?.('战斗结算中不能使用道具。');const it=RUN_ITEMS.find(x=>x.id===id);if(!it)return;let used=false;if(it.heal){for(const mid of run.teamIds){if(hpPct(run,mid)>0&&canReviveInRun(run,mid))run.hp[mid]=Math.min(100,hpPct(run,mid)+it.heal*100)}run.log.push(`使用 ${it.name}：仍站立队员恢复 ${Math.round(it.heal*100)}% HP（倒下队员不会复活）。`);used=true}if(it.supply){run.supply=Math.min(9,run.supply+it.supply);run.log.push(`补给 +${it.supply}。`);used=true}if(it.kind==='cleanse'){const count=Math.min(run.curses.length,Number(it.cleanse)||1);if(count<=0)return R()?.tell?.('当前没有 Debuff。');const gone=run.curses.splice(0,count).map(cid=>CURSES.find(x=>x.id===cid)?.name||cid);run.log.push(`使用 ${it.name}：移除 ${gone.join('、')}。`);used=true}if(it.mods){for(const [k,v] of Object.entries(it.mods))run.nextBattleMods[k]=(run.nextBattleMods[k]||0)+v;run.log.push(`使用 ${it.name}：下一场战斗增益已准备。`);used=true}if(!used)return;run.items[id]--;save()}
+function useRunItem(id){const run=ensure()?.rogueActive;if(!run)return;ensureRunMeta(run);if((run.items[id]||0)<=0)return R()?.tell?.('这个道具已经没有了。');if(run.phase==='battleResult')return R()?.tell?.('战斗结算中不能使用道具。');const it=RUN_ITEMS.find(x=>x.id===id);if(!it)return;let used=false;if(it.heal){for(const mid of run.teamIds){if(hpPct(run,mid)>0&&canReviveInRun(run,mid))run.hp[mid]=Math.min(100,hpPct(run,mid)+it.heal*100)}run.log.push(`使用 ${it.name}：仍站立队员恢复 ${Math.round(it.heal*100)}% HP（倒下队员不会复活）。`);used=true}if(it.supply){run.supply=Math.min(9,run.supply+it.supply);run.log.push(`补给 +${it.supply}。`);used=true}if(it.kind==='cleanse'){const count=Math.min(run.curses.length,Number(it.cleanse)||1);if(count<=0)return R()?.tell?.('当前没有 Debuff。');const goneIds=run.curses.splice(0,count);const gone=goneIds.map(cid=>{const n=CURSES.find(x=>x.id===cid)?.name||cid;delete run.curseValues?.[cid];return n});run.log.push(`使用 ${it.name}：移除 ${gone.join('、')}。`);used=true}if(it.mods){for(const [k,v] of Object.entries(it.mods))run.nextBattleMods[k]=(run.nextBattleMods[k]||0)+v;run.log.push(`使用 ${it.name}：下一场战斗增益已准备。`);used=true}if(!used)return;run.items[id]--;save()}
 function runInventoryHTML(run){ensureRunMeta(run);const items=RUN_ITEMS.filter(x=>(run.items[x.id]||0)>0);const curses=(run.curses||[]).map(id=>CURSES.find(x=>x.id===id)).filter(Boolean);const buffs=Object.entries(run.nextBattleMods||{}).filter(([,v])=>v).map(([k,v])=>`${({atk:'攻击',def:'防御',spd:'速度',luck:'幸运'})[k]||k} ${v>0?'+':''}${Math.round(v*100)}%`);return `<section class="rg-panel"><div class="rg-title"><div><b>本局道具 / 状态</b><small>消耗品只在本次远征使用；战斗增益在下一场战斗后消失</small></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${items.length?items.map(it=>`<button class="secondary" data-rg-item="${it.id}"><b>${it.name} ×${run.items[it.id]}</b><small>${it.text}</small></button>`).join(''):'<span class="rg-note">暂无可用道具</span>'}</div>${buffs.length?`<p class="rg-note"><b>下一战增益：</b>${buffs.join(' · ')}</p>`:''}${curses.length?`<p class="rg-danger"><b>Debuff：</b>${curses.map(c=>`${c.name}（${curseText(run,c)}）`).join(' · ')}</p>`:'<p class="rg-note">Debuff：无</p>'}</section>`}
 function weightedUtilityNode(exclude=[]){
   const pool=[
@@ -252,19 +283,17 @@ function treasure(run){const zone=z(run.zone),mods=relicMods(run),base=Math.roun
 function templeChoiceCount(run){return Math.min(6,3+Math.max(0,Math.round(Number(relicMods(run).templeChoices)||0)))}
 function templeGainMultiplier(run){return Math.max(1,1+Number(relicMods(run).templeGain||0))}
 function makeTempleChoices(run){
-  const gain=templeGainMultiplier(run),pool=[
-    {title:'战神祝福',kind:'buff',mods:{atk:.08}},
-    {title:'石卫祝福',kind:'buff',mods:{def:.08}},
-    {title:'风灵祝福',kind:'buff',mods:{spd:.08}},
-    {title:'星运祝福',kind:'buff',mods:{luck:.09}},
-    {title:'四象祝福',kind:'buff',mods:{atk:.04,def:.04,spd:.04,luck:.04}},
+  const gain=templeGainMultiplier(run),pct=(a,b)=>Math.round(rollBuffPct(run,a,b)*gain*1000)/1000,pool=[
+    {title:'战神祝福',kind:'buff',make:()=>({atk:pct(.03,.15)})},
+    {title:'石卫祝福',kind:'buff',make:()=>({def:pct(.03,.15)})},
+    {title:'风灵祝福',kind:'buff',make:()=>({spd:pct(.03,.15)})},
+    {title:'星运祝福',kind:'buff',make:()=>({luck:pct(.03,.18)})},
+    {title:'四象祝福',kind:'buff',make:()=>{const v=pct(.02,.08);return{atk:v,def:v,spd:v,luck:v}}},
     {title:'净化祷言',kind:'cleanse',count:1},
-    {title:'生命祷言',kind:'heal',heal:.20},
-    {title:'禁忌祈愿',kind:'risky',mods:{atk:.12,def:.12},curse:true}
+    {title:'生命祷言',kind:'heal',heal:Math.round(rollBetween(.10,.30)*gain*1000)/1000},
+    {title:'禁忌祈愿',kind:'risky',make:()=>({atk:pct(.08,.20),def:pct(.08,.20)}),curse:true}
   ];
-  return shuffle(pool).slice(0,templeChoiceCount(run)).map(x=>{
-    const y={...x};if(y.mods)y.mods=Object.fromEntries(Object.entries(y.mods).map(([k,v])=>[k,Math.round(v*gain*1000)/1000]));if(y.heal)y.heal=Math.min(.60,y.heal*gain);return y;
-  });
+  return shuffle(pool).slice(0,templeChoiceCount(run)).map(x=>{const y={...x};if(y.make)y.mods=y.make();delete y.make;return y});
 }
 function temple(run){ensureRunMeta(run);run.templeChoices=makeTempleChoices(run);run.phase='temple';save()}
 function chooseTemple(run,i){
@@ -274,7 +303,7 @@ function chooseTemple(run,i){
     text=Object.entries(x.mods||{}).map(([k,v])=>`${({atk:'攻击',def:'防御',spd:'速度',luck:'幸运'})[k]} +${Math.round(v*1000)/10}%`).join('、');
   }
   if(x.kind==='cleanse'){
-    const gone=run.curses.splice(0,Math.min(run.curses.length,x.count||1)).map(id=>CURSES.find(c=>c.id===id)?.name||id);text=gone.length?'移除 Debuff：'+gone.join('、'):'当前没有 Debuff，祷言化为保护';
+    const goneIds=run.curses.splice(0,Math.min(run.curses.length,x.count||1));const gone=goneIds.map(id=>{const n=CURSES.find(c=>c.id===id)?.name||id;delete run.curseValues?.[id];return n});text=gone.length?'移除 Debuff：'+gone.join('、'):'当前没有 Debuff，祷言化为保护';
   }
   if(x.kind==='heal'){
     for(const id of run.teamIds||[])if(hpPct(run,id)>0&&canReviveInRun(run,id))run.hp[id]=Math.min(100,hpPct(run,id)+x.heal*100);text=`仍站立队员恢复 ${Math.round(x.heal*100)}% 远征HP`;
@@ -288,7 +317,7 @@ function trainingEntry(run,id){
   ensureRunMeta(run);const k=String(id);if(!run.trainingMods[k])run.trainingMods[k]={flat:[0,0,0,0,0],pct:[0,0,0,0,0]};return run.trainingMods[k];
 }
 function trainingGainMultiplier(run){
-  const rel=relicMods(run);let curse=0;if((run.curses||[]).includes('trainingFatigue'))curse-=Number(run.curseValues?.trainingFatigue||.01);
+  const rel=relicMods(run);let curse=0;if((run.curses||[]).includes('trainingFatigue'))curse-=Number(rolledCurse(run,'trainingFatigue').trainingGain||.01);
   return Math.max(.25,1+Number(rel.trainingGain||0)+curse);
 }
 function trainingChoiceCount(run){return Math.min(6,3+Math.max(0,Math.round(Number(relicMods(run).trainingChoices)||0)))}
@@ -325,7 +354,7 @@ function finalStatBreakdown(m,pos,run){
   };
   const curseContribution=k=>{
     let v=0,names=[];
-    for(const id of run.curses||[]){const c=CURSES.find(x=>x.id===id),x=Number(c?.mods?.[k]||0);if(x){v+=x;names.push(c.name)}}
+    for(const id of run.curses||[]){const c=CURSES.find(x=>x.id===id),x=-Number(rolledCurse(run,id)?.[k]||0);if(x){v+=x;names.push(c.name)}}
     return {v,names};
   };
   return labels.map((label,i)=>{
@@ -425,11 +454,11 @@ function applyRouteDebuffs(run){
   const affected=[];
   for(const id of run.teamIds||[]){
     if(hpPct(run,id)<=0||!canReviveInRun(run,id))continue;
-    const before=hpPct(run,id),after=Math.max(1,before-2);
+    const loss=Math.max(1,Number(rolledCurse(run,'routeErosion').routeLoss)||1),before=hpPct(run,id),after=Math.max(1,before-loss);
     run.hp[id]=after;
     if(after<before){const m=persistentMonster(id);affected.push((m?monsterName(m):'#'+id)+' '+Math.round(before)+'%→'+Math.round(after)+'%');}
   }
-  if(affected.length)run.log.push('侵蚀：抵达新地点，全队最大远征HP -2% · '+affected.join('、')+'。');
+  if(affected.length)run.log.push('侵蚀：抵达新地点，全队最大远征HP -'+Math.max(1,Number(rolledCurse(run,'routeErosion').routeLoss)||1)+'% · '+affected.join('、')+'。');
 }
 function advance(run){applyRouteDebuffs(run);run.stage++;run.challenge=null;run.options=makeOptions(run.stage);run.phase='map';if(run.supply<=0){run.log.push('补给耗尽：之后的挑战失败会更危险。')}save()}
 function chooseNode(i){const e=ensure(),run=e?.rogueActive,node=run?.options?.[i];if(!run||!node)return;if(node.type==='rest')return applyRest(run);if(node.type==='treasure')return treasure(run);if(node.type==='training')return openTraining(run);if(node.type==='challenge')return challenge(run);if(node.type==='temple')return temple(run);if(node.type==='battle'||node.type==='elite'||node.type==='boss')return prepareBattle(run,node.type)}
@@ -445,7 +474,7 @@ function campHTML(run){const knocked=activeTeam(run).filter(m=>hpPct(run,m.id)<=
 function templeHTML(run){
   const choices=run.templeChoices||[],gain=Math.round(templeGainMultiplier(run)*100),extra=Math.max(0,templeChoiceCount(run)-3);
   const fmt=x=>{if(x.kind==='cleanse')return '移除 1 个 Debuff';if(x.kind==='heal')return `恢复 ${Math.round(x.heal*100)}% 远征HP`;const t=Object.entries(x.mods||{}).map(([k,v])=>`${({atk:'攻击',def:'防御',spd:'速度',luck:'幸运'})[k]} +${Math.round(v*1000)/10}%`).join(' · ');return x.kind==='risky'?t+' · 同时获得随机 Debuff':t};
-  return `${runHeader(run)}${runInventoryHTML(run)}${teamHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>◆ 神庙 · 选择祈愿</b><small>选择1项；祝福在本次远征持续生效</small></div><span>${choices.length}选1 · 祝福效率 ${gain}%${extra?' · 额外候选 +'+extra:''}</span></div><div class="rg-event-picks">${choices.map((x,i)=>`<button class="secondary" data-rg-temple-choice="${i}"><b>${x.title}</b><small>${fmt(x)}</small></button>`).join('')}</div></section>`;
+  return `${runHeader(run)}${runInventoryHTML(run)}${teamHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>◆ 神庙 · 选择祈愿</b><small>选择1项；祝福在本次远征持续生效</small></div><span>${choices.length}选1 · 祝福效率 ${gain}%${extra?' · 额外候选 +'+extra:''}${rngControl(run).buffFloor?' · Buff最低 +'+rngControl(run).buffFloor+'%':''}</span></div><div class="rg-event-picks">${choices.map((x,i)=>`<button class="secondary" data-rg-temple-choice="${i}"><b>${x.title}</b><small>${fmt(x)}</small></button>`).join('')}</div></section>`;
 }
 function templeResultHTML(run){const x=run.templeResult||{good:true,title:'神庙',text:'没有发生任何事'};return `${runHeader(run)}${runInventoryHTML(run)}<section class="rg-panel"><div class="rg-title"><div><b>${x.good?'◆ 神庙祝福':'◆ 神庙诅咒'} · ${x.title}</b><small>踏入神庙的结果已经生效</small></div></div><p class="${x.good?'rg-note':'rg-danger'}" style="font-size:13px;padding:10px"><b>${x.text}</b></p><button class="primary rg-mainbtn" data-rg-temple-next>继续远征</button></section>`}
 function nodeHTML(run){return `<section class="rg-panel"><div class="rg-title"><div><b>选择下一条路线</b><small>共27层；第9、18、27层固定为大BOSS</small></div><span>第 ${run.stage+1}/27 层</span></div><div class="rg-nodes">${run.options.map((o,i)=>{const m=NODE_META[o.type];return `<button class="rg-node" data-rg-node="${i}"><strong>${m[0]}</strong><b>${m[1]}</b><small>${m[2]}</small></button>`}).join('')}</div></section>`}
