@@ -1,0 +1,43 @@
+name: Qinster v265 defense phoenix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/patch-v265-defense-phoenix.py'
+      - '.github/workflows/v265-defense-phoenix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply patch
+        run: python3 scripts/patch-v265-defense-phoenix.py
+      - name: Syntax checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check game.js
+          node --check v201-battle-theater.js
+      - name: Tests
+        run: npm test
+      - name: Verify v265
+        run: |
+          grep -q 'rawIncoming\*100/(100+defense)' v199-roguelike-expedition.js
+          grep -q 'function tryPhoenixRevive' v199-roguelike-expedition.js
+          grep -q 'preBattleReviveLogs' v199-roguelike-expedition.js
+          grep -q '265.0.0' package.json
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f scripts/patch-v265-defense-phoenix.py .github/workflows/v265-defense-phoenix.yml
+          git add -A
+          git commit -m 'Use proportional defense and fix phoenix revive v265'
+          git push
