@@ -5029,12 +5029,28 @@ $('import-save-file').onchange=e=>{
 };
 function openGuide(){document.body.classList.add('modal-open');document.querySelectorAll('[data-guide-tab]').forEach((b,i)=>b.classList.toggle('active',i===0));document.querySelectorAll('[data-guide-panel]').forEach((p,i)=>p.hidden=i!==0);$('guide').showModal();}function closeGuide(){document.body.classList.remove('modal-open');$('guide').close();}$('skill-drop-actions').onclick=e=>{const b=e.target.closest('[data-accept-skill]');if(b&&s.pendingSkillDrop){const drop=s.pendingSkillDrop,m=s.monsters.find(x=>x.id===drop.monsterId);if(m){const idx=Number(b.dataset.acceptSkill);ensureMonsterSystemsMonster(m);if(idx<=1||(idx===3&&m.shiny)){m.extraSkills[idx]=drop.skillId;m.extraSkillLv[idx]=idx===3?Math.max(5,drop.lv):drop.lv;refreshLifeCapacity(m,true);tell(name(m)+' 学会了「'+extraSkill(drop.skillId).name+' Lv'+m.extraSkillLv[idx]+'」。');}}s.pendingSkillDrop=null;$('skill-drop-dialog').close();s.revision++;dirty=true;render();save();return;}if(e.target.closest('[data-discard-skill]')){s.pendingSkillDrop=null;$('skill-drop-dialog').close();save();tell('你放弃了这次探索发现的技能。');}};
 $('close-skill-drop').onclick=()=>{s.pendingSkillDrop=null;$('skill-drop-dialog').close();save();};
-if($('sound-btn'))$('sound-btn').onclick=()=>{refreshSoundUI();$('sound-dialog').showModal();};
+const DEBUG_OVERLAY_PREF_KEY='qinster-debug-overlay-visible';
+function debugOverlayVisible(){
+  try{const raw=localStorage.getItem(DEBUG_OVERLAY_PREF_KEY);return raw===null?true:raw==='1';}catch(_){return true;}
+}
+function applyDebugOverlayPreference(){
+  const show=debugOverlayVisible();
+  for(const id of ['boot-check','engine-heartbeat']){const el=$(id);if(el)el.hidden=!show;}
+  const cb=$('debug-overlay-visible');if(cb)cb.checked=show;
+  return show;
+}
+function setDebugOverlayVisible(show){
+  try{localStorage.setItem(DEBUG_OVERLAY_PREF_KEY,show?'1':'0');}catch(_){}
+  applyDebugOverlayPreference();
+}
+if($('sound-btn'))$('sound-btn').onclick=()=>{refreshSoundUI();applyDebugOverlayPreference();$('sound-dialog').showModal();};
 if($('sound-close'))$('sound-close').onclick=()=>$('sound-dialog').close();
 if($('sound-enabled'))$('sound-enabled').onchange=e=>{audioPrefs.enabled=!!e.target.checked;saveAudioPrefs();if(audioPrefs.enabled){ensureAudio();playSfx('click');}refreshSoundUI();};
+if($('debug-overlay-visible'))$('debug-overlay-visible').onchange=e=>setDebugOverlayVisible(!!e.target.checked);
 if($('sound-volume'))$('sound-volume').oninput=e=>{audioPrefs.volume=Math.max(0,Math.min(1,Number(e.target.value)/100));if(audioMaster&&audioCtx)audioMaster.gain.setTargetAtTime(audioPrefs.volume,audioCtx.currentTime,.01);saveAudioPrefs();refreshSoundUI();};
 if($('sound-test'))$('sound-test').onclick=()=>{ensureAudio();playSfx('shiny');};
 refreshSoundUI();
+applyDebugOverlayPreference();
 document.addEventListener('click',e=>{const b=e.target.closest?.('button');if(!b||!audioPrefs.enabled)return;const id=b.id||'';if(['sound-btn','sound-close','sound-test','breed','hatch','confirm-sale'].includes(id)||id.startsWith('buy-')||b.matches('[data-dispatch-start],[data-dispatch-claim],[data-top-dispatch-claim]'))return;playSfx('click');});
 $('help').onclick=openGuide;$('close-guide-top').onclick=closeGuide;document.querySelector('.guide-tabs').onclick=e=>{const b=e.target.closest('[data-guide-tab]');if(!b)return;document.querySelectorAll('[data-guide-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('[data-guide-panel]').forEach(p=>p.hidden=p.dataset.guidePanel!==b.dataset.guideTab);document.querySelector('.guide-scroll').scrollTop=0;};$('guide').addEventListener('cancel',e=>{e.preventDefault();closeGuide();});$('close-birth').onclick=()=>$('birth').close();$('close-shiny-popup').onclick=()=>$('shiny-dialog').close();
 document.addEventListener('visibilitychange',()=>{if(document.hidden){settle();save();}else{const list=G.advance(s,Date.now());dirty=true;births(list,true);render();save();}});window.addEventListener('pagehide',()=>{settle();save();});window.__bootMark&&__bootMark('08 绑定完成');
@@ -5089,7 +5105,7 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v277';
+window.__qinsterVersion='v278';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
