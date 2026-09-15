@@ -5209,8 +5209,8 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v237';
+window.__qinsterVersion='v239';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v237 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v239 · engine '+__n;},1000);
