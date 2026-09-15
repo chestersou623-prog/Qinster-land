@@ -1523,7 +1523,7 @@ body.modal-open{overflow:hidden}
 <script>
 (function(){
   const b=document.getElementById('boot-check');
-  window.__bootMark=function(msg){if(b){b.textContent='v243 · '+msg;b.style.background='#55461e';}};
+  window.__bootMark=function(msg){if(b){b.textContent='v244 · '+msg;b.style.background='#55461e';}};
   window.addEventListener('error',function(e){
     const msg=String(e.message||'');
     const file=String(e.filename||'');
@@ -1542,7 +1542,7 @@ body.modal-open{overflow:hidden}
       document.body.appendChild(x);
     }
     const stack=e.error&&e.error.stack?'\n'+String(e.error.stack):'';
-    x.textContent='Qinster v243 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
+    x.textContent='Qinster v244 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
   });
 })();
 </script>
