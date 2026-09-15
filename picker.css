@@ -6,3 +6,5 @@
 @media(max-width:700px){.qp{padding:9px}.qp-toolbar{grid-template-columns:1fr 1fr}.qp-search{grid-column:1/-1}.qp-grid{grid-template-columns:1fr}.qp-toolbar details{font-size:12px}.qp-card .sprite{width:56px!important;min-width:56px}.parent-picker,.bag-target-picker,.dispatch-target-picker{max-height:90dvh!important;width:calc(100vw - 16px)!important}.qp-actions span{flex-basis:100%}.qp-heading>b{font-size:15px}.qp-slotbar button{min-width:85px}}
 
 .skill-library-tabs{display:none!important}.qp-option-host>summary{cursor:pointer;padding:10px;border:2px solid #797482;background:#eeecf1;color:#302d37;font-size:13px;min-height:44px;overflow-wrap:anywhere}.qp-grid>.skill-library-card{min-width:0}.qp-grid>.monster-card .sprite{width:60px!important;flex-shrink:0}.qp-grid>.monster-card strong{font-size:14px}.qp-grid>.monster-card small{font-size:12px}
+
+#roster{display:block;margin:10px;max-height:none;overflow:visible}.qp-copy{overflow-wrap:anywhere}.qp-card.selected{border-color:#896626;box-shadow:inset 0 0 0 1px #896626}

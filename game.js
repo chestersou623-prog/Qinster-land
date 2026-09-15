@@ -4454,19 +4454,9 @@ function rosterMaxSkillLv(m){
 function getSortedRoster(){return window.QinsterPicker.query('roster',rosterPickerConfig()).map(i=>i.value)}
 function renderRoster(){
  const cfg=rosterPickerConfig();cfg.card=i=>{const m=i.value;
-    const bulkDisabled=bulkSellMode&&!canBulkSell(m);
-    const bulkSelected=bulkSellSelected.has(m.id);
-    return '<button class="monster-card '+(m.id===selected?'selected ':'')+(bulkSelected?'bulk-selected ':'')+(bulkDisabled?'bulk-disabled':'')+'" data-id="'+m.id+'" aria-pressed="'+(m.id===selected)+'">'+
-      (bulkSellMode?'<span class="bulk-check">'+(bulkDisabled?'×':bulkSelected?'✓':'')+'</span>':'')+
-      sprite(m.species,m.tint,m.shiny,m.specialColor)+
-      '<div><span class="stars">'+G.stars(m.star)+'</span><strong>'+name(m)+(m.shiny?' ✦':'')+traitBadge(m)+'</strong><small>'+(m.nickname?serialName(m)+'<br>':'')+m.gender+' · '+m.life+' / '+m.maxLife+' 生命 · '+colorName(m)+'<br>'+monsterSkillSummary(m)+'</small></div>'+
-      ([s.parentA,s.parentB].includes(m.id)?'<span class="tag">亲代</span>':'')+
-      (i.recommended?'<span class="tag favorite">推荐</span>':'')+
-      (m.favorite?'<span class="tag favorite">最爱</span>':'')+
-      (m.locked?'<span class="tag locked">已锁定</span>':'')+
-      (isDispatched(m.id)?'<span class="tag dispatch">派遣中</span>':isEggParent(m.id)?'<span class="tag dispatch">孵化亲代</span>':isInFarm(m.id)?'<span class="tag ready">生产</span>':'<span class="tag">盒中</span>')+
-    '</button>';
-
+  const roles=[[s.parentA,s.parentB].includes(m.id)?'亲代':'',m.favorite?'最爱':'',m.locked?'已锁定':'',isDispatched(m.id)?'派遣中':isInFarm(m.id)?'生产':'盒中'].filter(Boolean);
+  const item={...i,selected:bulkSellMode?bulkSellSelected.has(m.id):m.id===selected,disabled:bulkSellMode&&!canBulkSell(m),detailHTML:'<small>'+roles.join(' · ')+'</small>'};
+  return window.QinsterPicker.card(item).replace('class="qp-card ','class="qp-card monster-card ').replace('data-qp-item=','data-id=');
  };cfg.onFilter=renderBulkSellControls;
  window.QinsterPicker.mount($('roster'),'roster',cfg);
  renderBulkSellControls();
