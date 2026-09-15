@@ -1,4 +1,4 @@
-name: Qinster v248 real HP
+name: Qinster v248 real HP retry
 
 on:
   push:
@@ -28,6 +28,12 @@ jobs:
         run: node --check game.js
       - name: Tests
         run: npm test
+      - name: Verify real HP conversion
+        run: |
+          grep -F "const STAT=['HP','攻击','防御','速度','幸运']" v199-roguelike-expedition.js
+          grep -F "hpDamage" v199-roguelike-expedition.js
+          grep -F "data-bt-ally-hptext" v201-battle-theater.js
+          grep -F "game.js?v=248" index.html
       - name: Commit generated changes and remove one-shot files
         run: |
           git config user.name "github-actions[bot]"
