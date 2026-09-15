@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const STAT=['体质','攻击','防御','速度','幸运'];
+const STAT=['HP','攻击','防御','速度','幸运'];
 const ZONES=[
 {id:'normal',tier:1,name:'远征',label:'普通远征',minStar:1,shinyOnly:false,attempts:5,badge:2,enemy:0.58,reward:1.00,desc:'1–5★都可参加 · 难度0也让1★队伍有通关机会'},
 {id:'shiny',tier:2,name:'闪光远征',label:'闪光远征',minStar:1,shinyOnly:true,attempts:5,badge:4,enemy:0.75,reward:1.35,desc:'只允许闪光怪物 · 敌人更强 · 奖励更高'}
@@ -162,7 +162,7 @@ const CURSES=[
 const CHALLENGES=[
 {title:'断桥残索',text:'桥只剩几根绳索，选一只怪物先过去固定绳索。',stat:3},
 {title:'巨石机关',text:'石门卡死，需要力量强的怪物强行推开。',stat:1},
-{title:'毒雾湿地',text:'雾气持续侵蚀体力，需要体质最稳的怪物带路。',stat:0},
+{title:'毒雾湿地',text:'雾气持续侵蚀体力，需要HP最稳的怪物带路。',stat:0},
 {title:'落石峡口',text:'连续落石，需要防御高的怪物顶住第一波。',stat:2},
 {title:'隐秘岔路',text:'只有直觉和运气足够好的怪物能找到安全路线。',stat:4}
 ];
@@ -364,7 +364,7 @@ function chooseTraining(run,i){
 function combatValue(m,pos,run){const v=trainedBaseStats(m,run),mods=combatMods(run),meta=metaMods(),sh=m.shiny?(mods.shiny||0):0;let atk=v[1]*(1+(mods.atk||0)+(meta.atk||0)+sh),def=v[2]*(1+(mods.def||0)+(meta.def||0)+sh),spd=v[3]*(1+(mods.spd||0)+(meta.spd||0)),luck=v[4]*(1+(mods.luck||0)+(meta.luck||0)+sh),con=v[0];if(pos===0){def*=1+(mods.frontDef||0);atk*=1+(mods.frontAtk||0)}if(pos===2){atk*=1+(mods.backAtk||0);def*=1+(mods.backDef||0)}return{atk,def,spd,luck,con}}
 function finalStatBreakdown(m,pos,run){
   const base=st(m),final=combatValue(m,pos,run),mods=combatMods(run);
-  const labels=['体质','攻击','防御','速度','幸运'];
+  const labels=['HP','攻击','防御','速度','幸运'];
   const keys=['con','atk','def','spd','luck'];
   const vals=[final.con,final.atk,final.def,final.spd,final.luck];
   const signedPct=v=>(v>0?'+':'')+(Math.round(v*1000)/10)+'%';
@@ -455,7 +455,7 @@ function battle(run,kind){
   const logs=[],events=[],gauge={},personalActions={},enemyActions={},allyBuff={atk:0,def:0,spd:0,luck:0,ttl:0},enemyDebuff={atk:0,def:0,spd:0,luck:0,ttl:0};t.forEach(m=>gauge[m.id]=0);enemies.forEach(e=>gauge[e.id]=0);
   if((elite||boss)&&Math.random()<(boss?.70:.38)){const pool=CURSES.filter(c=>!run.curses.includes(c.id));if(pool.length)inflictCurse(run,rand(pool).id,logs)}
   const cv=(m,pos)=>{const p=combatValue(m,pos,run);return{...p,atk:p.atk*(1+allyBuff.atk),def:p.def*(1+allyBuff.def),spd:p.spd*(1+allyBuff.spd),luck:p.luck*(1+allyBuff.luck)}};
-  const allyStatsSnapshot=()=>Object.fromEntries(t.map((m,i)=>{const q=cv(m,i);return[m.id,{con:Math.round(q.con||0),atk:Math.round(q.atk||0),def:Math.round(q.def||0),spd:Math.round(q.spd||0),luck:Math.round(q.luck||0)}]}));
+  const allyStatsSnapshot=()=>Object.fromEntries(t.map((m,i)=>{const q=cv(m,i),hp=Math.max(1,Math.round(q.con||1));return[m.id,{hp,con:hp,atk:Math.round(q.atk||0),def:Math.round(q.def||0),spd:Math.round(q.spd||0),luck:Math.round(q.luck||0)}]}));
   const allyInitialStats=allyStatsSnapshot();
   const enemyNow=e=>({atk:e.atk*(1+enemyDebuff.atk),def:e.def*(1+enemyDebuff.def),spd:e.spd*(1+enemyDebuff.spd),luck:e.luck*(1+enemyDebuff.luck)});
   const initialTeamPower=t.filter(m=>canReviveInRun(run,m.id)&&hpPct(run,m.id)>0).reduce((sum,m,i)=>{const p=cv(m,i);return sum+p.atk*1.1+p.def+p.spd*.65+p.luck*.35+p.con*.7},0),enemyPower=enemies.reduce((n,e)=>n+e.difficultyRating,0);
@@ -465,7 +465,7 @@ function battle(run,kind){
   const applyBuff=(dst,obj,ttl)=>{for(const [k,v] of Object.entries(obj||{}))dst[k]=(dst[k]||0)+v;dst.ttl=Math.max(dst.ttl||0,ttl||3)};
   const lowestLiving=()=>t.filter(x=>hpPct(run,x.id)>0&&canReviveInRun(run,x.id)).sort((a,b)=>hpPct(run,a.id)-hpPct(run,b.id))[0];
   const recordKill=e=>{if(e.scored)return;e.scored=true;const pts=Math.max(1,Math.round(e.difficultyRating));battleScore+=pts;run.score=(Number(run.score)||0)+pts;run.kills=run.kills||{normal:0,elite:0,boss:0};run.kills[e.role]=(run.kills[e.role]||0)+1;logs.push(`击杀 ${e.name}：+${pts} 积分（难度评分 ${pts}）。`)};
-  const hurtAlly=(enemyUnit,target,mult=1)=>{const current=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)),dynPos=current.indexOf(target),p=cv(target,Math.max(0,dynPos)),en2=enemyNow(enemyUnit);if(Math.random()<dodgeChance(p.luck,en2.luck))return{targetId:target.id,hpLoss:0,hpAfter:hpPct(run,target.id),miss:true};let incoming=Math.max(5,en2.atk*mult-p.def*.08);if(vanguardGuard>0)incoming*=1-vanguardGuard;if(firstGuard&&(combatMods(run).firstGuard||0)){incoming*=1-combatMods(run).firstGuard;firstGuard=false}const hpLoss=Math.min(42,incoming/(65+p.con*.22)*100),before=hpPct(run,target.id);run.hp[target.id]=Math.max(0,before-hpLoss);if(before>0&&run.hp[target.id]<=0){gauge[target.id]=0;expeditionKnockout(run,target,logs);if(target.life>0)logs.push(`${monsterName(target)} 已倒下，只能在营地选择复活。`)}return{targetId:target.id,hpLoss,hpAfter:run.hp[target.id],miss:false}};
+  const hurtAlly=(enemyUnit,target,mult=1)=>{const current=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)),dynPos=current.indexOf(target),p=cv(target,Math.max(0,dynPos)),en2=enemyNow(enemyUnit),maxHp=Math.max(1,Math.round(p.con||1)),beforePct=hpPct(run,target.id),beforeHp=maxHp*beforePct/100;if(Math.random()<dodgeChance(p.luck,en2.luck))return{targetId:target.id,hpLoss:0,hpDamage:0,maxHp,currentHp:Math.round(beforeHp),hpAfter:beforePct,hpAfterAbs:Math.round(beforeHp),miss:true};let incoming=Math.max(5,en2.atk*mult-p.def*.08);if(vanguardGuard>0)incoming*=1-vanguardGuard;if(firstGuard&&(combatMods(run).firstGuard||0)){incoming*=1-combatMods(run).firstGuard;firstGuard=false}const hpDamage=Math.min(maxHp*.42,incoming),afterHp=Math.max(0,beforeHp-hpDamage),hpLoss=hpDamage/maxHp*100;run.hp[target.id]=Math.max(0,afterHp/maxHp*100);if(beforePct>0&&run.hp[target.id]<=0){gauge[target.id]=0;expeditionKnockout(run,target,logs);if(target.life>0)logs.push(`${monsterName(target)} 已倒下，只能在营地选择复活。`)}return{targetId:target.id,hpLoss,hpDamage,maxHp,currentHp:Math.round(beforeHp),hpAfter:run.hp[target.id],hpAfterAbs:Math.round(afterHp),miss:false}};
   const maxActions=60+(enemies.length-1)*15;
   while(livingEnemies().length&&actions<maxActions&&t.some(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id))){
     const alive=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)),actors=[];alive.forEach((m,dynPos)=>{const p=cv(m,dynPos);actors.push({type:'ally',key:m.id,m,dynPos,p,spd:p.spd,rate:atbRate(p.spd)})});for(const e of livingEnemies()){const p=enemyNow(e);actors.push({type:'enemy',key:e.id,e,p,spd:p.spd,rate:atbRate(p.spd)})}if(!actors.length)break;
@@ -480,7 +480,7 @@ function battle(run,kind){
       if(mode==='aoe'){
         const targets=current.map(x=>hurtAlly(e,x,.64));events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),aoe:true,skillName:'全体攻击',attackType:'全体攻击',targets,spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【全体攻击】，攻击全队。`);
       }else{
-        const roll=Math.random(),target=roll<.64?current[0]:roll<.88?(current[1]||current[0]):(current[2]||current[1]||current[0]),res=hurtAlly(e,target,mode==='skill'?1.45:1);events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),targetId:res.targetId,hpLoss:res.hpLoss,hpAfter:res.hpAfter,miss:res.miss,skillName:mode==='skill'?'强袭技能':'',attackType:mode==='skill'?'强袭技能':'普通攻击',spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【${mode==='skill'?'强袭技能':'普通攻击'}】攻击 ${monsterName(target)}${res.miss?'，但被闪避。':`，远征生命 -${Math.round(res.hpLoss)}%`}。`)
+        const roll=Math.random(),target=roll<.64?current[0]:roll<.88?(current[1]||current[0]):(current[2]||current[1]||current[0]),res=hurtAlly(e,target,mode==='skill'?1.45:1);events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),targetId:res.targetId,hpLoss:res.hpLoss,hpDamage:res.hpDamage,maxHp:res.maxHp,hpAfter:res.hpAfter,hpAfterAbs:res.hpAfterAbs,miss:res.miss,skillName:mode==='skill'?'强袭技能':'',attackType:mode==='skill'?'强袭技能':'普通攻击',spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【${mode==='skill'?'强袭技能':'普通攻击'}】攻击 ${monsterName(target)}${res.miss?'，但被闪避。':`，HP -${Math.round(res.hpDamage)}（${Math.round(res.hpAfterAbs)}/${Math.round(res.maxHp)}）`}。`)
       }
       gauge[e.id]=0;
     }

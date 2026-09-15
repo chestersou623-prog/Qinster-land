@@ -1523,7 +1523,7 @@ body.modal-open{overflow:hidden}
 <script>
 (function(){
   const b=document.getElementById('boot-check');
-  window.__bootMark=function(msg){if(b){b.textContent='v247 · '+msg;b.style.background='#55461e';}};
+  window.__bootMark=function(msg){if(b){b.textContent='v248 · '+msg;b.style.background='#55461e';}};
   window.addEventListener('error',function(e){
     const msg=String(e.message||'');
     const file=String(e.filename||'');
@@ -1542,10 +1542,10 @@ body.modal-open{overflow:hidden}
       document.body.appendChild(x);
     }
     const stack=e.error&&e.error.stack?'\n'+String(e.error.stack):'';
-    x.textContent='Qinster v247 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
+    x.textContent='Qinster v248 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
   });
 })();
 </script>
-<script src="game.js?v=247"></script><script src="v193-race-stats.js?v=247"></script><script src="v194-expedition.js?v=247"></script><script src="dispatch-pip.js?v=247"></script><script src="v197-more-menu.js?v=247"></script><script src="v199-roguelike-expedition.js?v=247"></script>
-<script src="v201-battle-theater.js?v=247"></script>
+<script src="game.js?v=248"></script><script src="v193-race-stats.js?v=248"></script><script src="v194-expedition.js?v=248"></script><script src="dispatch-pip.js?v=248"></script><script src="v197-more-menu.js?v=248"></script><script src="v199-roguelike-expedition.js?v=248"></script>
+<script src="v201-battle-theater.js?v=248"></script>
 </body></html>
