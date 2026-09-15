@@ -1,0 +1,44 @@
+name: Qinster v251 reflect replay fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v251-reflect-replay-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply patch
+        run: python scripts/patch-v251-reflect-replay-fix.py
+      - name: Syntax check expedition
+        run: node --check v199-roguelike-expedition.js
+      - name: Syntax check theater
+        run: node --check v201-battle-theater.js
+      - name: Syntax check game
+        run: node --check game.js
+      - name: Tests
+        run: npm test
+      - name: Verify reflect replay fix
+        run: |
+          grep -F "const reflectText=applyReflect(ev,ev.enemyId)" v201-battle-theater.js
+          grep -F "reflectTotal" v201-battle-theater.js
+          grep -F "game.js?v=251" index.html
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game.js index.html v199-roguelike-expedition.js v201-battle-theater.js
+          git rm scripts/patch-v251-reflect-replay-fix.py .github/workflows/v251-reflect-replay-fix.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix reflect battle replay freeze v251"
+          git push
