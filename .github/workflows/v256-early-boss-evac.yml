@@ -34,11 +34,12 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           s=Path('v199-roguelike-expedition.js').read_text(encoding='utf-8')
-          assert '撤离并结束（25%）' in s
-          assert 'floorNo(run.stage)<=2' in s
-          assert '撤离点（25%）' in s
+          assert "early=current<=2" in s
           assert "finish(run,false,false" in s
-          print('early evacuation checks passed')
+          assert "run.phase='floorBossChoice'" in s
+          assert "floorNo(run.stage)<=2" in s
+          assert "if(floorNo(run.stage)>=3)run.endless=true" in s
+          print('early evacuation structural checks passed')
           PY
       - name: Commit generated changes and remove one-shot files
         run: |
