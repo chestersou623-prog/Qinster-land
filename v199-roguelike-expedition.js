@@ -1,3 +1,4 @@
+/* Qinster release v275 */
 (()=>{
 'use strict';
 const STAT=['HP','攻击','防御','速度','幸运'];
@@ -556,7 +557,7 @@ function battle(run,kind){
   const primary=enemies[0],enemyMax=enemies.reduce((n,e)=>n+e.maxHp,0),enemyHp=enemies.reduce((n,e)=>n+Math.max(0,e.hp),0);
   run.battle={kind,atb:true,actions,rounds:actions,elapsed,allyInitialStats,allyFinalStats:allyStatsSnapshot(),enemyMax,enemyHp,enemyAtk:primary.atk,enemyDef:primary.def,enemySpd:primary.spd,enemyLuck:primary.luck,enemyPower,difficultyRating:enemyPower,teamPower:Math.round(initialTeamPower),logs,events,startHp,win,reason,enemySpecies:primary.enemySpecies,enemyShiny:primary.enemyShiny,affixes:primary.affixes||[],variance:primary.variance,enemies:enemies.map(e=>({...e}))};run.nextBattleMods={};run.nextBattleBuffCount=0;run.phase='battleResult';save()
 }
-function offerRelic(run){run.relicChoices=shuffle(RELICS).slice(0,3).map(x=>x.id);run.phase='relic';save()}
+function offerRelic(run){const owned=new Set(run.relics||[]),pool=RELICS.filter(x=>!owned.has(x.id));run.relicChoices=shuffle(pool).slice(0,3).map(x=>x.id);if(!run.relicChoices.length){run.materials.relicDust=(run.materials.relicDust||0)+1;run.log.push('遗物池已全部收集，本次改为遗物尘 +1。');if(run.stage%9===8&&floorNo(run.stage)<=2){run.phase='floorBossChoice';save(`${floorLabel(run.stage)} BOSS 已击败：遗物池已收集完，可按25%撤离，或继续下一楼层。`);return}if(run.stage%9===8)floorTransitionHeal(run);advance(run);return}run.phase='relic';save()}
 function floorTransitionHeal(run){const next=floorNo(run.stage)+1;let count=0;for(const mid of run.teamIds||[]){if(!canReviveInRun(run,mid))continue;run.hp[mid]=Math.min(100,hpPct(run,mid)+50);count++}if(count)run.log.push(`楼层休整：进入 ${next}-1 前，队伍远征HP恢复 50%（上限100%）。`)}
 function chooseRelic(run,id){if(!(run.relicChoices||[]).includes(id))return;run.relics.push(id);run.log.push(`获得遗物：${RELICS.find(x=>x.id===id)?.name||id}`);run.relicChoices=[];if(run.stage%9===8&&floorNo(run.stage)<=2){run.phase='floorBossChoice';save(`${floorLabel(run.stage)} BOSS 已击败：可按25%撤离，或继续下一楼层。`);return}if(run.stage%9===8)floorTransitionHeal(run);advance(run)}
 function checkpointBoss(run){const zone=z(run.zone),d=diff(run.difficulty),bossNo=floorNo(run.stage),mapBonus=zone.shinyOnly?1.35:1,rewardMul=1+floorRewardBonus(run.stage),crystals=Math.max(1,Math.round((bossNo+d.id/3)*mapBonus*rewardMul));run.materials.starCrystal=(run.materials.starCrystal||0)+crystals;run.tempBadges+=Math.max(1,Math.ceil(bossNo/2));run.bossCount=bossNo;run.log.push(`${floorLabel(run.stage)} BOSS击败：星辉结晶 +${crystals} · 临时徽章 +${Math.max(1,Math.ceil(bossNo/2))}。`)}
