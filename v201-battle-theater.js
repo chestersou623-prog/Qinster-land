@@ -57,7 +57,7 @@ async function play(box,run,original,next){
   if(events.length){
     for(const ev of events){
       if(skip||battleKey(currentRun())!==key)break;
-      banner.textContent='ACTION '+(ev.action||'');
+      banner.textContent=(ev.skillName?'技能 · '+ev.skillName:'ACTION '+(ev.action||''));
       await animateGauges(ev);
       if(skip||battleKey(currentRun())!==key)break;
       if(ev.type==='ally'){
