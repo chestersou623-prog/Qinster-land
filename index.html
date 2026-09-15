@@ -1177,6 +1177,9 @@ body.modal-open{overflow:hidden}
 .dispatch-dock-tools{padding:4px 6px;display:flex;align-items:center;gap:6px;background:#e1d8b9}
 #dispatch-pip-button{font-size:10px;padding:3px 7px;background:#f1e9cc;color:#354b3d;border:1px solid #657256;white-space:nowrap}
 #dispatch-pip-status{font-size:9px;line-height:1.4;color:#354b3d}
+
+/* v258: pictogram-forward roster sorting */
+.sort-icon-legend{display:flex;gap:6px;align-items:center;padding:7px 10px 0}.sort-icon-legend span{display:inline-grid;place-items:center;min-width:28px;height:26px;padding:0 5px;border:2px solid #77727e;background:#d7d6db;color:#2f2c35;font-size:14px;font-weight:900;box-shadow:1px 1px 0 #fff8 inset}.sort-control select#sort-roster,.sort-control select#sort-direction{font-weight:900}
 </style>
 <style id="v184-family-skill-note-css">
 .family-potion-note{margin-top:8px;padding:8px 10px;border:1px dashed #9b7f65;border-radius:8px;background:#fff8e9;display:flex;flex-direction:column;gap:3px}.family-potion-note small{line-height:1.45;color:#6c5544}
@@ -1383,22 +1386,22 @@ body.modal-open{overflow:hidden}
   <button id="bulk-sell-confirm" class="primary" hidden>出售已选 · 0 只</button>
   <button id="bulk-select-cancel" class="secondary" hidden>取消</button>
   <span id="bulk-sell-summary">可一次勾选多只怪物出售；锁定、派遣中和救助怪物不会被选中。</span>
-</div><div class="sort-bar sort-bar-advanced">
+</div><div class="sort-icon-legend" aria-label="排序图示"><span title="稀有度">★</span><span title="加入时间">◷</span><span title="生命">♥</span><span title="我的最爱">❤</span><span title="技能等级">✦</span></div><div class="sort-bar sort-bar-advanced">
       <div class="sort-control">
         <label for="sort-roster">排序资料</label>
         <select id="sort-roster">
-          <option value="rarity">稀有度 · 星级 / 闪光 / 最爱</option>
-          <option value="joined">加入时间 · 新旧顺序</option>
-          <option value="age">生命 · 剩余值</option>
-          <option value="favorite">我的最爱 · 收藏优先</option>
-          <option value="skilllv">技能等级 · 最高技能 Lv</option>
+          <option value="rarity">★ 稀有度</option>
+          <option value="joined">◷ 加入时间</option>
+          <option value="age">♥ 生命</option>
+          <option value="favorite">❤ 我的最爱</option>
+          <option value="skilllv">✦ 技能等级</option>
         </select>
       </div>
       <div class="sort-control">
         <label for="sort-direction">排序方向</label>
         <select id="sort-direction">
-          <option value="desc">高 → 低 / 新 → 旧</option>
-          <option value="asc">低 → 高 / 旧 → 新</option>
+          <option value="desc">↓ 高→低 / 新→旧</option>
+          <option value="asc">↑ 低→高 / 旧→新</option>
         </select>
       </div>
       <div class="sort-control sort-control-wide">
@@ -1523,7 +1526,7 @@ body.modal-open{overflow:hidden}
 <script>
 (function(){
   const b=document.getElementById('boot-check');
-  window.__bootMark=function(msg){if(b){b.textContent='v257 · '+msg;b.style.background='#55461e';}};
+  window.__bootMark=function(msg){if(b){b.textContent='v258 · '+msg;b.style.background='#55461e';}};
   window.addEventListener('error',function(e){
     const msg=String(e.message||'');
     const file=String(e.filename||'');
@@ -1542,10 +1545,10 @@ body.modal-open{overflow:hidden}
       document.body.appendChild(x);
     }
     const stack=e.error&&e.error.stack?'\n'+String(e.error.stack):'';
-    x.textContent='Qinster v257 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
+    x.textContent='Qinster v258 错误\n'+(msg||String(e.error||'Unknown'))+'\n'+file+':'+String(e.lineno||'')+':'+String(e.colno||'')+stack;
   });
 })();
 </script>
-<script src="game.js?v=257"></script><script src="v193-race-stats.js?v=257"></script><script src="v194-expedition.js?v=257"></script><script src="dispatch-pip.js?v=257"></script><script src="v197-more-menu.js?v=257"></script><script src="v199-roguelike-expedition.js?v=257"></script>
-<script src="v201-battle-theater.js?v=257"></script>
+<script src="game.js?v=258"></script><script src="v193-race-stats.js?v=258"></script><script src="v194-expedition.js?v=258"></script><script src="dispatch-pip.js?v=258"></script><script src="v197-more-menu.js?v=258"></script><script src="v199-roguelike-expedition.js?v=258"></script>
+<script src="v201-battle-theater.js?v=258"></script>
 </body></html>

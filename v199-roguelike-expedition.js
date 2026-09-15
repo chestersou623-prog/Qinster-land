@@ -565,6 +565,24 @@ function applyExpeditionLifeCost(run,cleared,defeated=false){
     }
   }
   if(deadIds.length){
+    // v258: every permanent expedition death is also written to the ranch activity log.
+    // Snapshot the monster before removing it from Box so the log keeps name/rarity details.
+    s.activityLog=Array.isArray(s.activityLog)?s.activityLog:[];
+    const now=Date.now();
+    for(const id of deadIds){
+      const m=byId.get(id);if(!m)continue;
+      const failed=!!defeated&&hpPct(run,id)<=0;
+      const reason=failed?'远征战败中阵亡':'远征中生命归0死亡';
+      const key=`expedition-death-${m.id}-${now}`;
+      if(!s.activityLog.some(x=>x.key===key)){
+        s.activityLog.push({
+          id:'L'+now+'-'+m.id, key, type:'death', time:now, reason,
+          monster:{id:m.id,species:m.species,star:m.star,shiny:!!m.shiny,nickname:m.nickname||'',tint:m.tint,specialColor:m.specialColor??null,deathReason:reason}
+        });
+      }
+    }
+    s.activityLog.sort((a,b)=>(Number(b.time)||0)-(Number(a.time)||0));
+    s.activityLog=s.activityLog.slice(0,300);
     const dead=new Set(deadIds.map(Number));
     s.monsters=(s.monsters||[]).filter(m=>!dead.has(Number(m.id)));
     if(Array.isArray(s.expedition?.lastTeamIds))s.expedition.lastTeamIds=s.expedition.lastTeamIds.filter(id=>!dead.has(Number(id)));

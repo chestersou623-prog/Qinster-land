@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const STYLE_ID='qinster-v257-battle-theater-style';
+const STYLE_ID='qinster-v258-battle-theater-style';
 function R(){return window.QinsterRuntime||null}function S(){return R()?.getState?.()||null}function currentRun(){return S()?.expedition?.rogueActive||null}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function team(run){const map=new Map((S()?.monsters||[]).map(m=>[m.id,m]));return(run?.teamIds||[]).map(id=>map.get(id)).filter(Boolean)}
