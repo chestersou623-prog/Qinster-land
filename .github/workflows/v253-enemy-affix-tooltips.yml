@@ -1,0 +1,43 @@
+name: Qinster v253 enemy affix tooltips
+on:
+  push:
+    paths:
+      - 'scripts/patch-v253-enemy-affix-tooltips.py'
+      - '.github/workflows/v253-enemy-affix-tooltips.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply patch
+        run: python scripts/patch-v253-enemy-affix-tooltips.py
+      - name: Syntax check expedition
+        run: node --check v199-roguelike-expedition.js
+      - name: Syntax check theater
+        run: node --check v201-battle-theater.js
+      - name: Syntax check game
+        run: node --check game.js
+      - name: Tests
+        run: npm test
+      - name: Verify enemy tooltip details
+        run: |
+          grep -q "ENEMY_AFFIX_DETAILS" v199-roguelike-expedition.js
+          grep -q "攻击 +20%" v199-roguelike-expedition.js
+          grep -q "幸运 +25%" v199-roguelike-expedition.js
+          grep -q "随机模板倍率" v199-roguelike-expedition.js
+          grep -q "game.js?v=253" index.html
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          rm -f scripts/patch-v253-enemy-affix-tooltips.py .github/workflows/v253-enemy-affix-tooltips.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Show enemy affix values on hover v253"
+          git push
