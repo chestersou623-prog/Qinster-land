@@ -32,6 +32,6 @@ if(process.argv.includes('--fixture')){
  state.items.colors=[3,3,3,3,3,3];state.items.specialColors=[3,3,3];
  assert.ok(G.valid(state));fs.writeFileSync('.qa/fixture.json',JSON.stringify(state));
  fs.writeFileSync('.qa/game.js',"const qaStorage={getItem:k=>localStorage.getItem('qinster-qa:'+k),setItem:(k,v)=>localStorage.setItem('qinster-qa:'+k,v),removeItem:k=>localStorage.removeItem('qinster-qa:'+k)};\n"+js.replaceAll('localStorage','qaStorage'));
- fs.writeFileSync('.qa/game.html',html.replace('<head>','<head><base href="/">').replace('src="game.js?v=231"','src="/.qa/game.js"'));
+ fs.writeFileSync('.qa/game.html',html.replace('<head>','<head><base href="/">').replace('src="game.js?v=259"','src="/.qa/game.js"'));
  fs.writeFileSync('.qa/setup.html',`<!doctype html><meta charset="utf-8"><h1>Qinster 本地验收数据</h1><p>使用独立 qinster-qa 存储空间，不读取或覆盖实际游戏存档。</p><button id="load">加载验收存档</button><a href="/.qa/game.html">打开游戏</a><script>document.querySelector('#load').onclick=async()=>{let s=await(await fetch('./fixture.json')).json();s.last=Date.now();localStorage.setItem('qinster-qa:eggwood-monsters-v3',JSON.stringify(s));location.href='/.qa/game.html';}</script>`);
 }

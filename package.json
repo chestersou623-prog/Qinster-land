@@ -1,12 +1,16 @@
 {
   "name": "qinster-land",
-  "version": "189.0.0",
+  "version": "259.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "art": "python3 scripts/build-atlas.py",
-    "test": "node scripts/check-game.mjs"
+    "test": "node scripts/check-game.mjs",
+    "test:pickers": "node scripts/check-picker.mjs"
   },
-  "devDependencies": {"vite": "8.3.0"}
+  "devDependencies": {
+    "vite": "8.3.0",
+    "jsdom": "30.0.1"
+  }
 }

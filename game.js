@@ -807,7 +807,32 @@ function ensureDex(state){
   return state.dex;
 }
 function markDex(state,m,bump=false){if(!m)return false;ensureDex(state);const changed=setDexFlags(state,m);if(changed&&bump)state.revision++;return changed;}
-let bulkSellMode=false;const parentSearch={a:'',b:''},parentSort={a:'recommended',b:'recommended'},parentSkillFilter={a:'',b:''},parentStarFilter={a:'',b:''},parentSpeciesFilter={a:'',b:''};let bagTargetSearch='',bagTargetSort='star-desc',bagTargetSkill='',bagTargetStar='',bagTargetSpecies='',bagTargetFamily='';let dispatchSkillFilter='',dispatchStarFilter='',dispatchSpeciesFilter='',dispatchFamilyFilter='';
+let dispatchPickerMission='meadow';const rerollPickerSelections=new Map();
+
+// v259: adapters expose gameplay data; the shared picker owns only view state.
+function monsterPickerConfig(title,pool,extra={}){
+ const items=pool.map(m=>{ensureMonsterSystemsMonster(m);return {id:m.id,value:m,title:name(m)+' · '+G.stars(m.star),search:[name(m),serialName(m),'#'+m.id,G.SPECIES[m.species]?.name,...monsterSkillNames(m),m.familyName||''].join(' '),description:G.SPECIES[m.species]?.name+' · '+m.gender+' · '+m.life+'/'+m.maxLife+' 生命\n'+monsterSkillNames(m).join(' · '),art:sprite(m.species,m.tint,m.shiny,m.specialColor),facets:{star:[String(m.star)],species:[G.SPECIES[m.species]?.name||'未知'],skill:monsterSkillNames(m),family:[m.familyName||'无家族'],shiny:[m.shiny?'闪光':'普通'],favorite:[m.favorite?'最爱':'非最爱'],locked:[m.locked?'已锁定':'未锁定'],status:[isDispatched(m.id)?'派遣中':isInActiveExpedition(m.id)?'远征中':'在牧场'],gender:[m.gender]},recommended:extra.recommended?.has(m.id)||false,selected:extra.selected?.has(m.id)||false,disabled:extra.disabled?.(m)||false,detailHTML:extra.detail?.(m)||''}});
+ const num=(key,dir=-1)=>(a,b)=>dir*((a.value[key]||0)-(b.value[key]||0))||b.id-a.id;
+ return {title,items,facets:[{id:'star',label:'星级'},{id:'species',label:'种族'},{id:'skill',label:'技能'},{id:'family',label:'家族'},{id:'gender',label:'性别'},{id:'shiny',label:'闪光'},{id:'favorite',label:'收藏'},{id:'locked',label:'锁定'},{id:'status',label:'位置'}],sorts:[{id:'original',label:extra.originalLabel||'原有顺序'},{id:'star-desc',label:'★ 星级 · 高到低',compare:num('star')},{id:'star-asc',label:'★ 星级 · 低到高',compare:num('star',1)},{id:'life-desc',label:'♥ 生命 · 高到低',compare:num('life')},{id:'life-asc',label:'♥ 生命 · 低到高',compare:num('life',1)},{id:'joined-desc',label:'◷ 最新加入',compare:num('createdAt')},{id:'joined-asc',label:'◷ 最早加入',compare:num('createdAt',1)},{id:'favorite',label:'❤ 最爱优先',compare:num('favorite')},{id:'skill',label:'✦ 技能等级',compare:(a,b)=>rosterMaxSkillLv(b.value)-rosterMaxSkillLv(a.value)},{id:'species',label:'种族名称',compare:(a,b)=>(G.SPECIES[a.value.species]?.name||'').localeCompare(G.SPECIES[b.value.species]?.name||'','zh-CN')},{id:'total',label:'总能力',compare:(a,b)=>G.stats(b.value).reduce((x,y)=>x+y,0)-G.stats(a.value).reduce((x,y)=>x+y,0)},{id:'luck',label:'幸运',compare:(a,b)=>G.stats(b.value)[4]-G.stats(a.value)[4]}],...extra};
+}
+function rosterPickerConfig(){return monsterPickerConfig('怪物盒',s.monsters,{defaultSort:'star-desc',recommended:new Set(s.monsters.filter(m=>m.autoUse||m.favorite).map(m=>m.id)),recommendationNote:'推荐：已设为自动优先 / 最爱的伙伴',selected:new Set([selected])})}
+function dispatchPickerConfig(){
+ const ms=DISPATCH_MISSIONS.find(x=>x.id===dispatchPickerMission)||DISPATCH_MISSIONS[0];
+ const recommended=new Set(chooseSmartDispatchTeam(ms,true).map(m=>m.id));
+ const pool=[...s.monsters].sort((a,b)=>Number(canDispatchMonster(b))-Number(canDispatchMonster(a))||b.star-a.star||dispatchOverallState(b)-dispatchOverallState(a));
+ return monsterPickerConfig('派遣队员 · '+ms.name,pool,{originalLabel:'可派遣优先',recommended,recommendationNote:'按「'+ms.name+'」原有任务技能、星级策略和保留亲代规则推荐',selected:new Set(dispatchTeamSelected),disabled:m=>!canDispatchMonster(m),close:()=>{closeDispatchPicker();$('dispatch-target-btn').focus()},choose:i=>chooseDispatchTarget(i.value.id)});
+}
+function optionPicker(sel,title){
+ if(!sel)return;sel.hidden=true;let host=sel.nextElementSibling;if(!host?.classList.contains('qp-option-host')){host=document.createElement('details');host.className='qp-option-host';host.innerHTML='<summary></summary><div></div>';sel.after(host)}
+ const key='option-'+(sel.id||'reroll-'+(shopMonster()?.id||0)+'-'+sel.dataset.rerollTarget);
+ if(sel.hasAttribute('data-reroll-target')){const saved=rerollPickerSelections.get(key);if([...sel.options].some(o=>o.value===saved))sel.value=saved}
+ host.querySelector('summary').textContent=title+' · '+(sel.selectedOptions[0]?.textContent||'待选择')+' ▾';
+ const items=[...sel.options].filter(o=>o.value!=='').map(o=>{const sk=EXTRA_SKILLS.find(x=>x.id===o.value);return {id:o.value,title:o.textContent,description:sk?extraSkillDesc(sk.id,1):'点击卡片选择此策略',selected:sel.value===o.value,disabled:o.disabled,facets:{kind:[sk?(sk.tone==='buff'?'Buff':'Debuff'):'策略'],rarity:[sk?(ULTRA_RARE_SKILLS.includes(sk.id)?'稀有技能':'普通技能'):'策略']}}});
+ window.QinsterPicker.mount(host.querySelector('div'),key,{title,items,placeholder:'搜索选项名称',facets:[{id:'kind',label:'类别'},{id:'rarity',label:'稀有度'}],sorts:[{id:'original',label:'原有顺序'},{id:'name',label:'名称',compare:(a,b)=>a.title.localeCompare(b.title,'zh-CN')}],choose:i=>{if(sel.hasAttribute('data-reroll-target'))rerollPickerSelections.set(key,i.id);sel.value=i.id;sel.dispatchEvent(new Event('change',{bubbles:true}));optionPicker(sel,title)}});
+}
+function renderOptionPickers(){optionPicker($('auto-breed-priority'),'智能配种策略');optionPicker($('auto-dispatch-mission'),'自动派遣任务');optionPicker($('auto-dispatch-power'),'自动选队策略');document.querySelectorAll('[data-reroll-target]').forEach(sel=>optionPicker(sel,sel.getAttribute('aria-label')||'目标技能'))}
+
+let bulkSellMode=false;
 const bulkSellSelected=new Set();
 
 function escapeActivity(v){
@@ -921,11 +946,11 @@ function renderBulkSellControls(){
   $('bulk-select-cancel').hidden=!bulkSellMode;
   $('bulk-sell-confirm').disabled=t.count===0;
   $('bulk-sell-confirm').textContent='出售已选 · '+t.count+' 只 · '+fmt(t.total)+' 灵能';
-  const activeFilters=[$('filter-skill')?.value,$('filter-star')?.value,$('filter-species')?.value,$('filter-family')?.value,($('filter-name')?.value||'').trim()].filter(v=>v!==''&&v!=null);
+  const qs=window.QinsterPicker.state('roster');const activeFilters=[qs.search.trim(),qs.recommended,...Object.values(qs.filters).flat()].filter(Boolean);
   $('bulk-select-filtered').textContent='勾选当前筛选';
   $('bulk-select-filtered').disabled=!activeFilters.length;
   $('bulk-sell-summary').textContent=bulkSellMode
-    ?'已选 '+t.count+' 只，共 '+fmt(t.total)+' 灵能。也可以先在上方筛技能，再点「勾选当前技能怪」。'
+    ?'已选 '+t.count+' 只，共 '+fmt(t.total)+' 灵能。也可以先组合筛选，再点「勾选当前筛选」。'
     :'可一次勾选多只怪物出售；锁定、派遣中和救助怪物不会被选中。';
   document.body.classList.toggle('bulk-mode',bulkSellMode);
 }
@@ -2931,24 +2956,7 @@ function dispatchRemoveMonster(m){
   });
 }
 function dispatchOverallState(m){const st=G.stats(m);return st[1]+st[2]+st[3]+st[4];}
-function dispatchSortedMonsters(){
-  let list=[...s.monsters];for(const m of list)ensureMonsterSystemsMonster(m);
-  const mode=$('dispatch-sort')?.value||'available',q=$('dispatch-search')?.value||'';
-  if(q)list=list.filter(m=>monsterMatchesName(m,q));
-  if(dispatchSkillFilter)list=list.filter(m=>monsterHasSkillName(m,dispatchSkillFilter));
-  list=list.filter(m=>matchesStarSpecies(m,dispatchStarFilter,dispatchSpeciesFilter)&&matchesFamily(m,dispatchFamilyFilter));
-  list.sort((a,b)=>{
-    if(mode==='rarity-asc')return a.star-b.star||Number(a.shiny)-Number(b.shiny)||a.id-b.id;
-    if(mode==='state-desc')return dispatchOverallState(b)-dispatchOverallState(a)||b.star-a.star;
-    if(mode==='age-asc')return a.life-b.life||b.star-a.star;
-    if(mode==='age-desc')return b.life-a.life||b.star-a.star;
-    if(mode==='skill-desc')return rosterMaxSkillLv(b)-rosterMaxSkillLv(a)||b.star-a.star||b.id-a.id;
-    if(mode==='favorite')return Number(b.favorite)-Number(a.favorite)||b.star-a.star||Number(b.shiny)-Number(a.shiny);
-    if(mode==='species-asc')return (G.SPECIES[a.species]?.name||'').localeCompare(G.SPECIES[b.species]?.name||'','zh-Hans-CN')||b.star-a.star||b.id-a.id;
-    if(mode==='rarity-desc')return b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;
-    return Number(canDispatchMonster(b))-Number(canDispatchMonster(a))||b.star-a.star||dispatchOverallState(b)-dispatchOverallState(a);
-  });return list;
-}
+function dispatchSortedMonsters(){return window.QinsterPicker.query('dispatch',dispatchPickerConfig()).map(i=>i.value)}
 function dispatchTeam(){return dispatchTeamSelected.map(id=>s.monsters.find(m=>m.id===id)).filter(Boolean);}
 function dispatchTeamButtonHTML(team){if(!team.length)return '<span class="parent-select-empty">选择 2–3 位队员</span>';return '<div class="dispatch-team-button">'+team.map(m=>sprite(m.species,m.tint,m.shiny,m.specialColor)).join('')+'<span class="team-copy"><strong>已选 '+team.length+' / 3 位</strong><small>'+team.map(m=>name(m)+' '+G.stars(m.star)).join(' · ')+'</small></span></div>';}
 
@@ -2992,25 +3000,9 @@ function dispatchPossibleReturnsHTML(mission,team=[]){
 function dispatchSkillSummaryHTML(m){
   return '<div class="dispatch-skill-row">技能：'+monsterSkillSummary(m)+'</div>';
 }
-function renderDispatchTargetPicker(){
-  const picker=$('dispatch-target-picker');if(!picker)return;
-  const selectedSet=new Set(dispatchTeamSelected);
-  const all=[...s.monsters];
-  picker.innerHTML='<div class="dispatch-filter-toolbar">'+
-    '<select data-dispatch-skill-filter>'+skillFilterOptionsHTML(all,dispatchSkillFilter)+'</select>'+
-    '<select data-dispatch-star-filter>'+starFilterOptionsHTML(dispatchStarFilter)+'</select>'+
-    '<select data-dispatch-species-filter>'+speciesFilterOptionsHTML(dispatchSpeciesFilter)+'</select>'+
-    '<select data-dispatch-family-filter>'+familyFilterOptionsHTML(all,dispatchFamilyFilter)+'</select>'+
-    '</div><div class="dispatch-target-grid">'+dispatchSortedMonsters().map(m=>
-    '<button type="button" class="dispatch-target-choice '+(selectedSet.has(m.id)?'selected ':'')+(canDispatchMonster(m)?'':'unavailable')+'" data-dispatch-target="'+m.id+'">'
-    +(selectedSet.has(m.id)?'<span class="team-check">✓</span>':'')
-    +sprite(m.species,m.tint,m.shiny,m.specialColor)
-    +'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+traitBadge(m)+'</strong>'
-    +'<small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>位置：'+(isDispatched(m.id)?'派遣中':isEggParent(m.id)?'孵化亲代':isInFarm(m.id)?'生产牧场':'怪物盒')+' · '+(canDispatchMonster(m)?(m.locked?'已锁定 · 仅手动可用':'可加入队伍'):m.life<=0?'生命耗尽':'当前不可派遣')+'<br>'+monsterSkillSummary(m)+'</small></span></button>'
-  ).join('')+'</div><div class="team-limit">最多选择 3 位。林地采集 / 遗迹探索至少 2 位，星门远征必须 3 位。</div>';
-}
+function renderDispatchTargetPicker(){window.QinsterPicker.mount($('dispatch-target-picker'),'dispatch',dispatchPickerConfig())}
 function closeDispatchPicker(){const p=$('dispatch-target-picker'),b=$('dispatch-target-btn');if(p)p.hidden=true;if(b)b.setAttribute('aria-expanded','false');}
-function toggleDispatchPicker(){const p=$('dispatch-target-picker'),b=$('dispatch-target-btn');if(!p||!b)return;const opening=p.hidden;closeDispatchPicker();if(opening){renderDispatchTargetPicker();p.hidden=false;b.setAttribute('aria-expanded','true');}}
+function toggleDispatchPicker(){const p=$('dispatch-target-picker'),b=$('dispatch-target-btn');if(!p||!b)return;const opening=p.hidden;closeDispatchPicker();if(opening){renderDispatchTargetPicker();p.hidden=false;b.setAttribute('aria-expanded','true');p.querySelector('[data-qp-search]')?.focus();}}
 function chooseDispatchTarget(id){const m=s.monsters.find(x=>x.id===id);if(!m||!canDispatchMonster(m)){tell('这只怪物当前不能加入派遣队。');return;}const pos=dispatchTeamSelected.indexOf(id);if(pos>=0)dispatchTeamSelected.splice(pos,1);else{if(dispatchTeamSelected.length>=3){tell('派遣队最多 3 位成员。');return;}dispatchTeamSelected.push(id);}dispatchSelected=dispatchTeamSelected[0]||null;
   if(s.manualDispatchRepeat&&!s.dispatch&&!s.manualDispatchMission){
     s.manualDispatchTeamIds=[...dispatchTeamSelected];
@@ -3116,6 +3108,7 @@ function autoDispatchCandidates(ms,includeFarm=false){
 }
 
 function autoSelectDispatchTeam(missionIndex){
+  dispatchPickerMission=DISPATCH_MISSIONS[missionIndex]?.id||dispatchPickerMission;
   const ms=DISPATCH_MISSIONS[missionIndex];
   if(!ms)return;
   if(ranchLevel()<(ms.minLevel||1)){tell('牧场等级不足，需要 Lv'+ms.minLevel+'。');return;}
@@ -3799,7 +3792,7 @@ function speciesSkillCardHTML(sp,index){
     +'<div class="skill-level-table">'+Array.from({length:10},(_,i)=>'<span><b>Lv'+(i+1)+'</b><br>'+escapeActivity(speciesSkillLevelText(index,i+1))+'</span>').join('')+'</div></article>';
 }
 function renderSkillLibrary(filter=skillLibraryFilter||'all'){
-  skillLibraryFilter=filter||'all';
+  skillLibraryFilter='all';
   if(typeof ensureSkillDex==='function')ensureSkillDex(s);
   ensureDex(s);
 
@@ -3830,7 +3823,7 @@ function renderSkillLibrary(filter=skillLibraryFilter||'all'){
     .filter(sk=>skillLibraryFilter==='all'||sk.tone===skillLibraryFilter)
     .map(sk=>{
       const unlocked=hasDex?!!s.skillDex.extra[sk.id]:currentOwned.has(sk.id);
-      if(!unlocked)return '<article class="skill-library-card locked"><h3>？？？ <small>· 未发现</small></h3><p>获得过这个技能后才会解锁资料。</p><div class="skill-level-table">'+Array.from({length:10},(_,i)=>'<span><b>Lv'+(i+1)+'</b><br>？？？</span>').join('')+'</div></article>';
+      if(!unlocked)return '<article class="skill-library-card locked '+sk.tone+'"><h3>？？？ <small>· 未发现</small></h3><p>获得过这个技能后才会解锁资料。</p><div class="skill-level-table">'+Array.from({length:10},(_,i)=>'<span><b>Lv'+(i+1)+'</b><br>？？？</span>').join('')+'</div></article>';
       const ownedLv=currentOwned.get(sk.id)||0;
       return '<article class="skill-library-card '+sk.tone+(ULTRA_RARE_SKILLS.includes(sk.id)?' rare-skill':'')+'"><h3>'+escapeActivity(sk.name)+' <small>· '+(sk.tone==='buff'?'Buff':'Debuff')+' · '+escapeActivity(sk.group||'技能')+'</small></h3><p>Lv1：'+escapeActivity(extraSkillDesc(sk.id,1))+'</p>'+(ownedLv?'<div class="skill-library-current">当前持有最高 Lv'+ownedLv+'：'+escapeActivity(extraSkillDesc(sk.id,ownedLv))+'</div>':'<div class="skill-library-current">已解锁，但当前没有怪物持有</div>')+'<div class="skill-level-table">'+Array.from({length:10},(_,i)=>'<span><b>Lv'+(i+1)+'</b><br>'+escapeActivity(extraSkillDesc(sk.id,i+1))+'</span>').join('')+'</div></article>';
     }).join('');
@@ -3842,7 +3835,9 @@ function renderSkillLibrary(filter=skillLibraryFilter||'all'){
   let html='<div class="dex-note" style="grid-column:1/-1">额外技能已发现 <b>'+knownExtra+' / '+EXTRA_SKILLS.length+'</b> · 种族技能已发现 <b>'+knownSpecies+' / '+G.SPECIES.length+'</b>。家族技能使用普通 Buff / Debuff 能力池；种族技能属于各物种自身。</div>';
   if(extraCards)html+='<div class="skill-dex-section-title">普通技能 / 家族技能能力池</div>'+extraCards;
   if(speciesCards)html+='<div class="skill-dex-section-title">种族技能 · 基础怪 + 派遣限定怪</div>'+speciesCards;
-  $('skill-library').innerHTML=html;
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const items=[...tmp.querySelectorAll('.skill-library-card')].map((el,i)=>({id:i,title:el.querySelector('h3')?.textContent||'技能',search:el.textContent,markup:el.outerHTML,facets:{kind:[el.classList.contains('species-skill')?'种族技能':el.classList.contains('buff')?'Buff':'Debuff'],known:[el.classList.contains('locked')?'未发现':'已发现']}}));
+  window.QinsterPicker.mount($('skill-library'),'skills',{title:'技能图鉴',items,placeholder:'搜索已发现的技能与说明',facets:[{id:'kind',label:'技能类型'},{id:'known',label:'发现状态'}],sorts:[{id:'original',label:'图鉴顺序'},{id:'name',label:'名称',compare:(a,b)=>a.title.localeCompare(b.title,'zh-CN')}],card:i=>i.markup});
   renderTraitDex();
 }
 function getMutableSkillSlots(m){
@@ -3874,50 +3869,11 @@ function monsterSkillNames(m){
   return [...new Set(names.filter(Boolean))];
 }
 function monsterHasSkillName(m,skillName){return !skillName||monsterSkillNames(m).includes(skillName);}
-function skillFilterOptionsHTML(pool,selected=''){
-  const names=[...new Set((pool||[]).flatMap(monsterSkillNames))].sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
-  if(selected&&!names.includes(selected))names.unshift(selected);
-  return '<option value="">全部技能</option>'+names.map(n=>'<option value="'+escapeActivity(n)+'" '+(n===selected?'selected':'')+'>'+escapeActivity(n)+'</option>').join('');
-}
-function starFilterOptionsHTML(selected=''){
-  return '<option value="" '+(!selected?'selected':'')+'>全部星级</option>'+[1,2,3,4,5].map(n=>'<option value="'+n+'" '+(String(n)===String(selected)?'selected':'')+'>'+G.stars(n)+'</option>').join('');
-}
-function speciesFilterOptionsHTML(selected=''){
-  return '<option value="" '+(!selected?'selected':'')+'>全部种族</option>'+G.SPECIES.map((sp,i)=>'<option value="'+i+'" '+(String(i)===String(selected)?'selected':'')+'>'+escapeActivity(sp.name)+'</option>').join('');
-}
-function familyFilterOptionsHTML(pool=[],selected=''){
-  const names=[...new Set((pool||[]).map(m=>(m?.familyName||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
-  return '<option value="" '+(!selected?'selected':'')+'>全部家族</option><option value="__none__" '+(selected==='__none__'?'selected':'')+'>无家族</option>'+names.map(n=>'<option value="'+escapeActivity(n)+'" '+(n===selected?'selected':'')+'>'+escapeActivity(n)+'</option>').join('');
-}
-function matchesFamily(m,family){if(!family)return true;const f=(m?.familyName||'').trim();return family==='__none__'?!f:f===family;}
-function matchesStarSpecies(m,star,species){
-  if(star&&m.star!==Number(star))return false;
-  if(species!==''&&species!=null&&m.species!==Number(species))return false;
-  return true;
-}
-function bagSortedMonsters(){
-  let list=[...s.monsters];for(const m of list)ensureMonsterSystemsMonster(m);
-  const mode=bagTargetSort||'star-desc',q=bagTargetSearch||'',skill=bagTargetSkill||'',star=bagTargetStar||'',species=bagTargetSpecies??'',family=bagTargetFamily||'';
-  if(q)list=list.filter(m=>monsterMatchesName(m,q));
-  if(skill)list=list.filter(m=>monsterHasSkillName(m,skill));
-  list=list.filter(m=>matchesStarSpecies(m,star,species)&&matchesFamily(m,family));
-  list.sort((a,b)=>{if(mode==='star-asc')return a.star-b.star||Number(a.shiny)-Number(b.shiny)||a.id-b.id;if(mode==='life-desc')return b.life-a.life||b.star-a.star||b.id-a.id;if(mode==='life-asc')return a.life-b.life||b.star-a.star||b.id-a.id;if(mode==='skill-desc')return rosterMaxSkillLv(b)-rosterMaxSkillLv(a)||b.star-a.star||b.id-a.id;if(mode==='favorite')return Number(b.favorite)-Number(a.favorite)||b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;if(mode==='joined-asc')return (a.createdAt||0)-(b.createdAt||0)||a.id-b.id;if(mode==='joined-desc')return (b.createdAt||0)-(a.createdAt||0)||b.id-a.id;if(mode==='species-asc')return (G.SPECIES[a.species]?.name||'').localeCompare(G.SPECIES[b.species]?.name||'','zh-Hans-CN')||b.star-a.star||b.id-a.id;return b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;});
-  return list;
-}
+function bagSortedMonsters(){return [...s.monsters].sort((a,b)=>b.star-a.star||b.id-a.id)}
 function bagTargetButtonHTML(m){if(!m)return '<span class="parent-select-empty">选择一只怪物</span>';ensureMonsterSystemsMonster(m);return sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span class="parent-select-info"><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.favorite?' · 最爱':'')+'</strong><small>'+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命 · 种族 Lv'+skillNum(m)+'</small></span>';}
-function renderBagTargetPicker(){
-  const p=$('bag-target-picker');if(!p)return;const cur=Number($('shop-target')?.value)||null;const all=[...s.monsters];
-  p.innerHTML='<div class="bag-picker-toolbar">'+
-    '<input data-bag-search type="search" placeholder="名字 / 昵称 / #编号" value="'+escapeActivity(bagTargetSearch)+'">'+
-    '<select class="bag-picker-sort" data-bag-sort><option value="star-desc" '+(bagTargetSort==='star-desc'?'selected':'')+'>星级 · 高 → 低</option><option value="star-asc" '+(bagTargetSort==='star-asc'?'selected':'')+'>星级 · 低 → 高</option><option value="life-desc" '+(bagTargetSort==='life-desc'?'selected':'')+'>生命 · 高 → 低</option><option value="life-asc" '+(bagTargetSort==='life-asc'?'selected':'')+'>生命 · 低 → 高</option><option value="skill-desc" '+(bagTargetSort==='skill-desc'?'selected':'')+'>技能等级 · 高 → 低</option><option value="favorite" '+(bagTargetSort==='favorite'?'selected':'')+'>我的最爱优先</option><option value="joined-desc" '+(bagTargetSort==='joined-desc'?'selected':'')+'>加入时间 · 新 → 旧</option><option value="joined-asc" '+(bagTargetSort==='joined-asc'?'selected':'')+'>加入时间 · 旧 → 新</option><option value="species-asc" '+(bagTargetSort==='species-asc'?'selected':'')+'>种族 · A → Z</option></select>'+
-    '<select class="bag-picker-skill" data-bag-skill>'+skillFilterOptionsHTML(all,bagTargetSkill)+'</select>'+
-    '<select class="bag-picker-star" data-bag-star>'+starFilterOptionsHTML(bagTargetStar)+'</select>'+
-    '<select class="bag-picker-species" data-bag-species>'+speciesFilterOptionsHTML(bagTargetSpecies)+'</select>'+
-    '<select class="bag-picker-family" data-bag-family>'+familyFilterOptionsHTML(all,bagTargetFamily)+'</select>'+
-    '</div><div class="bag-target-grid">'+bagSortedMonsters().map(m=>'<button type="button" class="bag-target-choice '+(m.id===cur?'selected':'')+'" data-bag-target="'+m.id+'">'+sprite(m.species,m.tint,m.shiny,m.specialColor)+'<span><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.favorite?' · 最爱':'')+'</strong><small>'+G.SPECIES[m.species].name+' · '+m.gender+' · '+colorName(m)+' · '+m.life+' / '+m.maxLife+' 生命<br>'+monsterSkillSummary(m)+'</small></span></button>').join('')+'</div>';
-}
+function renderBagTargetPicker(){window.QinsterPicker.mount($('bag-target-picker'),'bag',monsterPickerConfig('选择道具使用伙伴',s.monsters,{defaultSort:'star-desc',selected:new Set([Number($('shop-target')?.value)]),close:()=>{closeBagTargetPicker();$('bag-target-btn').focus()},choose:i=>{chooseBagTarget(i.value.id);$('bag-target-btn').focus()}}))}
 function closeBagTargetPicker(){const p=$('bag-target-picker'),b=$('bag-target-btn');if(p)p.hidden=true;if(b)b.setAttribute('aria-expanded','false');}
-function toggleBagTargetPicker(){const p=$('bag-target-picker'),b=$('bag-target-btn');if(!p||!b)return;const opening=p.hidden;closeBagTargetPicker();if(opening){renderBagTargetPicker();p.hidden=false;b.setAttribute('aria-expanded','true');}}
+function toggleBagTargetPicker(){const p=$('bag-target-picker'),b=$('bag-target-btn');if(!p||!b)return;const opening=p.hidden;closeBagTargetPicker();if(opening){renderBagTargetPicker();p.hidden=false;b.setAttribute('aria-expanded','true');p.querySelector('[data-qp-search]')?.focus();}}
 function chooseBagTarget(id){
   const sel=$('shop-target');if(!sel)return;
   const target=s.monsters.find(m=>m.id===Number(id));
@@ -3933,12 +3889,7 @@ function chooseBagTarget(id){
 function bindBagTargetControls(){
   const btn=$('bag-target-btn'),picker=$('bag-target-picker');
   if(btn&&!btn.dataset.bound){btn.dataset.bound='1';btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleBagTargetPicker();});}
-  if(picker&&!picker.dataset.bound){
-    picker.dataset.bound='1';
-    picker.addEventListener('click',e=>{const choice=e.target.closest?.('[data-bag-target]');if(!choice)return;e.preventDefault();e.stopPropagation();chooseBagTarget(Number(choice.dataset.bagTarget));});
-    picker.addEventListener('input',e=>{const inp=e.target.closest?.('[data-bag-search]');if(!inp)return;bagTargetSearch=inp.value;renderBagTargetPicker();const next=picker.querySelector('[data-bag-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});
-    picker.addEventListener('change',e=>{const sort=e.target.closest?.('[data-bag-sort]'),skill=e.target.closest?.('[data-bag-skill]'),star=e.target.closest?.('[data-bag-star]'),species=e.target.closest?.('[data-bag-species]'),family=e.target.closest?.('[data-bag-family]');if(sort)bagTargetSort=sort.value;if(skill)bagTargetSkill=skill.value;if(star)bagTargetStar=star.value;if(species)bagTargetSpecies=species.value;if(family)bagTargetFamily=family.value;if(sort||skill||star||species||family)renderBagTargetPicker();});
-  }
+
   const nativeSel=$('shop-target');
   if(nativeSel&&!nativeSel.dataset.bound){nativeSel.dataset.bound='1';nativeSel.addEventListener('change',()=>{closeBagTargetPicker();renderShopTargetInfo();renderBag();const m=shopMonster();if($('bag-target-btn'))$('bag-target-btn').innerHTML=bagTargetButtonHTML(m);});}
 }
@@ -4043,6 +3994,7 @@ function renderBag(){
     '<div class="bag-item"><h4>❤ 生命药水</h4><p>持有：<span class="count">'+(s.items.life||0)+'</span></p><p>'+(target?'当前生命：<b>'+target.life+' / '+target.maxLife+'</b><br>'+(target.lifePotionUsed?'这只怪物已经使用过，不能再次使用。':'这只怪物还可以使用 1 次。'):'请先选择怪物。')+'</p><div class="item-actions"><button class="secondary" data-use-life '+((s.items.life||0)&&target&&!target.lifePotionUsed?'':'disabled')+'>生命 +5（每只限 1 次）</button></div></div>'+
     '<div class="bag-item"><h4>⌛ 行程压缩药水</h4><p>持有：<span class="count">'+(s.items.timeCut||0)+'</span></p><p>当前派遣剩余时间减少 50%，每次派遣限用 1 瓶。</p><p class="time-bag-note">'+(s.dispatch?(s.dispatch.timeCutUsed?'本次派遣已经使用过。':'当前有派遣，可使用。'):'目前没有进行中的派遣。')+'</p><div class="item-actions"><button class="secondary" data-use-time-cut '+((s.items.timeCut||0)&&s.dispatch&&!s.dispatch.timeCutUsed&&s.dispatch.end>Date.now()?'':'disabled')+'>剩余时间 -50%</button></div></div>'+
     '<div class="bag-item"><h4>⏱ 时跃药水</h4><p>持有：<span class="count">'+(s.items.timeInstant||0)+'</span></p><p>当前派遣立即完成计时，可以马上领取结果。</p><p class="time-bag-note">不会改变任务已经决定好的成功 / 失败。</p><div class="item-actions"><button class="secondary" data-use-time-instant '+((s.items.timeInstant||0)&&s.dispatch&&s.dispatch.end>Date.now()?'':'disabled')+'>立即完成</button></div></div>';
+  renderOptionPickers();
 }
 function useColorPotion(tint){
   const m=shopMonster();
@@ -4238,66 +4190,15 @@ function parentButtonHTML(m){
     '</strong><small>'+m.gender+' · '+colorName(m)+' · ❤ '+m.life+'/'+m.maxLife+' · 技能 Lv'+skillNum(m)+
     '<br>'+monsterSkillSummary(m)+'</small></span>';
 }
-function sortParentPickerPool(pool,which,other){
-  const mode=parentSort[which]||'recommended',list=[...pool];
-  if(mode==='recommended')return recommendedParentPool(list,other);
-  list.sort((a,b)=>{
-    if(mode==='star-desc')return b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.life-a.life||b.id-a.id;
-    if(mode==='star-asc')return a.star-b.star||Number(a.shiny)-Number(b.shiny)||a.id-b.id;
-    if(mode==='life-desc')return b.life-a.life||b.star-a.star||b.id-a.id;
-    if(mode==='skill-desc')return rosterMaxSkillLv(b)-rosterMaxSkillLv(a)||breedingSkillScore(b).count-breedingSkillScore(a).count||b.star-a.star;
-    if(mode==='breed-desc')return breedingSkillScore(b).score-breedingSkillScore(a).score||b.star-a.star;
-    if(mode==='favorite')return Number(b.favorite)-Number(a.favorite)||b.star-a.star||Number(b.shiny)-Number(a.shiny)||b.id-a.id;
-    if(mode==='joined-desc')return (b.createdAt||0)-(a.createdAt||0)||b.id-a.id;
-    if(mode==='joined-asc')return (a.createdAt||0)-(b.createdAt||0)||a.id-b.id;
-    return 0;
-  });
-  return list;
-}
 function renderParentPicker(which){
-  const currentId=which==='a'?s.parentA:s.parentB,
-    otherId=which==='a'?s.parentB:s.parentA,
-    other=s.monsters.find(m=>m.id===otherId)||null,
-    picker=$('parent-'+which+'-picker');
-  if(!picker)return;
-  const q=parentSearch[which]||'',
-    skill=parentSkillFilter[which]||'',
-    star=parentStarFilter[which]||'',
-    species=parentSpeciesFilter[which]??'',
-    eligible=s.monsters.filter(m=>(!other||m.gender!==other.gender||m.id===currentId)&&monsterMatchesName(m,q)),
-    raw=eligible.filter(m=>monsterHasSkillName(m,skill)&&matchesStarSpecies(m,star,species)),
-    pool=sortParentPickerPool(raw,which,other),
-    mode=parentSort[which]||'recommended';
-
-  picker.innerHTML=
-    '<div class="parent-picker-toolbar">'+
-      '<div class="parent-picker-search-wrap"><input class="parent-picker-search" data-parent-search="'+which+'" type="search" placeholder="名字 / 昵称 / #编号" value="'+escapeActivity(q)+'"></div>'+
-      '<select class="parent-picker-sort" data-parent-sort="'+which+'" aria-label="亲代排序">'+
-        '<option value="recommended" '+(mode==='recommended'?'selected':'')+'>智能推荐 · 最适合配种</option>'+
-        '<option value="breed-desc" '+(mode==='breed-desc'?'selected':'')+'>培育技能 · 高 → 低</option>'+
-        '<option value="star-desc" '+(mode==='star-desc'?'selected':'')+'>星级 · 高 → 低</option>'+
-        '<option value="star-asc" '+(mode==='star-asc'?'selected':'')+'>星级 · 低 → 高</option>'+
-        '<option value="life-desc" '+(mode==='life-desc'?'selected':'')+'>生命 · 高 → 低</option>'+
-        '<option value="skill-desc" '+(mode==='skill-desc'?'selected':'')+'>技能等级 · 高 → 低</option>'+
-        '<option value="favorite" '+(mode==='favorite'?'selected':'')+'>我的最爱优先</option>'+
-        '<option value="joined-desc" '+(mode==='joined-desc'?'selected':'')+'>加入时间 · 新 → 旧</option>'+
-        '<option value="joined-asc" '+(mode==='joined-asc'?'selected':'')+'>加入时间 · 旧 → 新</option>'+
-      '</select>'+
-      '<select class="parent-picker-skill" data-parent-skill="'+which+'" aria-label="按技能筛选">'+skillFilterOptionsHTML(eligible,skill)+'</select>'+
-      '<select class="parent-picker-star" data-parent-star="'+which+'" aria-label="按星级筛选">'+starFilterOptionsHTML(star)+'</select>'+
-      '<select class="parent-picker-species" data-parent-species="'+which+'" aria-label="按种族筛选">'+speciesFilterOptionsHTML(species)+'</select>'+
-    '</div>'+
-    '<div class="parent-picker-grid">'+pool.map((m,index)=>
-      '<button type="button" class="parent-choice '+(m.id===currentId?'selected ':'')+(m.id===otherId?'disabled ':'')+(isDispatched(m.id)?'dispatched ':'')+'" data-parent-choice="'+m.id+'" '+(m.id===otherId?'disabled':'')+'>'+
-        sprite(m.species,m.tint,m.shiny,m.specialColor)+
-        '<span class="parent-choice-info"><strong>'+G.stars(m.star)+' '+name(m)+(m.shiny?' · 闪光':'')+(m.locked?' · 已锁':'')+(isDispatched(m.id)?' · 派遣中':'')+
-          (mode==='recommended'||mode==='breed-desc'?parentRecommendationLabel(m,other,index):'')+
-        '</strong><small>'+m.gender+' · '+colorName(m)+' · ❤ '+m.life+'/'+m.maxLife+' · 技能 Lv'+skillNum(m)+'<br>'+
-        monsterSkillSummary(m)+
-        ((mode==='recommended'||mode==='breed-desc')&&parentMatchNote(m,other)?'<span class="parent-match-note">'+parentMatchNote(m,other)+'</span>':'')+
-        '</small></span></button>'
-    ).join('')+'</div>';
+ const currentId=which==='a'?s.parentA:s.parentB,otherId=which==='a'?s.parentB:s.parentA,other=s.monsters.find(m=>m.id===otherId)||null;
+ const pool=recommendedParentPool(s.monsters.filter(m=>!other||m.gender!==other.gender||m.id===currentId),other);
+ const valid=pool.filter(m=>m.id!==otherId&&!isDispatched(m.id)&&!isInActiveExpedition(m.id)&&m.life>0);
+ const cfg=monsterPickerConfig('选择亲代 '+which.toUpperCase(),pool,{originalLabel:'智能配种推荐',recommended:new Set(valid.slice(0,3).map(m=>m.id)),recommendationNote:'按原有配种匹配算法推荐前 3 位',selected:new Set([currentId]),disabled:m=>m.id===otherId||isDispatched(m.id)||isInActiveExpedition(m.id)||m.life<=0,detail:m=>'<small>'+escapeActivity(parentMatchNote(m,other))+'</small>',close:()=>{closeParentPickers();$('parent-'+which+'-btn').focus()},choose:i=>{chooseParent(which,i.value.id);$('parent-'+which+'-btn').focus()}});
+ cfg.sorts.push({id:'breed',label:'培育技能',compare:(a,b)=>breedingSkillScore(b.value).score-breedingSkillScore(a.value).score});
+ window.QinsterPicker.mount($('parent-'+which+'-picker'),'parent-'+which,cfg);
 }
+
 function closeParentPickers(){
   for(const which of ['a','b']){
     const picker=$('parent-'+which+'-picker');
@@ -4313,7 +4214,7 @@ function toggleParentPicker(which){
   closeParentPickers();
   if(opening){
     renderParentPicker(which);
-    picker.hidden=false;
+    picker.hidden=false;picker.querySelector('[data-qp-search]')?.focus();
     btn.setAttribute('aria-expanded','true');
   }
 }
@@ -4550,87 +4451,9 @@ function monsterSkillSummary(m){
 function rosterMaxSkillLv(m){
   return Math.max(...monsterSkillEntries(m).map(x=>x.lv));
 }
-function populateSkillFilter(){
-  const sel=$('filter-skill');
-  if(!sel)return;
-  const current=sel.value||'';
-  const entries=[];
-  for(let i=0;i<G.SPECIES.length;i++)entries.push({value:'innate:'+i,label:'种族 · '+G.SPECIES[i].skill});
-  for(const sk of EXTRA_SKILLS)entries.push({value:'extra:'+sk.id,label:sk.tone==='buff'?('Buff · '+sk.name+' · '+sk.group):('Debuff · '+sk.name+' · 家族技能')});
-  sel.innerHTML='<option value="">全部技能</option>'+entries.map(x=>'<option value="'+x.value+'">'+x.label+'</option>').join('');
-  if(entries.some(x=>x.value===current))sel.value=current;
-}
-function populateSpeciesFilter(){
-  const sel=$('filter-species');if(!sel)return;
-  const current=sel.value||'';
-  sel.innerHTML='<option value="">全部种族</option>'+G.SPECIES.map((sp,i)=>'<option value="'+i+'">'+escapeActivity(sp.name)+'</option>').join('');
-  if(current!==''&&Number(current)>=0&&Number(current)<G.SPECIES.length)sel.value=current;
-}
-
-function populateFamilyFilter(){
-  const sel=$('filter-family');if(!sel)return;
-  const current=sel.value||'';
-  const names=[...new Set((s.monsters||[])
-    .filter(m=>m&&m.life>0)
-    .map(m=>(m.familyName||'').trim())
-    .filter(Boolean))]
-    .sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
-  const sig=names.join('\u0001');
-  if(sel.dataset.familySignature===sig)return;
-  sel.dataset.familySignature=sig;
-  sel.innerHTML='<option value="">全部家族</option><option value="__none__">无家族</option>'
-    +names.map(n=>'<option value="'+escapeActivity(n)+'">'+escapeActivity(n)+'</option>').join('');
-  if(current==='__none__'||names.includes(current))sel.value=current;
-}
-function hasRosterFamily(m,filter){
-  if(!filter)return true;
-  const f=(m?.familyName||'').trim();
-  if(filter==='__none__')return !f;
-  return f===filter;
-}
-function hasRosterSkill(m,filter){
-  if(!filter)return true;
-  if(filter.startsWith('extra:')){
-    const sid=filter.slice('extra:'.length);
-    return monsterSkillEntries(m).some(x=>x.id===filter||x.id==='family:'+sid);
-  }
-  return monsterSkillEntries(m).some(x=>x.id===filter);
-}
-function getSortedRoster(){
-  let list=[...s.monsters];
-  for(const m of list)ensureMonsterSystemsMonster(m);
-  const filter=$('filter-skill')?.value||'',
-    starFilter=$('filter-star')?.value||'',
-    speciesFilter=$('filter-species')?.value??'',
-    familyFilter=$('filter-family')?.value||'',
-    nameFilter=$('filter-name')?.value||'';
-
-  if(filter)list=list.filter(m=>hasRosterSkill(m,filter));
-  list=list.filter(m=>matchesStarSpecies(m,starFilter,speciesFilter));
-  if(familyFilter)list=list.filter(m=>hasRosterFamily(m,familyFilter));
-  if(nameFilter)list=list.filter(m=>monsterMatchesName(m,nameFilter));
-
-  const mode=$('sort-roster')?.value||'rarity',
-    dir=$('sort-direction')?.value||'desc',
-    sign=dir==='asc'?1:-1;
-  const cmpNum=(a,b)=>sign*(a-b);
-
-  list.sort((a,b)=>{
-    let v=0;
-    if(mode==='joined')v=cmpNum(a.createdAt||0,b.createdAt||0);
-    else if(mode==='age')v=cmpNum(a.life,b.life);
-    else if(mode==='favorite')v=cmpNum(Number(a.favorite),Number(b.favorite))||cmpNum(a.star,b.star)||cmpNum(Number(a.shiny),Number(b.shiny));
-    else if(mode==='skilllv')v=cmpNum(rosterMaxSkillLv(a),rosterMaxSkillLv(b))||cmpNum(a.star,b.star);
-    else v=cmpNum(a.star,b.star)||cmpNum(Number(a.shiny),Number(b.shiny))||cmpNum(Number(a.favorite),Number(b.favorite))||cmpNum(a.createdAt||0,b.createdAt||0);
-    return v||b.id-a.id;
-  });
-  return list;
-}
+function getSortedRoster(){return window.QinsterPicker.query('roster',rosterPickerConfig()).map(i=>i.value)}
 function renderRoster(){
-  populateFamilyFilter();
-  populateSpeciesFilter();
-  const list=getSortedRoster();
-  $('roster').innerHTML=list.map(m=>{
+ const cfg=rosterPickerConfig();cfg.card=i=>{const m=i.value;
     const bulkDisabled=bulkSellMode&&!canBulkSell(m);
     const bulkSelected=bulkSellSelected.has(m.id);
     return '<button class="monster-card '+(m.id===selected?'selected ':'')+(bulkSelected?'bulk-selected ':'')+(bulkDisabled?'bulk-disabled':'')+'" data-id="'+m.id+'" aria-pressed="'+(m.id===selected)+'">'+
@@ -4638,28 +4461,15 @@ function renderRoster(){
       sprite(m.species,m.tint,m.shiny,m.specialColor)+
       '<div><span class="stars">'+G.stars(m.star)+'</span><strong>'+name(m)+(m.shiny?' ✦':'')+traitBadge(m)+'</strong><small>'+(m.nickname?serialName(m)+'<br>':'')+m.gender+' · '+m.life+' / '+m.maxLife+' 生命 · '+colorName(m)+'<br>'+monsterSkillSummary(m)+'</small></div>'+
       ([s.parentA,s.parentB].includes(m.id)?'<span class="tag">亲代</span>':'')+
+      (i.recommended?'<span class="tag favorite">推荐</span>':'')+
       (m.favorite?'<span class="tag favorite">最爱</span>':'')+
       (m.locked?'<span class="tag locked">已锁定</span>':'')+
       (isDispatched(m.id)?'<span class="tag dispatch">派遣中</span>':isEggParent(m.id)?'<span class="tag dispatch">孵化亲代</span>':isInFarm(m.id)?'<span class="tag ready">生产</span>':'<span class="tag">盒中</span>')+
     '</button>';
-  }).join('');
-  const f=$('filter-result');
-  if(f){
-    const parts=[];
-    const skillLabel=$('filter-skill')?.selectedOptions?.[0]?.textContent||'';
-    const starValue=$('filter-star')?.value||'';
-    const speciesValue=$('filter-species')?.value??'';
-    const speciesLabel=$('filter-species')?.selectedOptions?.[0]?.textContent||'';
-    const familyValue=$('filter-family')?.value||'';
-    const familyLabel=$('filter-family')?.selectedOptions?.[0]?.textContent||'';
-    if($('filter-skill')?.value)parts.push('技能：'+skillLabel);
-    if(starValue)parts.push('星级：'+G.stars(Number(starValue)));
-    if(speciesValue!=='')parts.push('种族：'+speciesLabel);
-    if(familyValue)parts.push('家族：'+familyLabel);
-    if(($('filter-name')?.value||'').trim())parts.push('名字：'+$('filter-name').value.trim());
-    f.textContent=(parts.length?parts.join(' · ')+' · ':'')+'显示 '+list.length+' / '+s.monsters.length+' 只怪物';
-  }
-  renderBulkSellControls();
+
+ };cfg.onFilter=renderBulkSellControls;
+ window.QinsterPicker.mount($('roster'),'roster',cfg);
+ renderBulkSellControls();
 }
 function ranchLevelFromXp(xp){xp=Math.max(0,Math.floor(Number(xp)||0));let level=1,spent=0,need=100;while(level<20&&xp>=spent+need){spent+=need;level++;need=Math.round(100*Math.pow(1.22,level-1));}return {level,into:xp-spent,need};}
 function ranchLevel(){return ranchLevelFromXp(s.ranchXp||0).level;}
@@ -4715,7 +4525,7 @@ function runIntegrityAudit(){
   else console.info('[Qinster integrity audit] OK');
   return issues;
 }
-function render(){renderDispatchDock();renderRanchIdentity();bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';document.querySelectorAll('[data-buy-potion="timeCut"],[data-buy-potion="timeInstant"]').forEach(b=>b.disabled=rl.level<3);document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('shiny-potion-price'))$('shiny-potion-price').textContent=fmt(SHOP_PRICES.shiny)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg||!!s.egg2;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
+function render(){renderDispatchDock();renderRanchIdentity();bindBagTargetControls();if(page==='farm')autoManageFarm();normalizeFarmState(s);if(page==='farm'){syncActors();renderFarmItemInfo();renderBuildings();renderTopDispatchStatus();}if(dirty){if(page==='farm'){renderMemorial();renderParents();renderCompanion();renderRoster();renderRosterQuick();}else if(page==='shop'){renderColorPotionShop();renderShopOwnedCounts();}else if(page==='bag'){renderShopTarget();}else if(page==='dex'){renderDex();}else if(page==='dispatch'){renderDispatch();}else if(page==='skills'){renderSkillLibrary();}dirty=false;}$('energy').textContent=fmtEnergy(s.energy);const rl=ranchLevelFromXp(s.ranchXp||0);$('ranch-level').textContent='Lv'+rl.level;$('ranch-xp').textContent=rl.into+' / '+rl.need+' XP';if($('auto-dispatch'))$('auto-dispatch').checked=!!s.autoDispatch;if($('manual-dispatch-repeat'))$('manual-dispatch-repeat').checked=!!s.manualDispatchRepeat;if($('auto-dispatch-reserve-breed'))$('auto-dispatch-reserve-breed').checked=s.autoDispatchReserveBreed!==false;if($('auto-dispatch-mission'))$('auto-dispatch-mission').value=s.autoDispatchMission||'highest';if($('auto-dispatch-power'))$('auto-dispatch-power').value=s.autoDispatchPowerMode||'efficient';document.querySelectorAll('[data-buy-potion="timeCut"],[data-buy-potion="timeInstant"]').forEach(b=>b.disabled=rl.level<3);document.querySelectorAll('.time-shop-card').forEach(c=>c.classList.toggle('locked',rl.level<3));$('income').textContent=(G.income(s)*60).toFixed(1);$('best').textContent=G.stars(Math.max(0,...s.monsters.map(m=>m.star)));$('hatched').innerHTML=s.hatched+' <i>枚</i>';const activeFarmCount=producingMonsters(s).length;$('scene-count').textContent=activeFarmCount+' 位生产伙伴';$('farm-active').textContent=activeFarmCount+' / '+s.farmSlots;$('capacity').textContent=s.monsters.length+' / '+s.capacity;if($('capacity-price'))$('capacity-price').textContent=s.capacity>=500?'已达上限 500':fmt(expandCost())+' 灵能';if($('buy-capacity'))$('buy-capacity').disabled=s.capacity>=500;if($('farm-expand-price'))$('farm-expand-price').textContent=fmt(farmExpandCost())+' 灵能';if($('farm-slot-count'))$('farm-slot-count').textContent=s.farmSlots;if($('auto-fill-farm'))$('auto-fill-farm').checked=s.autoFillFarm!==false;if($('skill-potion-price'))$('skill-potion-price').textContent=fmt(SHOP_PRICES.skill)+' 灵能';if($('shiny-potion-price'))$('shiny-potion-price').textContent=fmt(SHOP_PRICES.shiny)+' 灵能';if($('reroll-potion-price'))$('reroll-potion-price').textContent=fmt(SHOP_PRICES.reroll)+' 灵能';if($('time-cut-price'))$('time-cut-price').textContent=fmt(SHOP_PRICES.timeCut)+' 灵能';if($('time-instant-price'))$('time-instant-price').textContent=fmt(SHOP_PRICES.timeInstant)+' 灵能';if($('guide-price-skill'))$('guide-price-skill').textContent=fmt(SHOP_PRICES.skill);if($('guide-price-reroll'))$('guide-price-reroll').textContent=fmt(SHOP_PRICES.reroll);if($('guide-price-timecut'))$('guide-price-timecut').textContent=fmt(SHOP_PRICES.timeCut);if($('guide-price-timeinstant'))$('guide-price-timeinstant').textContent=fmt(SHOP_PRICES.timeInstant);if(page==='dispatch')renderDispatch();$('adopt').hidden=s.monsters.length>=2||!!s.egg||!!s.egg2;$('auto-breed').checked=s.autoBreed;if($('auto-breed-priority'))$('auto-breed-priority').value=s.autoBreedPriority||'star';if($('manual-breed-repeat'))$('manual-breed-repeat').checked=!!s.manualBreedRepeat;renderOptionPickers();$('auto-hatch').checked=s.autoHatch;const abs=autoBreedStatus();$('auto-breed-status').textContent=abs.text;$('auto-breed-status').className='auto-breed-status '+abs.cls;const why=G.blocked(s,Date.now());$('breed').disabled=!!why;$('breed').textContent=why?'暂时不能生蛋':'开始生蛋 · '+G.breedCost(s)+' 灵能';if(!s.egg){if(why)setBreedActionStatus('当前状态：'+why,'wait');else setBreedActionStatus('亲代已准备好，可以开始生蛋。','ok');}$('motion').textContent=s.paused?'恢复走动':'暂停走动';$('motion').setAttribute('aria-pressed',String(s.paused));document.body.classList.toggle('still',s.paused);
 const totalEggs=totalQueuedEggs(s),totalMax=eggTotalMax(s);
 function renderIncubatorSlot(slot){
   const egg=slot===2?s.egg2:s.egg;
@@ -4963,9 +4773,7 @@ $('parent-a').onchange=e=>{chooseParent('a',Number(e.target.value)||null);};
 $('parent-b').onchange=e=>{chooseParent('b',Number(e.target.value)||null);};
 $('parent-a-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('a');};
 $('parent-b-btn').onclick=e=>{e.stopPropagation();toggleParentPicker('b');};
-$('parent-a-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(isInActiveExpedition(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在远征中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('a',id);};
-$('parent-b-picker').onclick=e=>{const b=e.target.closest('[data-parent-choice]');if(!b)return;const id=Number(b.dataset.parentChoice);if(isDispatched(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在派遣中，暂时不能设为亲代。');return;}if(isInActiveExpedition(id)){tell(name(s.monsters.find(m=>m.id===id))+' 正在远征中，暂时不能设为亲代。');return;}if(b.disabled)return;chooseParent('b',id);};
-document.addEventListener('input',e=>{const q=e.target.closest?.('[data-parent-search]');if(!q)return;const which=q.dataset.parentSearch;parentSearch[which]=q.value;renderParentPicker(which);const next=$('parent-'+which+'-picker').querySelector('[data-parent-search]');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});document.addEventListener('change',e=>{const sel=e.target.closest?.('[data-parent-sort]'),skillSel=e.target.closest?.('[data-parent-skill]'),starSel=e.target.closest?.('[data-parent-star]'),speciesSel=e.target.closest?.('[data-parent-species]');if(sel){const which=sel.dataset.parentSort;parentSort[which]=sel.value;renderParentPicker(which);return;}if(skillSel){const which=skillSel.dataset.parentSkill;parentSkillFilter[which]=skillSel.value;renderParentPicker(which);return;}if(starSel){const which=starSel.dataset.parentStar;parentStarFilter[which]=starSel.value;renderParentPicker(which);return;}if(speciesSel){const which=speciesSel.dataset.parentSpecies;parentSpeciesFilter[which]=speciesSel.value;renderParentPicker(which);}});document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
+document.addEventListener('click',e=>{if(!e.target.closest('.parent-picker')&&!e.target.closest('.parent-select-btn'))closeParentPickers();});
 $('breed').onclick=()=>{manualBreedAttempt();};
 $('auto-breed').onchange=e=>{settle();s.autoBreed=e.target.checked;if(s.autoBreed){s.manualBreedRepeat=false;s.manualBreedPairIds=[];runOnlineAutomation(true);}tell(s.autoBreed?'智能生蛋连发已开启：每轮都会重新选择双亲。':'智能生蛋连发已关闭。');dirty=true;render();save();};$('auto-breed-priority').onchange=e=>{s.autoBreedPriority=e.target.value==='skill'?'skill':'star';s.revision++;dirty=true;save();render();if(s.autoBreed)runOnlineAutomation(true);tell('智能生蛋已切换为「'+(s.autoBreedPriority==='star'?'高星优先':'配种技能优先')+'」。');};
 $('manual-breed-repeat').onchange=e=>{
@@ -5005,7 +4813,7 @@ $('cancel-bulk-sale').onclick=()=>{$('bulk-sale-dialog').close();pendingBulkSale
 $('confirm-bulk-sale').onclick=finalizeBulkSell;
 $('bulk-select-cancel').onclick=cancelBulkSell;
 $('bulk-sell-confirm').onclick=performBulkSell;
-$('sort-roster').onchange=()=>renderRoster();$('sort-direction').onchange=()=>renderRoster();$('filter-skill').onchange=()=>renderRoster();$('filter-star').onchange=()=>renderRoster();$('filter-species').onchange=()=>renderRoster();$('filter-family').onchange=()=>renderRoster();$('filter-name').oninput=()=>renderRoster();function setPage(next){
+function setPage(next){
   page=next;
   const farmOnly=document.querySelectorAll('.topline,.workspace,.collection,.activity-log-panel,.bottom,footer');
   farmOnly.forEach(el=>{
@@ -5043,7 +4851,7 @@ $('sort-roster').onchange=()=>renderRoster();$('sort-direction').onchange=()=>re
 }
 $('dispatch-btn').onclick=()=>{setPage('dispatch');};if($('expedition-btn'))$('expedition-btn').onclick=()=>{setPage('expedition');};$('shop-btn').onclick=()=>{setPage('shop');};$('bag-btn').onclick=()=>{setPage('bag');};
 $('dex-btn').onclick=()=>{setPage('dex');};
-$('skill-btn').onclick=()=>{setPage('skills');};document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};
+$('skill-btn').onclick=()=>{setPage('skills');};
 $('back-farm').onclick=()=>{setPage('farm');};$('back-from-bag').onclick=()=>{setPage('farm');};$('back-from-dispatch').onclick=()=>{setPage('farm');};if($('back-from-expedition'))$('back-from-expedition').onclick=()=>{setPage('farm');};
 $('back-from-dex').onclick=()=>{setPage('farm');};
 $('back-from-skills').onclick=()=>{setPage('farm');};
@@ -5106,7 +4914,7 @@ $('shop-page').addEventListener('click',e=>{
   const qty=Math.max(1,Math.floor(Number(b.dataset.buyQty)||1));
   buyPotionBulk(kind,cfg.label,cfg.price,qty,cfg.minLevel);
 });
-document.querySelector('.skill-library-tabs').onclick=e=>{const b=e.target.closest('[data-skill-filter]');if(!b)return;skillLibraryFilter=b.dataset.skillFilter;renderSkillLibrary(skillLibraryFilter);};$('dispatch-target').onchange=e=>{const id=Number(e.target.value)||null;if(id)chooseDispatchTarget(id);};$('dispatch-target-btn').onclick=e=>{e.stopPropagation();toggleDispatchPicker();};$('dispatch-sort').onchange=()=>renderDispatch();$('dispatch-search').oninput=()=>renderDispatch();$('dispatch-target-picker').onclick=e=>{const b=e.target.closest('[data-dispatch-target]');if(!b)return;e.stopPropagation();chooseDispatchTarget(Number(b.dataset.dispatchTarget));renderDispatchTargetPicker();const btn=$('dispatch-target-btn');if(btn)btn.innerHTML=dispatchTeamButtonHTML(dispatchTeam());};$('dispatch-target-picker').onchange=e=>{const sk=e.target.closest('[data-dispatch-skill-filter]'),st=e.target.closest('[data-dispatch-star-filter]'),sp=e.target.closest('[data-dispatch-species-filter]'),fa=e.target.closest('[data-dispatch-family-filter]');if(sk)dispatchSkillFilter=sk.value;if(st)dispatchStarFilter=st.value;if(sp)dispatchSpeciesFilter=sp.value;if(fa)dispatchFamilyFilter=fa.value;if(sk||st||sp||fa)renderDispatchTargetPicker();};document.addEventListener('click',e=>{if(!e.target.closest('.dispatch-target-tools'))closeDispatchPicker();});$('dispatch-missions').onclick=e=>{const auto=e.target.closest('[data-dispatch-auto]');if(auto){autoSelectDispatchTeam(Number(auto.dataset.dispatchAuto));return;}const b=e.target.closest('[data-dispatch-start]');if(!b)return;startDispatch(Number(b.dataset.dispatchStart));};$('dispatch-active').onclick=e=>{if(e.target.closest('[data-dispatch-claim]'))claimDispatch();};$('dispatch-top-status').onclick=e=>{if(e.target.closest('[data-top-dispatch-claim]')){claimDispatch();return;}if(e.target.closest('[data-open-dispatch]'))setPage('dispatch');};$('auto-dispatch').onchange=e=>{s.autoDispatch=e.target.checked;if(s.autoDispatch){s.manualDispatchRepeat=false;s.manualDispatchTeamIds=[];s.manualDispatchMission=null;runOnlineAutomation(true);}s.revision++;dirty=true;render();save();tell(s.autoDispatch?'智能派遣连发已开启：每轮重新选择队伍。':'智能派遣连发已关闭。');};
+$('dispatch-target').onchange=e=>{const id=Number(e.target.value)||null;if(id)chooseDispatchTarget(id);};$('dispatch-target-btn').onclick=e=>{e.stopPropagation();toggleDispatchPicker();};document.addEventListener('click',e=>{if(!e.target.closest('.dispatch-target-tools'))closeDispatchPicker();});$('dispatch-missions').onclick=e=>{const auto=e.target.closest('[data-dispatch-auto]');if(auto){autoSelectDispatchTeam(Number(auto.dataset.dispatchAuto));return;}const b=e.target.closest('[data-dispatch-start]');if(!b)return;startDispatch(Number(b.dataset.dispatchStart));};$('dispatch-active').onclick=e=>{if(e.target.closest('[data-dispatch-claim]'))claimDispatch();};$('dispatch-top-status').onclick=e=>{if(e.target.closest('[data-top-dispatch-claim]')){claimDispatch();return;}if(e.target.closest('[data-open-dispatch]'))setPage('dispatch');};$('auto-dispatch').onchange=e=>{s.autoDispatch=e.target.checked;if(s.autoDispatch){s.manualDispatchRepeat=false;s.manualDispatchTeamIds=[];s.manualDispatchMission=null;runOnlineAutomation(true);}s.revision++;dirty=true;render();save();tell(s.autoDispatch?'智能派遣连发已开启：每轮重新选择队伍。':'智能派遣连发已关闭。');};
 $('lock-manual-dispatch-team').onclick=()=>{
   const team=dispatchTeam();
   if(team.length<2||team.length>3){tell('请先手动选择 2–3 位队员。');return;}
@@ -5189,7 +4997,7 @@ function initV191Tutorial(){renderRanchIdentity();ensureTutorialUI();if(!s.tutor
 
 safeFamilyRegistry(s);window.__bootMark&&__bootMark('09 家族完成');
 ensureSkillDex(s);window.__bootMark&&__bootMark('10 技能图鉴完成');
-populateSkillFilter();populateFamilyFilter();window.__bootMark&&__bootMark('11 筛选完成');
+window.__bootMark&&__bootMark('11 筛选完成');
 bindSkillTooltip();setPage('farm');window.__bootMark&&__bootMark('12 页面切换完成');
 render();initV191Tutorial();window.__bootMark&&__bootMark('13 首次渲染完成');
 runOnlineAutomation(true);window.__bootMark&&__bootMark('14 自动系统完成');
@@ -5206,11 +5014,11 @@ setInterval(()=>{
   }
 },1000);
 setInterval(()=>{if(!document.hidden)save(false);},15000);
-window.QinsterRuntime={getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
+window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v258';
+window.__qinsterVersion='v259';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v258 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v259 · engine '+__n;},1000);

@@ -62,6 +62,7 @@ function addStyle(){
   document.head.appendChild(style);
 }
 function initRosterCollapse(){
+  if(window.QinsterPicker)return;
   const panel=document.querySelector('.sort-bar.sort-bar-advanced');
   if(!panel||document.getElementById('roster-filter-toggle'))return;
   panel.classList.add('roster-filter-panel-v193','is-collapsed');
