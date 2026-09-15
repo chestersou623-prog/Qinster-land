@@ -1,0 +1,35 @@
+name: Qinster v234 training final value
+on:
+  push:
+    paths:
+      - 'scripts/patch-v234-training-final-value.py'
+      - '.github/workflows/v234-training-final-value.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply v234 patch
+        run: python scripts/patch-v234-training-final-value.py
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check game.js
+          node --check v201-battle-theater.js
+          npm test
+      - name: Commit patch
+        run: |
+          git config user.name 'Qinster Patch Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add v199-roguelike-expedition.js game.js index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'Show post-training stat values and bump v234'
+            git push
+          fi
