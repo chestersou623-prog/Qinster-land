@@ -665,10 +665,28 @@ function continueChallenge(run){const r=run.challengeResult;if(!r)return;const a
 function relicCounts(run){
   const m={};for(const id of run.relics||[])m[id]=(m[id]||0)+1;return m;
 }
+const RELIC_ICON_FALLBACKS={
+  relicWarBanner:'hunterHorn',
+  buffResonator:'sacredPage',
+  digitChaosCube:'boneDice',
+  formationCompass:'treasureCompass',
+  dodgeCounterBlade:'blade',
+  phoenixCore:'heart',
+  absoluteGuard:'guard',
+  energyShield100:'shell',
+  energyShield250:'ironPendant',
+  vulnerabilityMark:'fang',
+  armorBreakSeal:'thornBrace',
+  openingSunder:'blade',
+  stackingWound:'thornBrace',
+  bossBreaker:'hunterHorn'
+};
+function relicIconAssetId(id){return RELIC_ICON_FALLBACKS[id]||id}
 function relicIconHTML(id,count=1,small=false){
   const r=RELICS.find(x=>x.id===id);
   if(!r)return '';
-  return `<span class="rg-relic-chip ${small?'small':''}" tabindex="0" role="button" aria-label="${r.name}${count>1?' x'+count:''}：${r.text}" aria-expanded="false"><img class="rg-relic-icon" src="assets/relics/${r.id}.png?v=230" alt="${r.name}" width="64" height="64">${count>1?`<b class="rg-relic-count">x${count}</b>`:''}<em><strong>${r.name}${count>1?' x'+count:''}</strong><span>${r.text}</span>${count>1?`<small>当前持有 ${count} 个；可叠加的数值效果已经按数量累计。</small>`:''}</em></span>`;
+  const assetId=relicIconAssetId(r.id);
+  return `<span class="rg-relic-chip ${small?'small':''}" tabindex="0" role="button" aria-label="${r.name}${count>1?' x'+count:''}：${r.text}" aria-expanded="false"><img class="rg-relic-icon" src="assets/relics/${assetId}.png?v=263" alt="${r.name}" width="64" height="64" onerror="this.onerror=null;this.src='assets/relics/fateWeight.png?v=263'">${count>1?`<b class="rg-relic-count">x${count}</b>`:''}<em><strong>${r.name}${count>1?' x'+count:''}</strong><span>${r.text}</span>${count>1?`<small>当前持有 ${count} 个；可叠加的数值效果已经按数量累计。</small>`:''}</em></span>`;
 }
 function relicTrayHTML(run){
   const c=relicCounts(run),ids=Object.keys(c);return ids.length?`<div class="rg-relic-tray">${ids.map(id=>relicIconHTML(id,c[id],true)).join('')}</div>`:'<p class="rg-note">暂时没有遗物</p>';
@@ -698,6 +716,6 @@ for(const event of ['pointerover','focusin'])document.addEventListener(event,ev=
 function closeRelicDetails(){document.querySelectorAll('.rg-relic-chip.open').forEach(x=>{x.classList.remove('open');x.setAttribute('aria-expanded','false')});}
 document.addEventListener('click',ev=>{if(!ev.target.closest?.('.rg-relic-chip'))closeRelicDetails();});
 window.QinsterRelics={all:RELICS,iconHTML:relicIconHTML,trayHTML:relicTrayHTML};
-window.QinsterExpedition={render,zones:ZONES,version:'v259'};
+window.QinsterExpedition={render,zones:ZONES,version:'v263'};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(render,0));else setTimeout(render,0);
 })();
