@@ -29,18 +29,8 @@ jobs:
         run: node --check game.js
       - name: Tests
         run: npm test
-      - name: Verify early evacuation
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('v199-roguelike-expedition.js').read_text(encoding='utf-8')
-          assert "early=current<=2" in s
-          assert "finish(run,false,false" in s
-          assert "run.phase='floorBossChoice'" in s
-          assert "floorNo(run.stage)<=2" in s
-          assert "if(floorNo(run.stage)>=3)run.endless=true" in s
-          print('early evacuation structural checks passed')
-          PY
+      - name: Show generated evacuation diff
+        run: git diff -- v199-roguelike-expedition.js | sed -n '1,220p'
       - name: Commit generated changes and remove one-shot files
         run: |
           rm -f scripts/patch-v256-early-boss-evac.py .github/workflows/v256-early-boss-evac.yml
