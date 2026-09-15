@@ -536,8 +536,41 @@ function applyRouteDebuffs(run){
 }
 function advance(run){applyRouteDebuffs(run);run.stage++;run.challenge=null;run.options=makeOptions(run.stage);run.phase='map';if(run.supply<=0){run.log.push('补给耗尽：之后的挑战失败会更危险。')}save()}
 function chooseNode(i){const e=ensure(),run=e?.rogueActive,node=run?.options?.[i];if(!run||!node)return;if(node.type==='rest')return applyRest(run);if(node.type==='treasure')return treasure(run);if(node.type==='training')return openTraining(run);if(node.type==='challenge')return challenge(run);if(node.type==='temple')return temple(run);if(node.type==='battle'||node.type==='elite'||node.type==='boss')return prepareBattle(run,node.type)}
-function applyExpeditionLifeCost(run,cleared){const s=S();if(!s)return[];const byId=new Map((s.monsters||[]).map(m=>[m.id,m])),notes=[];if(cleared){for(const id of run.teamIds||[]){const m=byId.get(id);if(!m||Number(m.life)<=0)continue;m.life=Math.max(0,(Number(m.life)||0)-1);run.lifeLoss=run.lifeLoss||{};run.lifeLoss[id]=(run.lifeLoss[id]||0)+1;notes.push(`${monsterName(m)} 完成远征 -1生命（剩 ${m.life}）${m.life<=0?'，怪物死亡':''}`)}}for(const id of run.teamIds||[]){const m=byId.get(id);const lost=Number(run.lifeLoss?.[id])||0;if(lost>0&&!notes.some(x=>m&&x.startsWith(monsterName(m))))notes.push(`${m?monsterName(m):'怪物'} 本次远征累计 -${lost}生命`)}return notes}
-function finish(run,cleared=false,defeated=false,choice=''){const s=S(),e=ensure();if(!s||!e)return;const zone=z(run.zone),fraction=cleared?1:.25,payout=Math.round(run.energy*fraction),badge=cleared?zone.badge+run.tempBadges:Math.floor(run.tempBadges*fraction);s.energy=(Number(s.energy)||0)+payout;e.badges+=badge;for(const k of Object.keys(run.materials))e.loot[k]=(e.loot[k]||0)+Math.floor((run.materials[k]||0)*fraction);if(cleared){const current=Math.max(0,Number(run.difficulty)||0),unlocked=Math.max(0,Number(e.difficultyUnlocked?.[zone.id])||0);if(current>=unlocked&&current<10)e.difficultyUnlocked[zone.id]=current+1}const lifeNotes=applyExpeditionLifeCost(run,cleared),score=Math.round(Number(run.score)||0),floor=floorLabel(run.stage);e.leaderboard=e.leaderboard||[];e.leaderboard.push({zone:zone.name,difficulty:run.difficulty||0,score,floor,stage:run.stage||0,cleared:!!cleared,time:Date.now()});e.leaderboard.sort((a,b)=>(b.score||0)-(a.score||0)||(b.stage||0)-(a.stage||0));e.leaderboard=e.leaderboard.slice(0,20);e.rogueLast={zone:zone.name,difficulty:run.difficulty||0,cleared,defeated,payout,badge,score,floor,relics:run.relics?.length||0,time:Date.now(),choice,lifeNotes};e.rogueActive=null;const lifeText=lifeNotes.length?' · '+lifeNotes.join('；'):'';const unlockText=cleared&&(run.difficulty||0)<10?` · 已解锁难度 ${(run.difficulty||0)+1}`:'';save((cleared?`远征通关！带回 ${payout} 灵能、徽章 ×${badge}。`:`远征结束，带回 ${payout} 灵能。`)+unlockText+lifeText)}
+function applyExpeditionLifeCost(run,cleared,defeated=false){
+  const s=S();if(!s)return[];
+  const byId=new Map((s.monsters||[]).map(m=>[m.id,m])),notes=[],deadIds=[];
+  if(cleared){
+    for(const id of run.teamIds||[]){
+      const m=byId.get(id);if(!m||Number(m.life)<=0)continue;
+      m.life=Math.max(0,(Number(m.life)||0)-1);
+      run.lifeLoss=run.lifeLoss||{};run.lifeLoss[id]=(run.lifeLoss[id]||0)+1;
+      if(m.life<=0){deadIds.push(id);notes.push(`${monsterName(m)} 完成远征后生命归0，怪物死亡，已从Box移除`)}
+      else notes.push(`${monsterName(m)} 完成远征 -1生命（剩 ${m.life}）`);
+    }
+  }
+  for(const id of run.teamIds||[]){
+    const m=byId.get(id);if(!m)continue;
+    const alreadyDead=!!run.permaDead?.[id]||Number(m.life)<=0;
+    const failedKnockout=!!defeated&&hpPct(run,id)<=0;
+    if((alreadyDead||failedKnockout)&&!deadIds.includes(id)){
+      m.life=0;deadIds.push(id);
+      notes.push(`${monsterName(m)} ${failedKnockout?'远征失败阵亡':'生命归0死亡'}，已从Box移除`);
+    }
+  }
+  if(deadIds.length){
+    const dead=new Set(deadIds.map(Number));
+    s.monsters=(s.monsters||[]).filter(m=>!dead.has(Number(m.id)));
+    if(Array.isArray(s.expedition?.lastTeamIds))s.expedition.lastTeamIds=s.expedition.lastTeamIds.filter(id=>!dead.has(Number(id)));
+    selected=selected.filter(id=>!dead.has(Number(id)));
+  }
+  for(const id of run.teamIds||[]){
+    if(deadIds.includes(id))continue;
+    const m=byId.get(id),lost=Number(run.lifeLoss?.[id])||0;
+    if(lost>0&&!notes.some(x=>m&&x.startsWith(monsterName(m))))notes.push(`${m?monsterName(m):'怪物'} 本次远征累计 -${lost}生命`);
+  }
+  return notes;
+}
+function finish(run,cleared=false,defeated=false,choice=''){const s=S(),e=ensure();if(!s||!e)return;const zone=z(run.zone),fraction=cleared?1:.25,payout=Math.round(run.energy*fraction),badge=cleared?zone.badge+run.tempBadges:Math.floor(run.tempBadges*fraction);s.energy=(Number(s.energy)||0)+payout;e.badges+=badge;for(const k of Object.keys(run.materials))e.loot[k]=(e.loot[k]||0)+Math.floor((run.materials[k]||0)*fraction);if(cleared){const current=Math.max(0,Number(run.difficulty)||0),unlocked=Math.max(0,Number(e.difficultyUnlocked?.[zone.id])||0);if(current>=unlocked&&current<10)e.difficultyUnlocked[zone.id]=current+1}const lifeNotes=applyExpeditionLifeCost(run,cleared,defeated),score=Math.round(Number(run.score)||0),floor=floorLabel(run.stage);e.leaderboard=e.leaderboard||[];e.leaderboard.push({zone:zone.name,difficulty:run.difficulty||0,score,floor,stage:run.stage||0,cleared:!!cleared,time:Date.now()});e.leaderboard.sort((a,b)=>(b.score||0)-(a.score||0)||(b.stage||0)-(a.stage||0));e.leaderboard=e.leaderboard.slice(0,20);e.rogueLast={zone:zone.name,difficulty:run.difficulty||0,cleared,defeated,payout,badge,score,floor,relics:run.relics?.length||0,time:Date.now(),choice,lifeNotes};e.rogueActive=null;const lifeText=lifeNotes.length?' · '+lifeNotes.join('；'):'';const unlockText=cleared&&(run.difficulty||0)<10?` · 已解锁难度 ${(run.difficulty||0)+1}`:'';save((cleared?`远征通关！带回 ${payout} 灵能、徽章 ×${badge}。`:`远征结束，带回 ${payout} 灵能。`)+unlockText+lifeText)}
 function abandon(){const e=ensure(),run=e?.rogueActive;if(!run)return;if(confirm('中途退出会视为远征失败，只能带回 25% 当前奖励。确定退出？'))finish(run,false,true,'中途退出')}
 
 function trainingHTML(run){
