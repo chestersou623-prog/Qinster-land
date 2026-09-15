@@ -1,0 +1,59 @@
+name: Qinster v261 revive charges retry
+on:
+  push:
+    paths:
+      - '.github/workflows/v261-revive-charges-retry.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply v261 patch
+        run: python scripts/patch-v261-revive-charges.py
+      - name: Sync package version
+        run: npm version 261.0.0 --no-git-tag-version
+      - name: Sync fixture cache reference
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/check-game.mjs')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('game.js?v=260','game.js?v=261')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Syntax checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          node --check game.js
+      - name: Tests
+        run: npm test
+      - name: Verify v261 mechanics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          s=Path('v199-roguelike-expedition.js').read_text(encoding='utf-8')
+          x=Path('index.html').read_text(encoding='utf-8')
+          assert "mods:{autoReviveCharges:1}" in s
+          assert "run.autoReviveUsed=reviveUsed+1" in s
+          assert "run.hp[target.id]=50" in s
+          assert "每持有1件增加1次复苏次数" in s
+          assert "每只怪物每场第一次 HP 归 0" not in s
+          assert 'v=261' in x
+          assert json.loads(Path('package.json').read_text())['version']=='261.0.0'
+          print('v261 mechanics verified')
+          PY
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          rm -f scripts/patch-v261-revive-charges.py .github/workflows/v261-revive-charges.yml .github/workflows/v261-revive-charges-retry.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Limit revival relic to expedition charges v261'
+          git push
