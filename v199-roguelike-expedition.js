@@ -192,7 +192,25 @@ function grantRunItem(run,id){ensureRunMeta(run);run.items[id]=(run.items[id]||0
 function inflictCurse(run,id,logs=[]){ensureRunMeta(run);if(run.curses.includes(id))return null;run.curses.push(id);const c=CURSES.find(x=>x.id===id);if(c)logs.push(`遭受 Debuff：${c.name}（${c.text}）。`);return c}
 function useRunItem(id){const run=ensure()?.rogueActive;if(!run)return;ensureRunMeta(run);if((run.items[id]||0)<=0)return R()?.tell?.('这个道具已经没有了。');if(run.phase==='battleResult')return R()?.tell?.('战斗结算中不能使用道具。');const it=RUN_ITEMS.find(x=>x.id===id);if(!it)return;let used=false;if(it.heal){for(const mid of run.teamIds){if(hpPct(run,mid)>0&&canReviveInRun(run,mid))run.hp[mid]=Math.min(100,hpPct(run,mid)+it.heal*100)}run.log.push(`使用 ${it.name}：仍站立队员恢复 ${Math.round(it.heal*100)}% HP（倒下队员不会复活）。`);used=true}if(it.supply){run.supply=Math.min(9,run.supply+it.supply);run.log.push(`补给 +${it.supply}。`);used=true}if(it.kind==='cleanse'){const count=Math.min(run.curses.length,Number(it.cleanse)||1);if(count<=0)return R()?.tell?.('当前没有 Debuff。');const gone=run.curses.splice(0,count).map(cid=>CURSES.find(x=>x.id===cid)?.name||cid);run.log.push(`使用 ${it.name}：移除 ${gone.join('、')}。`);used=true}if(it.mods){for(const [k,v] of Object.entries(it.mods))run.nextBattleMods[k]=(run.nextBattleMods[k]||0)+v;run.log.push(`使用 ${it.name}：下一场战斗增益已准备。`);used=true}if(!used)return;run.items[id]--;save()}
 function runInventoryHTML(run){ensureRunMeta(run);const items=RUN_ITEMS.filter(x=>(run.items[x.id]||0)>0);const curses=(run.curses||[]).map(id=>CURSES.find(x=>x.id===id)).filter(Boolean);const buffs=Object.entries(run.nextBattleMods||{}).filter(([,v])=>v).map(([k,v])=>`${({atk:'攻击',def:'防御',spd:'速度',luck:'幸运'})[k]||k} ${v>0?'+':''}${Math.round(v*100)}%`);return `<section class="rg-panel"><div class="rg-title"><div><b>本局道具 / 状态</b><small>消耗品只在本次远征使用；战斗增益在下一场战斗后消失</small></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${items.length?items.map(it=>`<button class="secondary" data-rg-item="${it.id}"><b>${it.name} ×${run.items[it.id]}</b><small>${it.text}</small></button>`).join(''):'<span class="rg-note">暂无可用道具</span>'}</div>${buffs.length?`<p class="rg-note"><b>下一战增益：</b>${buffs.join(' · ')}</p>`:''}${curses.length?`<p class="rg-danger"><b>Debuff：</b>${curses.map(c=>`${c.name}（${c.text}）`).join(' · ')}</p>`:'<p class="rg-note">Debuff：无</p>'}</section>`}
-function makeOptions(stage){if([8,17,26].includes(stage))return[{type:'boss'}];const local=stage%9,base=local===2||local===5?['elite','battle','rest','temple']:['battle','challenge','treasure','rest','temple'];let n=local>=5?3:2;let out=shuffle(base).slice(0,n);if(local===6&&!out.includes('elite'))out[0]='elite';return out.map(type=>({type,id:Math.random().toString(36).slice(2,8)}))}
+function weightedUtilityNode(exclude=[]){
+  const pool=[
+    ['challenge',24],['treasure',20],['elite',18],['rest',7],['temple',5]
+  ].filter(([type])=>!exclude.includes(type));
+  const total=pool.reduce((a,[,w])=>a+w,0),roll=Math.random()*total;
+  let acc=0;for(const [type,w] of pool){acc+=w;if(roll<=acc)return type}return pool[0]?.[0]||'challenge';
+}
+function makeOptions(stage){
+  if([8,17,26].includes(stage))return[{type:'boss'}];
+  const local=stage%9,n=local>=5?3:2;
+  const out=['battle'];
+  // Late in each chapter, make elite combat a common additional route.
+  if(local>=6&&n>=3)out.push('elite');
+  while(out.length<n){
+    const t=weightedUtilityNode(out);
+    if(t&&!out.includes(t))out.push(t);
+  }
+  return shuffle(out).map(type=>({type,id:Math.random().toString(36).slice(2,8)}));
+}
 function injectStyle(){if(document.getElementById('qinster-v199-style'))return;const x=document.createElement('style');x.id='qinster-v199-style';x.textContent=`#expedition-page{max-width:1220px;margin:0 auto}.rogue{display:grid;gap:10px}.rg-panel{background:#c9c8cd;border:3px solid #57535e;box-shadow:inset 0 0 0 2px #aaa7af;padding:11px}.rg-title{display:flex;justify-content:space-between;align-items:center;gap:9px}.rg-title small{display:block;font-size:9px;margin-top:3px;color:#625e68}.rg-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.rg-tabs button{text-align:left;min-height:58px}.rg-tabs .on{background:#df3d36;color:#fff}.rg-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.rg-select select{width:100%}.rg-card{background:#dedde0;border:2px solid #85818b;padding:9px}.rg-card b,.rg-card small{display:block}.rg-card small{font-size:9px;margin-top:4px}.rg-route{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;align-items:center}.rg-route span{height:28px;display:grid;place-items:center;background:#aaa8ae;border:2px solid #77727f;font-size:9px}.rg-route .done{background:#91b487}.rg-route .now{background:#f2c451}.rg-status{display:flex;gap:7px;flex-wrap:wrap}.rg-status span{background:#302d36;color:#fff1b5;border:2px solid #716d77;padding:6px 8px;font-size:9px}.rg-nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.rg-node{min-height:116px;text-align:left;padding:12px;border:3px solid #6b6671;background:#d9d8dc}.rg-node strong{font-size:22px;display:block}.rg-node b{display:block;margin:5px 0}.rg-node small{font-size:9px}.rg-team{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.rg-mon{background:#d9d8dc;border:2px solid #85818b;padding:8px;text-align:center}.rg-mon .sprite{width:58px!important;margin:auto}.rg-hp{height:10px;background:#77727f;border:1px solid #514d57;margin-top:5px}.rg-hp i{display:block;height:100%;background:#6da65d}.rg-formation{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rg-pos{padding:5px;text-align:center;font-size:9px;background:#eee;border:1px solid #8a8690}.rg-battle{display:grid;grid-template-columns:1fr 110px 1fr;gap:12px;align-items:center}.rg-vs{text-align:center;font-size:28px;font-weight:900}.rg-enemy{text-align:center;background:#3b3743;color:#fff;padding:12px;border:3px solid #1e1c23}.rg-log{max-height:150px;overflow:auto;background:#302d36;color:#eee;padding:8px;font-size:9px;line-height:1.6}.rg-relics,.rg-final{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.rg-relic{min-height:94px;text-align:left}.rg-relic b{display:block;color:#8d2d28;margin-bottom:4px}.rg-event-picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.rg-mainbtn{width:100%;padding:12px}.rg-materials{font-size:9px}.rg-note{font-size:10px;line-height:1.6;color:#4f4b55}.rg-danger{color:#9a2b25;font-weight:900}@media(max-width:760px){.rg-tabs,.rg-grid3,.rg-nodes,.rg-team,.rg-relics,.rg-final,.rg-event-picks{grid-template-columns:1fr}.rg-battle{grid-template-columns:1fr}.rg-vs{font-size:16px}.rg-route{grid-template-columns:repeat(9,28px);overflow-x:auto}.rg-title{display:grid}}`;document.head.appendChild(x)}
 function hpPct(run,id){return Math.max(0,Math.min(100,Number(run.hp?.[id])||0))}
 function monCard(m,run,i){const hp=hpPct(run,m.id),pos=['前卫','中卫','后卫'][i],bs=battleSkillFor(m);return `<div class="rg-mon">${R()?.sprite?.(m.species,m.tint,m.shiny,m.specialColor)||''}<b>${monsterName(m)} ${stars(m)}${m.shiny?' ✦':''}</b><small>${pos} · ${STAT.map((x,j)=>x+st(m)[j]).join(' · ')}</small><small style="color:#6d2a73">战斗技能：${bs.name} · ${bs.text}</small><div class="rg-hp"><i style="width:${hp}%"></i></div><small>远征生命 ${Math.round(hp)}% · 牧场生命 ${Math.max(0,Number(m.life)||0)}${run.knockouts?.[m.id]?' · 本局倒下 '+run.knockouts[m.id]+'次':''}${run.permaDead?.[m.id]?' · 已死亡':''}</small></div>`}
@@ -214,31 +232,42 @@ function challenge(run){const c=rand(CHALLENGES);run.challenge={...c};run.phase=
 function resolveChallenge(run,memberIndex){const t=activeTeam(run),m=t[memberIndex],c=run.challenge;if(!m||!c)return;const zone=z(run.zone),mods=relicMods(run),v=st(m)[c.stat],bonus=c.stat===4?(mods.luck||0)*v:c.stat===3?(mods.spd||0)*v:c.stat===2?(mods.def||0)*v:c.stat===1?(mods.atk||0)*v:0,target=70+zone.tier*58+run.stage*12,p=Math.max(.18,Math.min(.92,.52+(v+bonus-target)/Math.max(100,target)*.62));const success=Math.random()<p;let lines=[],after='advance';if(success){const gain=Math.round((700+run.stage*210)*nodeRewardScale(zone,run.stage));run.energy+=gain;lines.push(`事件成功：${monsterName(m)} 用${STAT[c.stat]}通过判定，+${gain} 灵能。`);if(Math.random()<.30){const it=grantRunItem(run,rand(RUN_ITEMS).id);lines.push(`额外发现：${it.name} ×1。`)}if(Math.random()<.35)after='relic'}else{run.supply=Math.max(0,run.supply-1);run.hp[m.id]=Math.max(1,hpPct(run,m.id)-18);lines.push(`事件失败：${monsterName(m)} 受伤 18%，补给 -1。`);if(Math.random()<.55){const pool=CURSES.filter(x=>!run.curses?.includes(x.id));if(pool.length){const before=run.log.length;inflictCurse(run,rand(pool).id,lines)}}}run.log.push(...lines);run.challengeResult={success,memberId:m.id,memberName:monsterName(m),stat:STAT[c.stat],value:Math.round(v+bonus),baseValue:v,target,chance:Math.round(p*100),title:c.title,lines,after};run.phase='challengeResult';save(success?'特殊事件成功！':'特殊事件失败。')}
 function combatValue(m,pos,run){const v=st(m),mods=combatMods(run),sh=m.shiny?(mods.shiny||0):0;let atk=v[1]*(1+(mods.atk||0)+sh),def=v[2]*(1+(mods.def||0)+sh),spd=v[3]*(1+(mods.spd||0)),luck=v[4]*(1+(mods.luck||0)+sh),con=v[0];if(pos===0){def*=1+(mods.frontDef||0);atk*=1+(mods.frontAtk||0)}if(pos===2){atk*=1+(mods.backAtk||0);def*=1+(mods.backDef||0)}return{atk,def,spd,luck,con}}
 function finalStatBreakdown(m,pos,run){
-  const base=st(m),final=combatValue(m,pos,run),mods=combatMods(run),sh=m.shiny?(mods.shiny||0):0;
+  const base=st(m),final=combatValue(m,pos,run),mods=combatMods(run);
   const labels=['体质','攻击','防御','速度','幸运'];
   const keys=['con','atk','def','spd','luck'];
   const vals=[final.con,final.atk,final.def,final.spd,final.luck];
+  const signedPct=v=>(v>0?'+':'')+(Math.round(v*1000)/10)+'%';
+  const relicContribution=k=>{
+    let v=0,names=[];
+    for(const id of run.relics||[]){const r=RELICS.find(x=>x.id===id),x=Number(r?.mods?.[k]||0);if(x){v+=x;names.push(r.name)}}
+    return {v,names};
+  };
+  const curseContribution=k=>{
+    let v=0,names=[];
+    for(const id of run.curses||[]){const c=CURSES.find(x=>x.id===id),x=Number(c?.mods?.[k]||0);if(x){v+=x;names.push(c.name)}}
+    return {v,names};
+  };
   return labels.map((label,i)=>{
     const b=Number(base[i])||0,f=Math.round((Number(vals[i])||0)*10)/10,delta=f-b;
     let cls='same';if(delta>.05)cls='up';else if(delta<-.05)cls='down';
-    const detail=[];
-    detail.push('原始：'+Math.round(b*10)/10);
+    const detail=['原始：'+Math.round(b*10)/10];
     if(i>0){
-      const k=keys[i],global=(Number(mods[k])||0)+(m.shiny?sh:0);
-      if(Math.abs(global)>.0001)detail.push('综合状态：'+(global>0?'+':'')+Math.round(global*1000)/10+'%');
-      if(pos===0){const v=k==='def'?(mods.frontDef||0):k==='atk'?(mods.frontAtk||0):0;if(v)detail.push('前卫站位：'+(v>0?'+':'')+Math.round(v*1000)/10+'%');}
-      if(pos===2){const v=k==='atk'?(mods.backAtk||0):k==='def'?(mods.backDef||0):0;if(v)detail.push('后卫站位：'+(v>0?'+':'')+Math.round(v*1000)/10+'%');}
+      const k=keys[i],rel=relicContribution(k),tem=Number(run.templeMods?.[k]||0),tmp=Number(run.nextBattleMods?.[k]||0),cur=curseContribution(k);
+      if(rel.v)detail.push('遗物'+(rel.names.length?'（'+rel.names.join('、')+'）':'')+'：'+signedPct(rel.v));
+      if(tem)detail.push('神庙祝福：'+signedPct(tem));
+      if(tmp)detail.push('临时增益：'+signedPct(tmp));
+      if(cur.v)detail.push('Debuff'+(cur.names.length?'（'+cur.names.join('、')+'）':'')+'：'+signedPct(cur.v));
+      if(m.shiny&&(k==='atk'||k==='luck')&&(mods.shiny||0))detail.push('闪光加成：'+signedPct(Number(mods.shiny)||0));
+      if(pos===0){const v=k==='def'?(mods.frontDef||0):k==='atk'?(mods.frontAtk||0):0;if(v)detail.push('前卫站位：'+signedPct(v));}
+      if(pos===2){const v=k==='atk'?(mods.backAtk||0):k==='def'?(mods.backDef||0):0;if(v)detail.push('后卫站位：'+signedPct(v));}
+      const net=b?((f/b)-1):0;if(Math.abs(net)>.0001)detail.push('最终净变化：'+signedPct(net));
     }
-    if(m.shiny&&i>0&&['攻击','幸运'].includes(label)&&(mods.shiny||0))detail.push('闪光加成：+'+Math.round((mods.shiny||0)*1000)/10+'%');
-    const relicNames=(run.relics||[]).map(id=>RELICS.find(x=>x.id===id)?.name).filter(Boolean);
-    if(relicNames.length)detail.push('遗物：'+relicNames.join('、'));
-    if((run.curses||[]).length)detail.push('Debuff：'+(run.curses||[]).map(id=>CURSES.find(x=>x.id===id)?.name||id).join('、'));
     detail.push('最终：'+f);
     return {label,base:b,final:f,delta,cls,detail};
   });
 }
 function finalStatsHTML(m,pos,run){
-  return '<div class="rg-final-stats">'+finalStatBreakdown(m,pos,run).map((x,i)=>'<button type="button" class="rg-final-stat '+x.cls+'" data-rg-stat-toggle><span>'+x.label+'</span><b>'+x.final+'</b><small>原始 '+Math.round(x.base*10)/10+'</small><em>'+x.detail.map((t,j)=>'<i class="'+(j===x.detail.length-1?'total':t.includes('Debuff')||t.includes('-')?'neg':t.includes('+')?'pos':'')+'">'+t+'</i>').join('')+'</em></button>').join('')+'</div>';
+  return '<div class="rg-final-stats">'+finalStatBreakdown(m,pos,run).map((x,i)=>'<button type="button" class="rg-final-stat '+x.cls+'" data-rg-stat-toggle><span>'+x.label+'</span><b>'+x.final+'</b><small>原始 '+Math.round(x.base*10)/10+'</small><em>'+x.detail.map((t,j)=>'<i class="'+(j===x.detail.length-1?'total':(t.includes('：-')||t.includes('Debuff'))?'neg':t.includes('：+')?'pos':'')+'">'+t+'</i>').join('')+'</em></button>').join('')+'</div>';
 }
 function decorateFinalStats(run){
   if(!run)return;
