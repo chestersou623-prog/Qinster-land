@@ -8,3 +8,5 @@
 .skill-library-tabs{display:none!important}.qp-option-host>summary{cursor:pointer;padding:10px;border:2px solid #797482;background:#eeecf1;color:#302d37;font-size:13px;min-height:44px;overflow-wrap:anywhere}.qp-grid>.skill-library-card{min-width:0}.qp-grid>.monster-card .sprite{width:60px!important;flex-shrink:0}.qp-grid>.monster-card strong{font-size:14px}.qp-grid>.monster-card small{font-size:12px}
 
 #roster{display:block;margin:10px;max-height:none;overflow:visible}.qp-copy{overflow-wrap:anywhere}.qp-card.selected{border-color:#896626;box-shadow:inset 0 0 0 1px #896626}
+.qp-toolbar details[open]{grid-column:1/-1;max-height:min(440px,50dvh);overflow:auto}.qp-toolbar details[open]>summary{position:sticky;top:-8px;z-index:1;background:#eeecf1}.qp-toolbar details[open]>fieldset{display:inline-block;vertical-align:top;width:calc(33.333% - 9px);margin-right:8px}.qp-toolbar details[open]>.qp-chips{max-height:none}
+@media(max-width:700px){.qp-toolbar details[open]>fieldset{width:calc(50% - 9px)}.qp-toolbar details[open]{max-height:45dvh}}
