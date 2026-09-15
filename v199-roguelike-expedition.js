@@ -408,6 +408,14 @@ function finalStatBreakdown(m,pos,run){
     const b=Number(base[i])||0,f=Math.round((Number(vals[i])||0)*10)/10,delta=f-b;
     let cls='same';if(delta>.05)cls='up';else if(delta<-.05)cls='down';
     const detail=['原始：'+Math.round(b*10)/10];const tr=trainingEntry(run,m.id),trFlat=Number(tr.flat?.[i]||0),trPct=Number(tr.pct?.[i]||0);if(trFlat)detail.push('训练营固定：+'+Math.round(trFlat*10)/10);if(trPct)detail.push('训练营百分比：+'+Math.round(trPct*1000)/10+'%');
+    if(i===0){
+      const trained=Number(trainedBaseStats(m,run)[0])||0,hpPctRel=relicContribution('hpMult'),hpFlatRel=relicContribution('hpFlat');
+      if(Math.abs(trained-b)>.05)detail.push('训练后HP：'+Math.round(trained*10)/10);
+      if(hpPctRel.v)detail.push('HP百分比遗物：'+signedPct(hpPctRel.v)+(hpPctRel.names.length?'（'+hpPctRel.names.join('、')+'）':''));
+      if(hpFlatRel.v)detail.push('固定HP遗物：+'+Math.round(hpFlatRel.v*10)/10+(hpFlatRel.names.length?'（'+hpFlatRel.names.join('、')+'）':''));
+      if(pos===0)detail.push('前卫站位：HP +25%');
+      detail.push('计算：('+Math.round(trained*10)/10+(hpPctRel.v?' × '+(Math.round((1+hpPctRel.v)*1000)/1000):'')+(hpFlatRel.v?' + '+Math.round(hpFlatRel.v*10)/10:'')+')'+(pos===0?' × 1.25':'')+' = '+f);
+    }
     if(i>0){
       const k=keys[i],rel=relicContribution(k),tem=Number(run.templeMods?.[k]||0),tmp=Number(run.nextBattleMods?.[k]||0),cur=curseContribution(k);
       if(rel.v)detail.push('遗物'+(rel.names.length?'（'+rel.names.join('、')+'）':'')+'：'+signedPct(rel.v));
@@ -467,7 +475,7 @@ function makeEnemyUnit(run,role,index=0){
 function enemyPreview(run,kind){const roles=enemyTeamRoles(kind),enemies=roles.map((role,i)=>makeEnemyUnit(run,role,i));if(relicMods(run).swapEnemyEnds&&enemies.length>1){const j=enemies.length-1;[enemies[0],enemies[j]]=[enemies[j],enemies[0]]}const p=enemies[0],enemyPower=enemies.reduce((n,e)=>n+e.difficultyRating,0);return{kind,enemies,enemySpecies:p.enemySpecies,enemyShiny:p.enemyShiny,enemyMax:p.maxHp,enemyAtk:p.atk,enemyDef:p.def,enemySpd:p.spd,enemyLuck:p.luck,affixes:p.affixes,variance:p.variance,enemyPower,difficultyRating:enemyPower};}
 function prepareBattle(run,kind){run.pendingBattle=enemyPreview(run,kind);run.phase='battlePreview';save()}
 function atbRate(spd){return Math.max(20,60+Math.max(0,Number(spd)||0)*.45)}
-function speedRuleText(){return '速度决定行动条充能速度；所有参战单位（包括每一只敌人）会同时充能，行动条达到 100% 就立刻行动。'}
+function speedRuleText(){return '速度决定行动条充能速度；所有参战单位会同时充能，行动条达到 100% 就立刻行动。我方每次行动独立判定：80% 普通攻击，20% 使用战斗技能。'}
 function battle(run,kind){
   ensureRunMeta(run);
   const zone=z(run.zone),t=activeTeam(run),elite=kind==='elite',boss=kind==='boss',ep=run.pendingBattle&&run.pendingBattle.kind===kind?run.pendingBattle:enemyPreview(run,kind);
@@ -494,7 +502,7 @@ function battle(run,kind){
     const alive=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id)),actors=[];alive.forEach((m,dynPos)=>{const p=cv(m,dynPos);actors.push({type:'ally',key:m.id,m,dynPos,p,spd:p.spd,rate:atbRate(p.spd)})});for(const e of livingEnemies()){const p=enemyNow(e);actors.push({type:'enemy',key:e.id,e,p,spd:p.spd,rate:atbRate(p.spd)})}if(!actors.length)break;
     let dt=Infinity;for(const a of actors)dt=Math.min(dt,(100-(gauge[a.key]||0))/Math.max(1,a.rate));if(!Number.isFinite(dt)||dt<0)dt=0;elapsed+=dt;for(const a of actors)gauge[a.key]=Math.min(100,(gauge[a.key]||0)+a.rate*dt);const ready=actors.filter(a=>(gauge[a.key]||0)>=99.999).sort((a,b)=>b.spd-a.spd)[0];if(!ready)break;actions++;const snap=gaugeSnapshot();
     if(ready.type==='ally'){
-      const m=ready.m;if(hpPct(run,m.id)<=0||!canReviveInRun(run,m.id)){gauge[m.id]=0;continue}const target=livingEnemies()[0];if(!target)break;personalActions[m.id]=(personalActions[m.id]||0)+1;const p=ready.p,en2=enemyNow(target),skillTurn=personalActions[m.id]%3===0,skill=skillTurn?battleSkillFor(m):null;let power=1,skillName='',specialText='';
+      const m=ready.m;if(hpPct(run,m.id)<=0||!canReviveInRun(run,m.id)){gauge[m.id]=0;continue}const target=livingEnemies()[0];if(!target)break;personalActions[m.id]=(personalActions[m.id]||0)+1;const p=ready.p,en2=enemyNow(target),skillTurn=Math.random()<.20,skill=skillTurn?battleSkillFor(m):null;let power=1,skillName='',specialText='';
       if(skill){skillName=skill.name;if(skill.buff){applyBuff(allyBuff,skill.buff,skill.duration);specialText+=`；${skill.text}`}if(skill.debuff){applyBuff(enemyDebuff,skill.debuff,skill.duration);specialText+=`；${skill.text}`}if(skill.type==='heal'){const x=lowestLiving();if(x){run.hp[x.id]=Math.min(100,hpPct(run,x.id)+skill.heal*100);specialText+=`；${monsterName(x)} +${Math.round(skill.heal*100)}% HP`}}if(skill.type==='healall'||skill.type==='healBuff'){for(const x of t)if(hpPct(run,x.id)>0&&canReviveInRun(run,x.id))run.hp[x.id]=Math.min(100,hpPct(run,x.id)+(skill.heal||0)*100)}if(skill.type==='selfheal'||skill.type==='drain')run.hp[m.id]=Math.min(100,hpPct(run,m.id)+(skill.heal||0)*100);if(skill.power)power=skill.power;if(skill.type==='attackGauge')gauge[target.id]=Math.max(0,(gauge[target.id]||0)+(skill.gauge||0))}
       const doesDamage=!skill||['attack','attackGauge','attackDebuff','attackSelfGauge','drain'].includes(skill.type);let hit=0,crit=false,miss=false;if(doesDamage){miss=Math.random()<dodgeChance(en2.luck,p.luck);if(!miss){crit=Math.random()<Math.min(.38,p.luck/1600);const raw=(p.atk*.22+p.spd*.06+p.luck*.025)*(crit?1.65:1)*power;let damageMul=1+Math.max(0,Number(battleMods.enemyVulnerable)||0)+Math.max(0,Number(vulnStack[target.id])||0)+(target.role==='boss'?Math.max(0,Number(battleMods.bossDamage)||0):0);hit=Math.max(7,(raw-en2.def*.07)*damageMul);target.hp=Math.max(0,target.hp-hit);if(Number(battleMods.stackVulnerable)>0)vulnStack[target.id]=Math.min(Math.max(0,Number(battleMods.stackVulnerableCap)||.20),(vulnStack[target.id]||0)+Number(battleMods.stackVulnerable));if(target.hp<=0)recordKill(target)}}
       const attackType=skillName?`技能·${skillName}`:'普通攻击';events.push({type:'ally',action:actions,actorId:m.id,enemyId:target.id,enemyIndex:enemies.indexOf(target),enemyHp:target.hp,enemyMax:target.maxHp,damage:Math.round(hit),crit,miss,skillName,attackType,spd:p.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${monsterName(m)} 使用【${attackType}】 → ${target.name}${doesDamage?(miss?'，被闪避。':`，造成 ${Math.round(hit)} 伤害${crit?'（暴击）':''}`):''}${specialText}。`);gauge[m.id]=skill?.type==='attackSelfGauge'?Math.max(0,skill.gauge||0):0;
