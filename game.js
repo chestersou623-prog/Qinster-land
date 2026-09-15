@@ -4556,7 +4556,7 @@ function populateSkillFilter(){
   const current=sel.value||'';
   const entries=[];
   for(let i=0;i<G.SPECIES.length;i++)entries.push({value:'innate:'+i,label:'种族 · '+G.SPECIES[i].skill});
-  for(const sk of EXTRA_SKILLS)entries.push({value:'extra:'+sk.id,label:(sk.tone==='buff'?'Buff':'Debuff')+' · '+sk.name+' · '+sk.group});
+  for(const sk of EXTRA_SKILLS)entries.push({value:'extra:'+sk.id,label:sk.tone==='buff'?('Buff · '+sk.name+' · '+sk.group):('Debuff · '+sk.name+' · 家族技能')});
   sel.innerHTML='<option value="">全部技能</option>'+entries.map(x=>'<option value="'+x.value+'">'+x.label+'</option>').join('');
   if(entries.some(x=>x.value===current))sel.value=current;
 }
@@ -4590,6 +4590,10 @@ function hasRosterFamily(m,filter){
 }
 function hasRosterSkill(m,filter){
   if(!filter)return true;
+  if(filter.startsWith('extra:')){
+    const sid=filter.slice('extra:'.length);
+    return monsterSkillEntries(m).some(x=>x.id===filter||x.id==='family:'+sid);
+  }
   return monsterSkillEntries(m).some(x=>x.id===filter);
 }
 function getSortedRoster(){
