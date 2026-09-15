@@ -1,9 +1,9 @@
 (()=>{
 'use strict';
-const STYLE_ID='qinster-v261-battle-theater-style';
+const STYLE_ID='qinster-v267-battle-theater-style';
 function R(){return window.QinsterRuntime||null}function S(){return R()?.getState?.()||null}function currentRun(){return S()?.expedition?.rogueActive||null}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function team(run){const map=new Map((S()?.monsters||[]).map(m=>[m.id,m]));return(run?.teamIds||[]).map(id=>map.get(id)).filter(Boolean)}
+function team(run){const s=S(),map=new Map((s?.expedition?.box||[]).map(m=>[m.id,m]));for(const m of s?.monsters||[])if(!map.has(m.id))map.set(m.id,m);return(run?.teamIds||[]).map(id=>map.get(id)).filter(Boolean)}
 function name(m){try{return R()?.name?.(m)||R()?.G?.SPECIES?.[m.species]?.name||'怪物'}catch{return'怪物'}}
 function sprite(species,shiny=false){try{return R()?.sprite?.(species,null,shiny,null)||''}catch{return''}}
 function enemyList(b){if(Array.isArray(b?.enemies)&&b.enemies.length)return b.enemies;return[{id:'e0',role:b?.kind==='boss'?'boss':b?.kind==='elite'?'elite':'normal',name:b?.kind==='boss'?'区域首领':b?.kind==='elite'?'精英守卫':'野外守卫',enemySpecies:b?.enemySpecies,enemyShiny:b?.enemyShiny,maxHp:b?.enemyMax||1,hp:b?.enemyHp??b?.enemyMax??1,atk:b?.enemyAtk||0,def:b?.enemyDef||0,spd:b?.enemySpd||0,luck:b?.enemyLuck||0}]}
