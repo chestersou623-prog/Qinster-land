@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/patch-v267-expedition-box.py'
+      - 'scripts/patch-v267-picker-test.py'
       - '.github/workflows/v267-expedition-box.yml'
 permissions:
   contents: write
@@ -18,7 +19,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Apply patch
-        run: python3 scripts/patch-v267-expedition-box.py
+        run: |
+          python3 scripts/patch-v267-expedition-box.py
+          python3 scripts/patch-v267-picker-test.py
       - name: Syntax checks
         run: |
           node --check v199-roguelike-expedition.js
@@ -37,6 +40,7 @@ jobs:
           g=Path('game.js').read_text()
           i=Path('index.html').read_text()
           p=Path('package.json').read_text()
+          t=Path('scripts/check-picker.mjs').read_text()
           checks=[
             ('box capacity','boxCapacity' in e),
             ('transfer timestamp','expeditionTransferredAt' in e),
@@ -49,6 +53,7 @@ jobs:
             ('visible version',"__qinsterVersion='v267'" in g),
             ('cache version','game.js?v=267' in i and 'v199-roguelike-expedition.js?v=267' in i),
             ('package version','"version": "267.0.0"' in p),
+            ('picker regression','s.expedition.box=s.monsters.slice(0,6)' in t),
           ]
           bad=[n for n,ok in checks if not ok]
           if bad: raise SystemExit('verification failed: '+', '.join(bad))
@@ -58,7 +63,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm scripts/patch-v267-expedition-box.py .github/workflows/v267-expedition-box.yml
+          git rm scripts/patch-v267-expedition-box.py scripts/patch-v267-picker-test.py .github/workflows/v267-expedition-box.yml
           git add -A
           git commit -m 'Split ranch and expedition boxes v267'
           git push
