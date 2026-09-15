@@ -35,7 +35,7 @@ q.write_text(g,encoding='utf-8')
 
 picker=Path('scripts/check-picker.mjs')
 pt=picker.read_text(encoding='utf-8')
-pt=pt.replace("assert.equal(version.textContent,'v273')","assert.equal(version.textContent,'v275')")
+pt=pt.replace("assert.equal(w.__qinsterVersion,'v273');","assert.equal(w.__qinsterVersion,'v275');")
 picker.write_text(pt,encoding='utf-8')
 
 if '/* Qinster release v275 */' not in s:
