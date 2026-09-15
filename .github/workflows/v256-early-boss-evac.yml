@@ -31,9 +31,15 @@ jobs:
         run: npm test
       - name: Verify early evacuation
         run: |
-          grep -q "撤离并结束（25%）" v199-roguelike-expedition.js
-          grep -q "floorNo(run.stage)<=2" v199-roguelike-expedition.js
-          grep -q "撤离点（25%）" v199-roguelike-expedition.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('v199-roguelike-expedition.js').read_text(encoding='utf-8')
+          assert '撤离并结束（25%）' in s
+          assert 'floorNo(run.stage)<=2' in s
+          assert '撤离点（25%）' in s
+          assert "finish(run,false,false" in s
+          print('early evacuation checks passed')
+          PY
       - name: Commit generated changes and remove one-shot files
         run: |
           rm -f scripts/patch-v256-early-boss-evac.py .github/workflows/v256-early-boss-evac.yml
