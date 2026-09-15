@@ -1,0 +1,42 @@
+name: Qinster v220 expedition progression
+on:
+  push:
+    paths:
+      - '.github/workflows/v220-expedition-progression.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply v220 patch
+        run: python scripts/patch-v220-expedition-progression.py
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          npm test
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('v199-roguelike-expedition.js').read_text()
+          assert "v220-two-maps-27f-difficulty-ladder" in s
+          assert "id:'normal'" in s and "id:'shiny'" in s
+          assert "maxStage:27" in s
+          assert "[8,17,26].includes(stage)" in s
+          assert "function checkpointBoss" in s
+          assert "const DIFFICULTIES=[" in s
+          assert "difficultyUnlocked" in s
+          print('v220 checks ok')
+          PY
+      - name: Commit patch
+        run: |
+          rm -f .github/workflows/v220-expedition-progression.yml
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add v199-roguelike-expedition.js scripts/patch-v220-expedition-progression.py .github/workflows/v220-expedition-progression.yml
+          git commit -m "Rework expedition into two maps and 27-floor ladder"
+          git push
