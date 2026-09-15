@@ -1,0 +1,47 @@
+name: Qinster v275 unique relics
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v275-unique-relics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install
+      - name: Apply patch
+        run: python3 scripts/patch-v275-unique-relics.py
+      - name: Syntax checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check game.js
+      - name: Tests
+        run: |
+          npm test
+          npm run test:pickers
+      - name: Verify v275
+        run: |
+          grep -F "pool=RELICS.filter(x=>!owned.has(x.id))" v199-roguelike-expedition.js
+          grep -F "v275 · engine" index.html
+          grep -F '"version": "275.0.0"' package.json
+          grep -F "v199-roguelike-expedition.js?v=275" index.html
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/patch-v275-unique-relics.py .github/workflows/v275-unique-relics.yml
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Prevent duplicate expedition relic offers v275"
+          git push
