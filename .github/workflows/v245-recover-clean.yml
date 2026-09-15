@@ -1,0 +1,37 @@
+name: Qinster v245 recover expedition and clean old patches
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v245-recover-clean.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply recovery patch
+        run: python scripts/patch-v245-recover-clean.py
+      - name: Checks
+        run: |
+          node --check game.js
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          npm test
+      - name: Clean obsolete one-shot files and commit
+        run: |
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f Qinster-Ranch-GitHub-v169.zip
+          find scripts -maxdepth 1 -type f -name 'patch-v*.py' -delete
+          find .github/workflows -maxdepth 1 -type f -name 'v*.yml' -delete
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Recover expedition cache loading and clean obsolete patch files v245"
+          git push
