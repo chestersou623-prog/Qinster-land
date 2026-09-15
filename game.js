@@ -1,3 +1,4 @@
+/* Qinster v277 personality-driven breeding */
 window.__bootMark&&__bootMark('01 core 开始');
 
 window.addEventListener('error',e=>{
@@ -70,7 +71,21 @@ SPECIES.push(
 );
 const MISSION_EXCLUSIVE_SPECIES={};for(let i=BASE_SPECIES_COUNT;i<SPECIES.length;i++){const mid=SPECIES[i].exclusiveMission;if(mid)(MISSION_EXCLUSIVE_SPECIES[mid]||(MISSION_EXCLUSIVE_SPECIES[mid]=[])).push(i);}function isMissionExclusiveSpecies(id){return !!SPECIES[id]?.exclusiveMission;}
 const stars=n=>'★'.repeat(n);const MAX_OFFLINE=8*3600*1000;
-function createMonster(id,species,star=1,genes=[1,1,1,1,1],parents=[]){return {id,species,star,genes,parents,bond:0,cooldown:0,age:0,baseLife:5,life:5,maxLife:5,lifePotionUsed:false,lifeSkillApplied:0,tint:0,skillLv:star,starBoost:0,shiny:false,nickname:'',locked:false};}
+// v277: individual personality is now a primary stat tendency instead of species deciding the build.
+const PERSONALITY_STAT_MODS=Object.freeze({
+  brave:Object.freeze([0,.12,-.04,0,0]),
+  careful:Object.freeze([.03,-.03,.10,-.03,.02]),
+  curious:Object.freeze([-.03,0,-.02,.05,.12]),
+  lively:Object.freeze([-.04,.03,-.03,.12,.02]),
+  gentle:Object.freeze([.08,-.04,.04,0,.04]),
+  tough:Object.freeze([.12,0,.08,-.07,-.03]),
+  greedy:Object.freeze([0,.07,-.04,0,.07]),
+  friendly:Object.freeze([.02,.02,.02,.02,.02])
+});
+const PERSONALITY_IDS=Object.freeze(Object.keys(PERSONALITY_STAT_MODS));
+function defaultPersonalityId(id,species=0){const n=Math.abs((Number(id)||0)*31+(Number(species)||0)*17);return PERSONALITY_IDS[n%PERSONALITY_IDS.length];}
+function personalityStatMods(m){return PERSONALITY_STAT_MODS[m?.trait]||[0,0,0,0,0];}
+function createMonster(id,species,star=1,genes=[1,1,1,1,1],parents=[]){return {id,species,star,genes,parents,bond:0,cooldown:0,age:0,baseLife:5,life:5,maxLife:5,lifePotionUsed:false,lifeSkillApplied:0,tint:0,skillLv:star,starBoost:0,shiny:false,nickname:'',locked:false,trait:defaultPersonalityId(id,species)};}
 
 const FARM_START_SLOTS=4;
 function normalizeFarmState(state){
@@ -151,8 +166,11 @@ function stats(m){
     const speciesBias=Math.max(0,Math.min(1,(v-src[0])/srcSpan));
     const gene=Number(m.genes?.[i]);
     const geneBias=Math.max(0,Math.min(1,((Number.isFinite(gene)?gene:1)-.65)/.85));
-    const quality=speciesBias*.62+geneBias*.38;
-    let value=lo+span*quality;
+    // Species supplies 30% of the base direction, inherited genes 50%; the remaining 20% is a neutral baseline.
+    // Personality then gives the strongest visible directional push (up to +/-12%).
+    const quality=speciesBias*.30+geneBias*.50+.10;
+    const personality=Number(personalityStatMods(m)[i])||0;
+    let value=(lo+span*quality)*(1+personality);
     if(sp.passive==='guard'&&i===2)value*=1+.04*lv;
     if(sp.passive==='self_speed'&&i===3)value*=1+.025*lv;
     return Math.max(lo,Math.min(hi,Math.round(value)));
@@ -221,7 +239,7 @@ function hatch(s,now){
 }
 function validMonster(m){return m&&Number.isInteger(m.tint)&&m.tint>=0&&m.tint<6&&Number.isInteger(m.id)&&m.id>0&&Number.isInteger(m.species)&&m.species>=0&&m.species<SPECIES.length&&Number.isInteger(m.star)&&m.star>=1&&m.star<=5&&Array.isArray(m.genes)&&m.genes.length===5&&m.genes.every(n=>Number.isFinite(n)&&n>=.65&&n<=1.5)&&Number.isFinite(m.cooldown)&&Number.isFinite(m.bond)&&Array.isArray(m.parents)&&m.parents.every(Number.isInteger);}
 function valid(s){return s&&s.version===9&&Array.isArray(s.memorial)&&s.memorial.length<=200&&s.memorial.every(validMonster)&&Number.isInteger(s.deaths)&&s.deaths>=0&&Number.isInteger(s.revision)&&s.revision>=0&&Number.isFinite(s.energy)&&s.energy>=0&&Number.isFinite(s.last)&&Array.isArray(s.monsters)&&s.monsters.length<=500&&s.monsters.every(validMonster)&&new Set(s.monsters.map(m=>m.id)).size===s.monsters.length&&Number.isInteger(s.capacity)&&s.capacity>=s.monsters.length&&s.capacity>=30&&s.capacity<=500&&Number.isInteger(s.nextId)&&s.nextId>Math.max(...s.monsters.map(m=>m.id))&&Number.isInteger(s.hatched)&&s.hatched>=0&&(s.parentA===null||s.monsters.some(m=>m.id===s.parentA))&&(s.parentB===null||s.monsters.some(m=>m.id===s.parentB))&&(s.parentA===null||s.parentB===null||s.parentA!==s.parentB)&&typeof s.autoBreed==='boolean'&&typeof s.autoHatch==='boolean'&&(!s.egg||(validMonster(s.egg.child)&&s.egg.child.id<s.nextId&&!s.monsters.some(m=>m.id===s.egg.child.id)&&Number.isFinite(s.egg.start)&&Number.isFinite(s.egg.ready)&&s.egg.ready>s.egg.start&&Number.isInteger(s.egg.base)&&s.egg.base>=1&&s.egg.base<=5&&Number.isFinite(s.egg.chance)&&s.egg.chance>=0&&s.egg.chance<=1));}
-root.MonsterGame={SPECIES,COLORS,deathChance,migrate,adopt,salePrice,sell,stars,createMonster,fresh,stats,statBand,statGrade,STAT_BANDS,income,pair,odds,breedCost,blocked,startBreed,hatch,advance,valid,skillLevel,MAX_OFFLINE,BASE_SPECIES_COUNT,MISSION_EXCLUSIVE_SPECIES,isMissionExclusiveSpecies,FARM_START_SLOTS,normalizeFarmState,isInFarmState,producingMonstersState};
+root.MonsterGame={SPECIES,COLORS,deathChance,migrate,adopt,salePrice,sell,stars,createMonster,fresh,stats,statBand,statGrade,STAT_BANDS,income,pair,odds,breedCost,blocked,startBreed,hatch,advance,valid,skillLevel,MAX_OFFLINE,BASE_SPECIES_COUNT,MISSION_EXCLUSIVE_SPECIES,isMissionExclusiveSpecies,FARM_START_SLOTS,normalizeFarmState,isInFarmState,producingMonstersState,PERSONALITY_STAT_MODS,defaultPersonalityId,personalityStatMods};
 })(typeof module!=='undefined'?module.exports:globalThis);
 
 window.__bootMark&&__bootMark('02 core 完成');
@@ -1514,19 +1532,65 @@ function loseLife(state,m,amount,reason,time=Date.now()){
   return false;
 }
 const TRAITS=[
-{id:'brave',name:'勇敢',desc:'派遣成功率 +3 个百分点，但失败时事故风险略高。'},
-{id:'careful',name:'谨慎',desc:'派遣事故风险 -20%，成功率 +1 个百分点。'},
-{id:'curious',name:'好奇',desc:'探索道具发现率 +2 个百分点，并更容易发现稀有技能。'},
-{id:'lively',name:'活泼',desc:'派遣属性评分 +5%，在草地上更爱活动。'},
-{id:'gentle',name:'温顺',desc:'作为亲代时，产蛋后的死亡风险 -8%。'},
-{id:'tough',name:'坚韧',desc:'派遣事故风险 -12%。'},
-{id:'greedy',name:'贪吃',desc:'派遣灵能报酬 +6%，但任务时间 +5%。'},
-{id:'friendly',name:'亲人',desc:'摸摸与成功派遣获得更多亲密度。'}
+{id:'brave',name:'勇敢',stats:G.PERSONALITY_STAT_MODS.brave,desc:'攻击 +12%、防御 -4%；派遣成功率 +3 个百分点，但失败时事故风险略高。'},
+{id:'careful',name:'谨慎',stats:G.PERSONALITY_STAT_MODS.careful,desc:'HP +3%、攻击 -3%、防御 +10%、速度 -3%、幸运 +2%；派遣事故风险 -20%，成功率 +1 个百分点。'},
+{id:'curious',name:'好奇',stats:G.PERSONALITY_STAT_MODS.curious,desc:'HP -3%、防御 -2%、速度 +5%、幸运 +12%；探索道具发现率 +2 个百分点，并更容易发现稀有技能。'},
+{id:'lively',name:'活泼',stats:G.PERSONALITY_STAT_MODS.lively,desc:'HP -4%、攻击 +3%、防御 -3%、速度 +12%、幸运 +2%；派遣属性评分 +5%。'},
+{id:'gentle',name:'温顺',stats:G.PERSONALITY_STAT_MODS.gentle,desc:'HP +8%、攻击 -4%、防御 +4%、幸运 +4%；作为亲代时繁育风险 -8%。'},
+{id:'tough',name:'坚韧',stats:G.PERSONALITY_STAT_MODS.tough,desc:'HP +12%、防御 +8%、速度 -7%、幸运 -3%；派遣事故风险 -12%。'},
+{id:'greedy',name:'贪吃',stats:G.PERSONALITY_STAT_MODS.greedy,desc:'攻击 +7%、防御 -4%、幸运 +7%；派遣灵能报酬 +6%，但任务时间 +5%。'},
+{id:'friendly',name:'亲人',stats:G.PERSONALITY_STAT_MODS.friendly,desc:'五维各 +2%；摸摸与成功派遣获得更多亲密度。'}
 ];
 const TRAIT_MAP=Object.fromEntries(TRAITS.map(x=>[x.id,x]));
 function traitInfo(m){return TRAIT_MAP[m?.trait]||TRAITS[0];}
 function traitBadge(m){const t=traitInfo(m);return '<span class="trait-badge trait-hover-target" data-trait-tip="'+escapeActivity(t.name)+'" data-trait-desc="'+escapeActivity(t.desc)+'">'+t.name+'</span>';}
 function traitMods(m){const t=m?.trait,o={success:0,death:1,item:0,reward:1,duration:1,state:1,skillFind:1,bond:0,breedDeath:1};if(t==='brave'){o.success+=.03;o.death*=1.08;}else if(t==='careful'){o.success+=.01;o.death*=.80;}else if(t==='curious'){o.item+=.02;o.skillFind*=1.5;}else if(t==='lively'){o.state*=1.05;}else if(t==='gentle'){o.breedDeath*=.92;}else if(t==='tough'){o.death*=.88;}else if(t==='greedy'){o.reward*=1.06;o.duration*=1.05;}else if(t==='friendly'){o.bond+=2;}return o;}
+
+const PERSONALITY_STAT_NAMES=['HP','攻击','防御','速度','幸运'];
+function personalityStatSummary(id){
+  const t=TRAIT_MAP[id]||TRAITS[0],mods=t.stats||[0,0,0,0,0],parts=[];
+  for(let i=0;i<mods.length;i++)if(mods[i])parts.push(PERSONALITY_STAT_NAMES[i]+' '+(mods[i]>0?'+':'')+Math.round(mods[i]*100)+'%');
+  return parts.length?parts.join(' · '):'五维无额外倾向';
+}
+function rollChildTrait(a,b,rng=Math.random){
+  const ta=traitInfo(a).id,tb=traitInfo(b).id;
+  const mutation=excluded=>{
+    const pool=TRAITS.filter(t=>!excluded.includes(t.id));
+    const pick=pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))]||TRAITS[0];
+    return {id:pick.id,source:'变异'};
+  };
+  if(ta===tb){
+    if(rng()<.70)return {id:ta,source:'同个性继承'};
+    return mutation([ta]);
+  }
+  const r=rng();
+  if(r<.40)return {id:ta,source:'亲代A继承'};
+  if(r<.80)return {id:tb,source:'亲代B继承'};
+  return mutation([ta,tb]);
+}
+function statBandPercent(m,idx){
+  const vals=G.stats(m),band=G.statBand(m.star),span=Math.max(1,band[1]-band[0]);
+  return Math.max(0,Math.min(1,((Number(vals[idx])||band[0])-band[0])/span));
+}
+function sharedHighStatTendencies(a,b){
+  const out=[];
+  for(let i=0;i<5;i++){
+    const score=Math.min(statBandPercent(a,i),statBandPercent(b,i));
+    if(score>=.70)out.push({stat:i,score,tier:score>=.85?'极高':'高'});
+  }
+  return out;
+}
+function applySharedHighStatGenes(genes,a,b,rng=Math.random){
+  const boosted=[];
+  for(const t of sharedHighStatTendencies(a,b)){
+    const elite=t.score>=.85,chance=elite?.65:.35;
+    if(rng()>=chance)continue;
+    const bonus=elite?(.06+rng()*.06):(.03+rng()*.04);
+    genes[t.stat]=Math.max(.65,Math.min(1.5,(Number(genes[t.stat])||1)+bonus));
+    boosted.push({stat:t.stat,tier:t.tier,bonus:Math.round(bonus*1000)/1000});
+  }
+  return boosted;
+}
 function archiveSnapshot(m){
   if(!m)return null;
   return {
@@ -1650,7 +1714,7 @@ function ensureMonsterSystemsMonster(m,now=Date.now()){
   if(typeof m.shinyAutoLockDone!=='boolean')m.shinyAutoLockDone=false;
   if(m.shiny&&!m.shinyAutoLockDone){m.locked=true;m.shinyAutoLockDone=true;}
   if(!Number.isFinite(m.createdAt))m.createdAt=now-m.id*1000;
-  if(!TRAIT_MAP[m.trait])m.trait=TRAITS[Math.abs(Number(m.id)||0)%TRAITS.length].id;
+  if(!TRAIT_MAP[m.trait])m.trait=G.defaultPersonalityId?G.defaultPersonalityId(m.id,m.species):TRAITS[Math.abs(Number(m.id)||0)%TRAITS.length].id;
   if(!Number.isInteger(m.generation)||m.generation<1)m.generation=(m.parents&&m.parents.length)?2:1;
   ensureSkillSlots(m);
   if(!Number.isFinite(m.baseLife)){
@@ -1721,7 +1785,7 @@ function bindSkillTooltip(){
   let timer=null,current=null,pinned=false;
   const selector='[data-skill-tip],[data-calc-tip],[data-trait-tip]';
   const pos=el=>{const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let l=Math.min(window.innerWidth-w-10,Math.max(10,r.left)),t=r.bottom+8;if(t+h>window.innerHeight-10)t=Math.max(10,r.top-h-8);tip.style.left=l+'px';tip.style.top=t+'px';};
-  const show=(el,pin=false)=>{const host=el.closest?.('dialog[open]')||document.body;if(tip.parentElement!==host)host.appendChild(tip);if(el.dataset.calcTip){tip.innerHTML='<strong>计算 · '+escapeActivity(el.dataset.calcTip)+'</strong><div class="tooltip-tone calc">'+escapeActivity(el.dataset.calcFormula||'')+'</div><div>'+escapeActivity(el.dataset.calcExtra||'')+'</div>';}else if(el.dataset.traitTip){tip.innerHTML='<strong>个性 · '+escapeActivity(el.dataset.traitTip)+'</strong><div class="tooltip-tone buff">'+escapeActivity(el.dataset.traitDesc||'')+'</div><div>个性效果会直接参与对应的派遣、繁育或亲密度计算。</div>';}else{tip.innerHTML='<strong>'+escapeActivity(el.dataset.skillTip||'技能')+'</strong><div class="tooltip-tone '+(el.dataset.skillTone==='debuff'?'debuff':'buff')+'">'+escapeActivity(el.dataset.skillDesc||'')+'</div><div>'+escapeActivity(el.dataset.skillExtra||'')+'</div>';}tip.style.display='block';pinned=pin;tip.classList.toggle('pinned',pinned);requestAnimationFrame(()=>pos(el));};
+  const show=(el,pin=false)=>{const host=el.closest?.('dialog[open]')||document.body;if(tip.parentElement!==host)host.appendChild(tip);if(el.dataset.calcTip){tip.innerHTML='<strong>计算 · '+escapeActivity(el.dataset.calcTip)+'</strong><div class="tooltip-tone calc">'+escapeActivity(el.dataset.calcFormula||'')+'</div><div>'+escapeActivity(el.dataset.calcExtra||'')+'</div>';}else if(el.dataset.traitTip){tip.innerHTML='<strong>个性 · '+escapeActivity(el.dataset.traitTip)+'</strong><div class="tooltip-tone buff">'+escapeActivity(el.dataset.traitDesc||'')+'</div><div>个性会直接改变五维能力倾向，也会参与对应的派遣、繁育或亲密度计算。</div>';}else{tip.innerHTML='<strong>'+escapeActivity(el.dataset.skillTip||'技能')+'</strong><div class="tooltip-tone '+(el.dataset.skillTone==='debuff'?'debuff':'buff')+'">'+escapeActivity(el.dataset.skillDesc||'')+'</div><div>'+escapeActivity(el.dataset.skillExtra||'')+'</div>';}tip.style.display='block';pinned=pin;tip.classList.toggle('pinned',pinned);requestAnimationFrame(()=>pos(el));};
   const hide=force=>{if(timer){clearTimeout(timer);timer=null;}current=null;if(pinned&&!force)return;pinned=false;tip.classList.remove('pinned');tip.style.display='none';};
   document.addEventListener('pointerover',e=>{const el=e.target.closest?.(selector);if(!el||el===current||pinned)return;hide(true);current=el;timer=setTimeout(()=>{if(current===el&&!pinned)show(el,false);},1000);});
   document.addEventListener('pointerout',e=>{const from=e.target.closest?.(selector);if(!from)return;const to=e.relatedTarget?.closest?.(selector);if(to===from)return;if(!pinned)hide(true);});
@@ -2328,6 +2392,7 @@ G.startBreed=function(state,now,rng=Math.random){
 
   const type=rollBreedSpecies(a,b,rng);
   const genes=a.genes.map((v,i)=>Math.max(.65,Math.min(1.5,(v+b.genes[i])/2*(.9+rng()*.2))));
+  const inheritedStatTendencies=applySharedHighStatGenes(genes,a,b,rng);
   const embryoChance=perfectEmbryoChance(a,b);
   if(embryoChance>0&&rng()<embryoChance){
     let lowIdx=0;
@@ -2351,7 +2416,11 @@ G.startBreed=function(state,now,rng=Math.random){
   child.lifeSkillApplied=0;
   child.generation=Math.max(a.generation||1,b.generation||1)+1;
   assignFamilyName(child,a,b,rng);
-  child.trait=rng()<.70?(rng()<.5?a.trait:b.trait):TRAITS[Math.floor(rng()*TRAITS.length)].id;
+  const traitRoll=rollChildTrait(a,b,rng);
+  child.trait=traitRoll.id;
+  child.traitOrigin=traitRoll.source;
+  child.breedStatTendency=inheritedStatTendencies;
+
 
   const mutationChance=Math.min(.25,.05+colorMutationSpeciesBonus(a,b));
   const parentShare=(1-mutationChance)/2;
@@ -4252,6 +4321,19 @@ function chooseParent(which,id){
   dirty=true;closeParentPickers();render();save();
 }
 
+function breedingPersonalityPreviewHTML(a,b){
+  if(!a||!b)return '';
+  ensureMonsterSystemsMonster(a);ensureMonsterSystemsMonster(b);
+  const ta=traitInfo(a),tb=traitInfo(b),same=ta.id===tb.id;
+  const inherit=same?`${ta.name} 70% · 变异 30%`:`${ta.name} 40% · ${tb.name} 40% · 变异 20%`;
+  const shared=sharedHighStatTendencies(a,b);
+  const sharedText=shared.length?shared.map(x=>PERSONALITY_STAT_NAMES[x.stat]+(x.tier==='极高'?'（双方极高）':'（双方较高）')).join(' · '):'暂无双方共同达到高区间的五维';
+  return '<div class="inherit-preview compact-preview"><h4>个性 / 能力倾向</h4><div class="inherit-skill-grid">'
+    +'<div class="inherit-skill"><b>'+escapeActivity(name(a))+' · '+escapeActivity(ta.name)+'</b><br><span>'+escapeActivity(personalityStatSummary(ta.id))+'</span></div>'
+    +'<div class="inherit-skill"><b>'+escapeActivity(name(b))+' · '+escapeActivity(tb.name)+'</b><br><span>'+escapeActivity(personalityStatSummary(tb.id))+'</span></div>'
+    +'<div class="inherit-skill"><b>后代个性</b><br><span>'+escapeActivity(inherit)+'</span></div>'
+    +'</div><p class="odds-note"><b>共同高能力：</b>'+escapeActivity(sharedText)+'。双方同一项能力越接近本星级高区间，后代该项基因越有机会获得额外提升；不是固定配方，也不会保证必出。</p></div>';
+}
 function breedSpeciesPreviewHTML(a,b){
   if(!a||!b)return '';
   const aEx=isMissionExclusiveSpecies(a.species),bEx=isMissionExclusiveSpecies(b.species);
@@ -4376,7 +4458,7 @@ function renderParents(){
     '<div class="breed-result-card shiny"><small>本次后代闪光率</small><strong'+calcHoverAttrs('闪光率',shinyCalc)+'>✦ '+(totalShiny*100).toFixed(2)+'%</strong></div>'+
   '</div>'+
   '<div class="breed-parent-cost"><small>本次亲代消耗</small>'+parentCost+'</div>'+
-  breedSpeciesPreviewHTML(a,b)+breedingSkillPreview(a,b,o);
+  breedingPersonalityPreviewHTML(a,b)+breedSpeciesPreviewHTML(a,b)+breedingSkillPreview(a,b,o);
 }
 function statSummaryHTML(m){const r=G.statGrade(m);return '<div class="stat-balance-summary" style="grid-column:1/-1;padding:6px 8px;background:#c9c8cd;border:2px solid #85818b;font-size:10px"><b>总能力 '+fmt(r.total)+' · 评价 '+r.grade+'</b><span style="margin-left:8px">'+G.stars(m.star)+' 单项范围 '+r.band[0]+'–'+r.band[1]+'</span></div>';}
 function companionParentsHTML(m){if(!m?.parents?.length)return '<div class="companion-parent-strip empty"><b>双亲</b><span>初代伙伴，没有双亲记录。</span></div>';return '<div class="companion-parent-strip"><b>双亲</b><div class="companion-parent-cards">'+m.parents.slice(0,2).map(id=>{const p=familyRecord(id);if(!p)return '<div class="companion-parent-card missing">#'+id+' · 资料缺失</div>';return '<button type="button" class="companion-parent-card" data-parent-jump="'+p.id+'">'+sprite(p.species,p.tint,p.shiny,p.specialColor)+'<span><strong>'+((p.nickname||G.SPECIES[p.species]?.name||'怪物')+' #'+p.id)+'</strong><small>'+G.stars(p.star||1)+' · '+(p.gender||'？')+' · ❤ '+(p.life??'?')+'/'+(p.maxLife??'?')+'</small></span></button>';}).join('')+'</div></div>';}
@@ -5007,7 +5089,7 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v276';
+window.__qinsterVersion='v277';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
