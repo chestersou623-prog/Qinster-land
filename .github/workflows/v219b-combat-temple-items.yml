@@ -1,0 +1,48 @@
+name: Qinster v219b combat skills dodge temple items
+on:
+  push:
+    paths:
+      - '.github/workflows/v219b-combat-temple-items.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply v219 patch and repair
+        run: |
+          python scripts/patch-v219.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('v199-roguelike-expedition.js')
+          s=p.read_text()
+          s=s.replace('for(const id of run.curses||[]{const c=', 'for(const id of run.curses||[]){const c=')
+          p.write_text(s)
+          PY
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          npm test
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('v199-roguelike-expedition.js').read_text()
+          assert "v219-combat-skills-dodge-temple-50items" in s
+          assert "function dodgeChance" in s
+          assert "function temple(run)" in s
+          assert "function campRevive" in s
+          assert "heroKit" in s and "fullCleanse" in s
+          print('v219b checks ok')
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f .github/workflows/v219-combat-temple-items.yml .github/workflows/v219b-combat-temple-items.yml scripts/patch-v219.py
+          git add -A
+          git commit -m "Add battle skills dodge temple and 50 items"
+          git push
