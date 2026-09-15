@@ -1,0 +1,33 @@
+name: Qinster v224 adaptive expedition
+on:
+  push:
+    paths:
+      - 'scripts/patch-v224-adaptive-expedition-difficulty.py'
+      - '.github/workflows/v224-adaptive-expedition.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply v224 patch
+        run: python scripts/patch-v224-adaptive-expedition-difficulty.py
+      - name: Checks
+        run: |
+          node --check v199-roguelike-expedition.js
+          npm test
+      - name: Commit patch
+        run: |
+          git config user.name 'Qinster Patch Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add v199-roguelike-expedition.js
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'Scale expedition enemies to team strength'
+            git push
+          fi
