@@ -25,7 +25,6 @@ if lock.exists():
     t=t.replace('"version": "272.0.0"','"version": "275.0.0"',2)
     lock.write_text(t,encoding='utf-8')
 
-# version constant if present in game.js
 q=Path('game.js')
 g=q.read_text(encoding='utf-8')
 for oldv in ('v274','v273','v272'):
@@ -34,7 +33,11 @@ for oldv in ('v274','v273','v272'):
         break
 q.write_text(g,encoding='utf-8')
 
-# Explicit release marker for easy verification.
+picker=Path('scripts/check-picker.mjs')
+pt=picker.read_text(encoding='utf-8')
+pt=pt.replace("assert.equal(version.textContent,'v273')","assert.equal(version.textContent,'v275')")
+picker.write_text(pt,encoding='utf-8')
+
 if '/* Qinster release v275 */' not in s:
     s=p.read_text(encoding='utf-8')
     p.write_text('/* Qinster release v275 */\n'+s,encoding='utf-8')
