@@ -1,0 +1,36 @@
+name: Qinster v239 rogue score meta
+on:
+  push:
+    paths:
+      - 'scripts/patch-v239-rogue-meta-score.py'
+      - '.github/workflows/v239-rogue-score-meta.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply patch
+        run: python scripts/patch-v239-rogue-meta-score.py
+      - name: Syntax check expedition
+        run: node --check v199-roguelike-expedition.js
+      - name: Syntax check theater
+        run: node --check v201-battle-theater.js
+      - name: Tests
+        run: npm test
+      - name: Commit generated changes
+        run: |
+          if git diff --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git config user.name "Qinster Patch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add v199-roguelike-expedition.js v201-battle-theater.js game.js index.html
+          git commit -m "Add rogue score ladder meta tree and milestone rewards v239"
+          git push
