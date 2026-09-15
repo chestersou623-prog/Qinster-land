@@ -451,28 +451,47 @@ function decorateFinalStats(run){
 }
 function enemyRoleName(role){return role==='boss'?'区域首领':role==='elite'?'精英守卫':'野外守卫'}
 function enemyDifficultyRating(e){return Math.max(1,Math.round((e.maxHp||e.enemyMax||0)*.7+(e.atk||e.enemyAtk||0)*2+(e.def||e.enemyDef||0)*1.3+(e.spd||e.enemySpd||0)*.5+(e.luck||e.enemyLuck||0)*.25))}
-function enemyTeamRoles(kind){
-  if(kind==='battle'){
-    const r=Math.random(),n=r<.45?1:r<.80?2:3;
-    return Array(n).fill('normal');
-  }
+function enemyTeamRoles(kind,run){
+  const f=floorNo(run?.stage||0),d=diff(run?.difficulty||0),maxCount=Math.max(3,3+Math.floor((f-1)/3));
+  const total=1+Math.floor(Math.random()*maxCount),roles=[];
+  if(kind==='battle')return Array(total).fill('normal');
   if(kind==='elite'){
-    const n=1+Math.floor(Math.random()*3),roles=Array.from({length:n},()=>Math.random()<.62?'elite':'normal');
-    if(!roles.includes('elite'))roles[Math.floor(Math.random()*roles.length)]='elite';
+    const eliteMax=d.id>=6?2:1,eliteCount=Math.min(total,1+Math.floor(Math.random()*eliteMax));
+    for(let i=0;i<eliteCount;i++)roles.push('elite');
+    while(roles.length<total)roles.push('normal');
     return roles;
   }
-  const adds=Math.floor(Math.random()*3),roles=['boss'];
-  for(let i=0;i<adds;i++)roles.push(Math.random()<.5?'elite':'normal');
+  const bossMax=d.id>=9?2:1,bossCount=Math.min(total,1+Math.floor(Math.random()*bossMax));
+  for(let i=0;i<bossCount;i++)roles.push('boss');
+  while(roles.length<total)roles.push(d.id>=6&&Math.random()<.35?'elite':'normal');
   return roles;
 }
-function makeEnemyUnit(run,role,index=0){
-  const zone=z(run.zone),d=diff(run.difficulty),stage=Math.max(0,Number(run.stage)||0),stageScale=1+stage*.035,endlessMul=1+endlessExtra(stage),kindScale=role==='boss'?1.42:role==='elite'?1.20:1,base=zone.enemy*stageScale*kindScale,range=role==='boss'?[.99,1.05]:role==='elite'?[.97,1.04]:[.96,1.04],variance=range[0]+Math.random()*(range[1]-range[0]),mods=d.mods||{},speciesCount=Math.max(1,R()?.G?.SPECIES?.length||1),enemySpecies=Math.floor(Math.random()*speciesCount),affixPool=[{name:'狂暴',mods:{atk:.20}},{name:'铁壁',mods:{def:.25}},{name:'迅捷',mods:{spd:.20}},{name:'强运',mods:{luck:.25}},{name:'巨躯',mods:{hp:.25}},{name:'精准',mods:{atk:.08,luck:.15}}],affixCount=d.id>=10?3:d.id>=7?2:d.id>=4?1:0,affixes=shuffle(affixPool).slice(0,affixCount),am={};
+function enemySkillRoll(run,role){
+  const d=diff(run?.difficulty||0);if(d.id<4)return null;
+  const chance=role==='boss'?.30:role==='elite'?.24:.16;
+  if(role==='normal'&&Math.random()>.60)return null;
+  const pool=[
+    {id:'armorBreak',name:'破甲猛击',type:'single',power:1.25,debuff:{def:-.12},duration:2,chance},
+    {id:'drain',name:'吸血撕咬',type:'single',power:1.15,heal:.15,chance},
+    {id:'heavy',name:'震荡冲锋',type:'single',power:1.65,chance},
+    {id:'slow',name:'迟滞爪击',type:'single',power:1.10,debuff:{spd:-.15},duration:2,chance},
+    {id:'sweep',name:'横扫',type:'aoe',power:.72,chance}
+  ];
+  return rand(pool);
+}
+function makeEnemyUnit(run,role,index=0,teamSize=1){
+  const zone=z(run.zone),d=diff(run.difficulty),stage=Math.max(0,Number(run.stage)||0),floor=floorNo(stage),endlessMul=1+endlessExtra(stage),kindScale=role==='boss'?1.42:role==='elite'?1.20:1;
+  const starTier=floor<=1?.52:floor===2?.76:1.00;
+  const formationScale=Math.max(.60,1-Math.max(0,teamSize-1)*.06);
+  const range=role==='boss'?[.99,1.05]:role==='elite'?[.97,1.04]:[.96,1.04],variance=range[0]+Math.random()*(range[1]-range[0]),mods=d.mods||{},speciesCount=Math.max(1,R()?.G?.SPECIES?.length||1),enemySpecies=Math.floor(Math.random()*speciesCount),affixPool=[{name:'狂暴',mods:{atk:.20}},{name:'铁壁',mods:{def:.25}},{name:'迅捷',mods:{spd:.20}},{name:'强运',mods:{luck:.25}},{name:'巨躯',mods:{hp:.25}},{name:'精准',mods:{atk:.08,luck:.15}}],affixCount=d.id>=10?3:d.id>=7?2:d.id>=4?1:0,affixes=shuffle(affixPool).slice(0,affixCount),am={};
   for(const a of affixes)for(const [k,v] of Object.entries(a.mods))am[k]=(am[k]||0)+v;
-  const mult=base*variance,hpMul=1+(mods.hp||0)+(am.hp||0),atkMul=1+(mods.atk||0)+(am.atk||0),defMul=1+(mods.def||0)+(am.def||0),spdMul=1+(mods.spd||0)+(am.spd||0),luckMul=1+(mods.luck||0)+(am.luck||0),maxHp=Math.round((900*mult+180)*hpMul*endlessMul),atk=Math.round((95*mult+20)*atkMul*endlessMul),def=Math.round((82*mult+18)*defMul*endlessMul),spd=Math.round((76*mult+16)*spdMul*endlessMul*1.10),luck=Math.round((62*mult+14)*luckMul*endlessMul);
-  const e={id:'e'+index,role,name:enemyRoleName(role),enemySpecies,enemyShiny:zone.shinyOnly,maxHp,hp:maxHp,atk,def,spd,luck,affixes:affixes.map(x=>x.name),variance:Math.round(variance*100)};
+  const base=starTier*kindScale*variance*formationScale*(zone.shinyOnly?1.20:1);
+  const hpMul=1+(mods.hp||0)+(am.hp||0),atkMul=1+(mods.atk||0)+(am.atk||0),defMul=1+(mods.def||0)+(am.def||0),spdMul=1+(mods.spd||0)+(am.spd||0),luckMul=1+(mods.luck||0)+(am.luck||0);
+  const maxHp=Math.round(1600*base*hpMul*endlessMul),atk=Math.round(400*base*atkMul*endlessMul),def=Math.round(360*base*defMul*endlessMul),spd=Math.round(340*base*spdMul*endlessMul),luck=Math.round(300*base*luckMul*endlessMul);
+  const e={id:'e'+index,role,name:enemyRoleName(role),enemySpecies,enemyShiny:zone.shinyOnly,maxHp,hp:maxHp,atk,def,spd,luck,affixes:affixes.map(x=>x.name),variance:Math.round(variance*100),enemySkill:enemySkillRoll(run,role),starTier:floor>=3?5:(floor===2?4:2)};
   e.difficultyRating=enemyDifficultyRating(e);return e;
 }
-function enemyPreview(run,kind){const roles=enemyTeamRoles(kind),enemies=roles.map((role,i)=>makeEnemyUnit(run,role,i));if(relicMods(run).swapEnemyEnds&&enemies.length>1){const j=enemies.length-1;[enemies[0],enemies[j]]=[enemies[j],enemies[0]]}const p=enemies[0],enemyPower=enemies.reduce((n,e)=>n+e.difficultyRating,0);return{kind,enemies,enemySpecies:p.enemySpecies,enemyShiny:p.enemyShiny,enemyMax:p.maxHp,enemyAtk:p.atk,enemyDef:p.def,enemySpd:p.spd,enemyLuck:p.luck,affixes:p.affixes,variance:p.variance,enemyPower,difficultyRating:enemyPower};}
+function enemyPreview(run,kind){const roles=enemyTeamRoles(kind,run),enemies=roles.map((role,i)=>makeEnemyUnit(run,role,i,roles.length));if(relicMods(run).swapEnemyEnds&&enemies.length>1){const j=enemies.length-1;[enemies[0],enemies[j]]=[enemies[j],enemies[0]]}const p=enemies[0],enemyPower=enemies.reduce((n,e)=>n+e.difficultyRating,0);return{kind,enemies,enemySpecies:p.enemySpecies,enemyShiny:p.enemyShiny,enemyMax:p.maxHp,enemyAtk:p.atk,enemyDef:p.def,enemySpd:p.spd,enemyLuck:p.luck,affixes:p.affixes,variance:p.variance,enemyPower,difficultyRating:enemyPower};}
 function prepareBattle(run,kind){run.pendingBattle=enemyPreview(run,kind);run.phase='battlePreview';save()}
 function atbRate(spd){return Math.max(20,60+Math.max(0,Number(spd)||0)*.45)}
 function speedRuleText(){return '速度决定行动条充能速度；所有参战单位会同时充能，行动条达到 100% 就立刻行动。我方每次行动独立判定：80% 普通攻击，20% 使用战斗技能。'}
@@ -507,11 +526,11 @@ function battle(run,kind){
       const doesDamage=!skill||['attack','attackGauge','attackDebuff','attackSelfGauge','drain'].includes(skill.type);let hit=0,crit=false,miss=false;if(doesDamage){miss=Math.random()<dodgeChance(en2.luck,p.luck);if(!miss){crit=Math.random()<Math.min(.38,p.luck/1600);const raw=(p.atk*.22+p.spd*.06+p.luck*.025)*(crit?1.65:1)*power;let damageMul=1+Math.max(0,Number(battleMods.enemyVulnerable)||0)+Math.max(0,Number(vulnStack[target.id])||0)+(target.role==='boss'?Math.max(0,Number(battleMods.bossDamage)||0):0);hit=Math.max(7,(raw-en2.def*.07)*damageMul);target.hp=Math.max(0,target.hp-hit);if(Number(battleMods.stackVulnerable)>0)vulnStack[target.id]=Math.min(Math.max(0,Number(battleMods.stackVulnerableCap)||.20),(vulnStack[target.id]||0)+Number(battleMods.stackVulnerable));if(target.hp<=0)recordKill(target)}}
       const attackType=skillName?`技能·${skillName}`:'普通攻击';events.push({type:'ally',action:actions,actorId:m.id,enemyId:target.id,enemyIndex:enemies.indexOf(target),enemyHp:target.hp,enemyMax:target.maxHp,damage:Math.round(hit),crit,miss,skillName,attackType,spd:p.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${monsterName(m)} 使用【${attackType}】 → ${target.name}${doesDamage?(miss?'，被闪避。':`，造成 ${Math.round(hit)} 伤害${crit?'（暴击）':''}`):''}${specialText}。`);gauge[m.id]=skill?.type==='attackSelfGauge'?Math.max(0,skill.gauge||0):0;
     }else{
-      const e=ready.e,current=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id));if(!e||!current.length){gauge[ready.key]=0;continue}enemyActions[e.id]=(enemyActions[e.id]||0)+1;let mode='normal';if(e.role==='boss'){const r=Math.random();mode=enemyActions[e.id]%4===0?'aoe':r<.55?'normal':r<.80?'skill':'aoe'}else if(e.role==='elite'&&Math.random()<.18)mode='skill';
-      if(mode==='aoe'){
-        const targets=current.map(x=>hurtAlly(e,x,.64)),reflected=targets.reduce((n,x)=>n+(Number(x.reflectDamage)||0),0);events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),aoe:true,skillName:'全体攻击',attackType:'全体攻击',targets,reflectDamage:reflected,enemyHp:e.hp,enemyMax:e.maxHp,spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【全体攻击】，攻击全队${reflected>0?`；反甲累计反伤 ${Math.round(reflected)}`:''}。`);
+      const e=ready.e,current=t.filter(m=>hpPct(run,m.id)>0&&canReviveInRun(run,m.id));if(!e||!current.length){gauge[ready.key]=0;continue}enemyActions[e.id]=(enemyActions[e.id]||0)+1;const es=e.enemySkill||null;let mode='normal';if(es&&Math.random()<Number(es.chance||0))mode=es.type==='aoe'?'aoeSkill':'skill';else if(e.role==='boss'){const r=Math.random();mode=enemyActions[e.id]%4===0?'aoe':r<.55?'normal':r<.80?'skill':'aoe'}else if(e.role==='elite'&&Math.random()<.18)mode='skill';
+      if(mode==='aoe'||mode==='aoeSkill'){
+        const skillLabel=mode==='aoeSkill'?(es?.name||'横扫'):'全体攻击',aoePower=mode==='aoeSkill'?Number(es?.power||.72):.64,targets=current.map(x=>hurtAlly(e,x,aoePower)),reflected=targets.reduce((n,x)=>n+(Number(x.reflectDamage)||0),0);events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),aoe:true,skillName:skillLabel,attackType:skillLabel,targets,reflectDamage:reflected,enemyHp:e.hp,enemyMax:e.maxHp,spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【${skillLabel}】，攻击全队${reflected>0?`；反甲累计反伤 ${Math.round(reflected)}`:''}。`);
       }else{
-        const roll=Math.random(),target=roll<.64?current[0]:roll<.88?(current[1]||current[0]):(current[2]||current[1]||current[0]),res=hurtAlly(e,target,mode==='skill'?1.45:1);events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),targetId:res.targetId,hpLoss:res.hpLoss,hpDamage:res.hpDamage,maxHp:res.maxHp,hpAfter:res.hpAfter,hpAfterAbs:res.hpAfterAbs,reflectDamage:res.reflectDamage,enemyHp:res.enemyHp,enemyMax:res.enemyMax,miss:res.miss,skillName:mode==='skill'?'强袭技能':'',attackType:mode==='skill'?'强袭技能':'普通攻击',spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【${mode==='skill'?'强袭技能':'普通攻击'}】攻击 ${monsterName(target)}${res.miss?'，但被闪避。':`，HP -${Math.round(res.hpDamage)}（${Math.round(res.hpAfterAbs)}/${Math.round(res.maxHp)}）${res.reflectDamage>0?`；反甲反伤 ${Math.round(res.reflectDamage)}`:''}`}。`)
+        const roll=Math.random(),target=roll<.64?current[0]:roll<.88?(current[1]||current[0]):(current[2]||current[1]||current[0]),dedicated=mode==='skill'&&es,skillLabel=dedicated?es.name:(mode==='skill'?'强袭技能':''),skillPower=dedicated?Number(es.power||1.2):(mode==='skill'?1.45:1),res=hurtAlly(e,target,skillPower);if(dedicated&&!res.miss){if(es.debuff)applyBuff(allyBuff,es.debuff,es.duration||2);if(es.heal)e.hp=Math.min(e.maxHp,e.hp+res.hpDamage*Number(es.heal||0))}events.push({type:'enemy',action:actions,enemyId:e.id,enemyIndex:enemies.indexOf(e),targetId:res.targetId,hpLoss:res.hpLoss,hpDamage:res.hpDamage,maxHp:res.maxHp,hpAfter:res.hpAfter,hpAfterAbs:res.hpAfterAbs,reflectDamage:res.reflectDamage,enemyHp:e.hp,enemyMax:e.maxHp,miss:res.miss,skillName:skillLabel,attackType:skillLabel||'普通攻击',spd:ready.spd,wait:dt,gauges:snap,allyStats:allyStatsSnapshot()});logs.push(`行动 ${actions}：${e.name} 使用【${skillLabel||'普通攻击'}】攻击 ${monsterName(target)}${res.miss?'，但被闪避。':`，HP -${Math.round(res.hpDamage)}（${Math.round(res.hpAfterAbs)}/${Math.round(res.maxHp)}）${res.reflectDamage>0?`；反甲反伤 ${Math.round(res.reflectDamage)}`:''}${dedicated&&es.debuff?'；附加能力削弱':''}${dedicated&&es.heal?'；吸取生命':''}`}。`)
       }
       gauge[e.id]=0;
     }
@@ -716,6 +735,6 @@ for(const event of ['pointerover','focusin'])document.addEventListener(event,ev=
 function closeRelicDetails(){document.querySelectorAll('.rg-relic-chip.open').forEach(x=>{x.classList.remove('open');x.setAttribute('aria-expanded','false')});}
 document.addEventListener('click',ev=>{if(!ev.target.closest?.('.rg-relic-chip'))closeRelicDetails();});
 window.QinsterRelics={all:RELICS,iconHTML:relicIconHTML,trayHTML:relicTrayHTML};
-window.QinsterExpedition={render,zones:ZONES,version:'v263'};
+window.QinsterExpedition={render,zones:ZONES,version:'v264'};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(render,0));else setTimeout(render,0);
 })();
