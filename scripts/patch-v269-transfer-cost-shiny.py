@@ -54,4 +54,6 @@ exp.write_text(s,encoding='utf-8')
 g=Path('game.js'); t=g.read_text(encoding='utf-8'); t=t.replace("__qinsterVersion='v268'","__qinsterVersion='v269'",1); g.write_text(t,encoding='utf-8')
 i=Path('index.html'); t=i.read_text(encoding='utf-8').replace('?v=268','?v=269'); i.write_text(t,encoding='utf-8')
 p=Path('package.json'); data=json.loads(p.read_text(encoding='utf-8')); data['version']='269.0.0'; p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+# Keep integration test version assertion aligned with visible version.
+cp=Path('scripts/check-picker.mjs'); ct=cp.read_text(encoding='utf-8').replace("assert.equal(w.__qinsterVersion,'v268')","assert.equal(w.__qinsterVersion,'v269')",1); cp.write_text(ct,encoding='utf-8')
 print('v269 transfer cost + shiny bonus patch applied')
