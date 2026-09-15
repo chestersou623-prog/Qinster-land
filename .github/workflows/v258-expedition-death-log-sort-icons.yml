@@ -1,0 +1,55 @@
+name: Qinster v258 expedition death log and sort icons
+on:
+  push:
+    paths:
+      - 'scripts/patch-v258-expedition-death-log-sort-icons.py'
+      - '.github/workflows/v258-expedition-death-log-sort-icons.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply patch
+        run: python scripts/patch-v258-expedition-death-log-sort-icons.py
+      - name: Syntax check expedition
+        run: node --check v199-roguelike-expedition.js
+      - name: Syntax check theater
+        run: node --check v201-battle-theater.js
+      - name: Syntax check game
+        run: node --check game.js
+      - name: Tests
+        run: npm test
+      - name: Verify v258 changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          e=Path('v199-roguelike-expedition.js').read_text(encoding='utf-8')
+          h=Path('index.html').read_text(encoding='utf-8')
+          assert 'expedition-death-' in e and "type:'death'" in e
+          assert '远征战败中阵亡' in e
+          for token in ['★ 稀有度','◷ 加入时间','♥ 生命','❤ 我的最爱','✦ 技能等级','sort-icon-legend']:
+              assert token in h, token
+          print('v258 checks passed')
+          PY
+      - name: Commit generated changes and remove one-shot files
+        run: |
+          rm -f scripts/patch-v258-expedition-death-log-sort-icons.py .github/workflows/v258-expedition-death-log-sort-icons.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No generated changes'
+          else
+            git commit -m 'Log expedition deaths and add sort icons v258'
+            git push
+          fi
