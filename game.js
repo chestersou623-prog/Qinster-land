@@ -5007,7 +5007,7 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v270';
+window.__qinsterVersion='v271';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
