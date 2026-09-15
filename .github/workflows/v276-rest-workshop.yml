@@ -32,13 +32,13 @@ jobs:
           npm run test:pickers
       - name: Verify v276
         run: |
-          grep -F "data-rg-rest-id" v199-roguelike-expedition.js
-          grep -F "setInterval(refreshRestCountdowns,1000)" v199-roguelike-expedition.js
-          grep -F "蛋位 ${eggs}/11" v199-roguelike-expedition.js
+          grep -F 'data-rg-rest-id' v199-roguelike-expedition.js
+          grep -F 'setInterval(refreshRestCountdowns,1000)' v199-roguelike-expedition.js
+          grep -F '蛋位 ${eggs}/11' v199-roguelike-expedition.js
           grep -F "available(x)>=x.cost?'':'disabled'" v199-roguelike-expedition.js
-          grep -F "v276 · engine" index.html
+          grep -F 'v276 · engine' index.html
           grep -F '"version": "276.0.0"' package.json
-          grep -F "v199-roguelike-expedition.js?v=276" index.html
+          grep -F 'v199-roguelike-expedition.js?v=276' index.html
       - name: Commit generated changes and remove one-shot files
         run: |
           git config user.name "github-actions[bot]"
