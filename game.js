@@ -1,4 +1,4 @@
-/* Qinster v277 personality-driven breeding */
+/* Qinster v279 persistent monster detail dock */
 window.__bootMark&&__bootMark('01 core 开始');
 
 window.addEventListener('error',e=>{
@@ -894,7 +894,7 @@ function syncMemorialDeathsToLog(state=s){
   }
 }
 function logMonsterLink(monster,label=null){if(!monster)return '';const id=Number(monster.id),alive=s.monsters.some(m=>m.id===id),txt=label||activityMonsterName(monster);return '<span class="log-monster-link '+(alive?'':'unavailable')+'" data-log-monster="'+id+'" title="'+(alive?'点击查看怪物':'这只怪物已经不在牧场')+'">'+txt+'</span>';}
-function goToLogMonster(id){const m=s.monsters.find(x=>x.id===Number(id));if(!m){tell('这只怪物已经离开牧场或已经离世。');return;}selected=m.id;setPage('farm');dirty=true;render();setTimeout(()=>document.querySelector('#companion')?.scrollIntoView({behavior:'smooth',block:'center'}),50);}
+function goToLogMonster(id){const m=s.monsters.find(x=>x.id===Number(id));if(!m){tell('这只怪物已经离开牧场或已经离世。');return;}selected=m.id;setPage('farm');dirty=true;render();setTimeout(()=>window.QinsterMonsterDock?.open?.(),0);}
 function activityEntryHTML(e){
   const time='<span class="activity-time">'+activityTime(e.time)+'</span>';
   if(e.type==='birth'){
@@ -5105,8 +5105,8 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v278';
+window.__qinsterVersion='v279';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v268 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v279 · engine '+__n;},1000);

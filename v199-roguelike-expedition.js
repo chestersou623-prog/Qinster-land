@@ -1,4 +1,4 @@
-/* Qinster release v278 */
+/* Qinster release v279 */
 (()=>{
 'use strict';
 const STAT=['HP','攻击','防御','速度','幸运'];
@@ -755,6 +755,6 @@ for(const event of ['pointerover','focusin'])document.addEventListener(event,ev=
 function closeRelicDetails(){const dock=document.getElementById('rg-relic-detail-dock');if(dock)dock.hidden=true;document.querySelectorAll('.rg-relic-chip.detail-selected').forEach(x=>x.classList.remove('detail-selected'));document.querySelectorAll('.rg-relic-chip.open').forEach(x=>{x.classList.remove('open');x.setAttribute('aria-expanded','false')});}
 document.addEventListener('click',ev=>{if(ev.target.closest?.('[data-rg-relic-detail-close]')||ev.target.closest?.('#back-from-expedition'))closeRelicDetails();});
 window.QinsterRelics={all:RELICS,iconHTML:relicIconHTML,trayHTML:relicTrayHTML};
-window.QinsterExpedition={render,zones:ZONES,version:'v278'};
+window.QinsterExpedition={render,zones:ZONES,version:'v279'};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(render,0));else setTimeout(render,0);
 })();
