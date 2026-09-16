@@ -48,4 +48,5 @@ write('package.json', pkg)
 lock = read('package-lock.json').replace('"version": "278.0.0"', '"version": "279.0.0"')
 write('package-lock.json', lock)
 
+# Touch this one-shot file after updating the picker test assertion so the workflow reruns.
 print('v279 monster detail dock patch applied')
