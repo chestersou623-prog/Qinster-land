@@ -1,0 +1,50 @@
+name: Qinster v279 detail visibility hotfix
+
+on:
+  push:
+    paths:
+      - 'scripts/patch-v279-detail-visibility.py'
+      - '.github/workflows/v279-detail-visibility-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Apply visibility hotfix
+        run: python3 scripts/patch-v279-detail-visibility.py
+      - name: Syntax and regression tests
+        run: |
+          node --check monster-detail-dock.js
+          npm test
+          npm run test:pickers
+      - name: Verify hotfix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('monster-detail-dock.js').read_text()
+          h=Path('index.html').read_text()
+          assert "farmWorkspace=document.querySelector('.workspace')" in d
+          assert "new MutationObserver(syncVisibility)" in d
+          assert "#monster-detail-dock[hidden]{display:none!important}" in d
+          assert "qinster-monster-dock-page-hidden" in d
+          assert 'monster-detail-dock.js?v=279.1' in h
+          print('visibility hotfix verified')
+          PY
+      - name: Commit hotfix and clean one-shot files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add monster-detail-dock.js index.html
+          git rm scripts/patch-v279-detail-visibility.py .github/workflows/v279-detail-visibility-hotfix.yml
+          git commit -m 'Hide monster detail outside farm v279.1'
+          git push
