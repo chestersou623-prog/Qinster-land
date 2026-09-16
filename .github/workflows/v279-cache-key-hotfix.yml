@@ -1,0 +1,45 @@
+name: Qinster v279 cache key hotfix
+
+on:
+  push:
+    paths:
+      - 'scripts/patch-v279-cache-keys.py'
+      - '.github/workflows/v279-cache-key-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: python3 scripts/patch-v279-cache-keys.py
+      - name: Regression tests
+        run: |
+          npm test
+          npm run test:pickers
+      - name: Verify cache keys
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          h=Path('index.html').read_text()
+          assert '?v=278' not in h
+          assert h.count('?v=279.1') >= 8
+          assert "const BUILD='v279'" in h
+          print('cache-key verification passed')
+          PY
+      - name: Commit and clean
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git rm scripts/patch-v279-cache-keys.py .github/workflows/v279-cache-key-hotfix.yml
+          git commit -m 'Refresh v279 script cache keys'
+          git push
