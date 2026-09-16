@@ -3,7 +3,7 @@
 'use strict';
 const STORAGE_KEY='qinster-monster-detail-collapsed-v279';
 const MOBILE_QUERY='(max-width: 1050px)';
-let dock=null, body=null, toggle=null, nameEl=null;
+let dock=null, body=null, toggle=null, nameEl=null, farmWorkspace=null;
 
 function savedCollapsed(){
   try{
@@ -25,6 +25,12 @@ function updateHeader(){
   }
   if(nameEl)nameEl.textContent=label;
 }
+function syncVisibility(){
+  if(!dock)return;
+  const hide=!!farmWorkspace?.hidden;
+  dock.hidden=hide;
+  document.body.classList.toggle('qinster-monster-dock-page-hidden',hide);
+}
 function setCollapsed(v,{persist=true}={}){
   if(!dock)return;
   dock.classList.toggle('collapsed',!!v);
@@ -41,6 +47,7 @@ function ensureStyle(){
   s.id='qinster-monster-detail-dock-style';
   s.textContent=`
 #monster-detail-dock{position:fixed;top:92px;right:12px;width:360px;max-height:calc(100vh - 104px);display:grid;grid-template-rows:auto minmax(0,1fr);background:#9b9b9f;border:4px solid #242229;box-shadow:inset 0 0 0 3px #69656f,6px 6px 0 rgba(24,23,28,.65);z-index:980;color:#202126}
+#monster-detail-dock[hidden]{display:none!important}
 #monster-detail-dock .monster-detail-dock-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;background:#2c2933;color:#fff;border-bottom:4px solid #e33b34;position:sticky;top:0;z-index:3}
 #monster-detail-dock .monster-detail-dock-title{min-width:0;display:grid;gap:2px}
 #monster-detail-dock .monster-detail-dock-title b{font-size:14px;color:#fff}
@@ -56,8 +63,8 @@ function ensureStyle(){
 #monster-detail-dock.collapsed .monster-detail-dock-head{border-bottom:0}
 body.qinster-monster-dock-on{--monster-dock-space:0px}
 @media(min-width:1600px){
-  body.qinster-monster-dock-on:not(.qinster-monster-dock-collapsed){--monster-dock-space:390px}
-  body.qinster-monster-dock-on:not(.qinster-monster-dock-collapsed) .shell{max-width:calc(100vw - var(--monster-dock-space));margin-left:14px;margin-right:auto}
+  body.qinster-monster-dock-on:not(.qinster-monster-dock-collapsed):not(.qinster-monster-dock-page-hidden){--monster-dock-space:390px}
+  body.qinster-monster-dock-on:not(.qinster-monster-dock-collapsed):not(.qinster-monster-dock-page-hidden) .shell{max-width:calc(100vw - var(--monster-dock-space));margin-left:14px;margin-right:auto}
 }
 @media(max-width:1050px){
   #monster-detail-dock{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:58vh;box-shadow:0 -5px 0 rgba(24,23,28,.55);z-index:9998}
@@ -81,6 +88,7 @@ function shouldOpenFromClick(target){
 function build(){
   const companion=document.getElementById('companion');
   if(!companion||document.getElementById('monster-detail-dock'))return;
+  farmWorkspace=document.querySelector('.workspace');
   ensureStyle();
   dock=document.createElement('aside');
   dock.id='monster-detail-dock';
@@ -95,9 +103,11 @@ function build(){
   toggle.addEventListener('click',()=>setCollapsed(!dock.classList.contains('collapsed')));
   setCollapsed(savedCollapsed(),{persist:false});
   updateHeader();
+  syncVisibility();
   new MutationObserver(updateHeader).observe(companion,{childList:true,subtree:true,characterData:true});
+  if(farmWorkspace)new MutationObserver(syncVisibility).observe(farmWorkspace,{attributes:true,attributeFilter:['hidden']});
   document.addEventListener('click',e=>{if(shouldOpenFromClick(e.target))requestAnimationFrame(open)},true);
-  window.QinsterMonsterDock={open,close,toggle:()=>setCollapsed(!dock.classList.contains('collapsed')),updateHeader};
+  window.QinsterMonsterDock={open,close,toggle:()=>setCollapsed(!dock.classList.contains('collapsed')),updateHeader,syncVisibility};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build,{once:true});else build();
 })();
