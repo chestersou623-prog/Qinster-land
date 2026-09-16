@@ -1,4 +1,4 @@
-/* Qinster v279 persistent monster detail dock */
+/* Qinster v280 expedition final stat display */
 window.__bootMark&&__bootMark('01 core 开始');
 
 window.addEventListener('error',e=>{
@@ -5105,8 +5105,8 @@ setInterval(()=>{if(!document.hidden)save(false);},15000);
 window.QinsterRuntime={monsterPickerConfig,getState:()=>s,G,name,sprite,save,render,tell,setPage,isDispatched,ensureMonsterSystemsMonster};
 setTimeout(()=>runIntegrityAudit(),0);
 
-window.__qinsterVersion='v279';
+window.__qinsterVersion='v280';
 window.__qinsterReady=true;
 window.__bootMark&&__bootMark('ENGINE READY');
 const __eb=document.getElementById('boot-check');if(__eb)__eb.style.background='#234b2d';
-let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v279 · engine '+__n;},1000);
+let __n=0;setInterval(()=>{__n++;if(__eb)__eb.textContent='v280 · engine '+__n;},1000);
