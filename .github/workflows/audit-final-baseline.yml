@@ -1,0 +1,31 @@
+name: Audit final HTML baseline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  audit:
+    if: contains(github.event.head_commit.message, 'Run final HTML baseline audit')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Core final regression
+        run: npm test
+      - name: Picker regression
+        run: npm run test:pickers
+      - name: Relic/icon regression
+        run: node scripts/check-relics.mjs
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          node --check game.js
+          node --check v194-expedition.js
+          node --check v199-roguelike-expedition.js
+          node --check v201-battle-theater.js
+          node --check dispatch-pip.js
