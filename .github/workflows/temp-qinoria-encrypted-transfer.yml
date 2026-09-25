@@ -1,0 +1,21 @@
+name: Temporary Encrypted Qinoria Transfer
+
+on:
+  push:
+    branches: [temp-godot472-binary-20260925]
+    paths:
+      - ".github/workflows/temp-qinoria-encrypted-transfer.yml"
+  workflow_dispatch:
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload encrypted payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-qinoria-benchmark-payload
+          path: .tmp-qinoria-transfer/*.enc
+          if-no-files-found: error
+          retention-days: 1
