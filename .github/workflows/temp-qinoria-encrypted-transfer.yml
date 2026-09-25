@@ -18,4 +18,5 @@ jobs:
           name: encrypted-qinoria-benchmark-payload
           path: .tmp-qinoria-transfer/*.enc
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 1
